@@ -1,8 +1,9 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LiveKit Meeting</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>MeetSpace - Video Meeting</title>
     <script src="https://unpkg.com/livekit-client@2.0.0/dist/livekit-client.umd.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/10.8.0/jsrsasign-all-min.js"></script>
     <style>
@@ -24,6 +25,23 @@
         .card.hidden { display: none; }
         h1 { font-size: 32px; margin-bottom: 8px; color: #1a1a2e; text-align: center; }
         .subtitle { text-align: center; color: #666; margin-bottom: 32px; font-size: 14px; }
+        .permission-box {
+            background: #f0f9ff;
+            border: 1px solid #bae6fd;
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .permission-box button {
+            background: #0284c7;
+            margin-top: 10px;
+            padding: 10px;
+            font-size: 14px;
+            width: auto;
+            display: inline-block;
+            padding: 10px 20px;
+        }
         input {
             width: 100%;
             padding: 14px;
@@ -44,6 +62,7 @@
             margin-top: 16px;
             cursor: pointer;
         }
+        button:active { transform: scale(0.98); }
         .meeting-container {
             display: none;
             background: #1a1a2e;
@@ -104,6 +123,15 @@
         .ctrl-btn.active { background: #4f46e5; }
         .ctrl-btn.leave { background: #dc2626; }
         .status { text-align: center; padding: 12px; font-size: 13px; color: #aaa; background: #0f0f1a; }
+        .error-badge {
+            background: #fee2e2;
+            color: #dc2626;
+            padding: 12px;
+            border-radius: 12px;
+            margin-top: 16px;
+            font-size: 13px;
+            text-align: center;
+        }
         @media (max-width: 768px) {
             .ctrl-btn { width: 50px; height: 50px; font-size: 22px; }
         }
@@ -113,9 +141,16 @@
 <div class="card" id="joinScreen">
     <h1>🎥 MeetSpace</h1>
     <div class="subtitle">Enter your name to join</div>
+    
+    <div class="permission-box" id="permissionBox">
+        📷 Camera & Microphone Required
+        <button id="requestPermBtn">Request Permission</button>
+    </div>
+    
     <input type="text" id="userName" placeholder="Your Name" value="Guest">
     <input type="text" id="roomName" placeholder="Room Name" value="main">
     <button id="joinBtn">Join Meeting</button>
+    <div id="errorBox" class="error-badge" style="display: none;"></div>
 </div>
 
 <div class="meeting-container" id="meetingScreen">
@@ -129,12 +164,15 @@
 </div>
 
 <script>
-    // YOUR CREDENTIALS - Replace with your actual values
+    // ============================================
+    // YOUR CREDENTIALS - Replace with your values
+    // ============================================
     const WS_URL = 'wss://meeting-t8djz1pf.livekit.cloud';
     const API_KEY = 'API6VWLgTHiX4vR';
     const API_SECRET = 'wSxeUi1FLtzZ9VJSfhg181qP2klwVlAeb9pwwXTt';
     
     let room = null, localVideo = null, localAudio = null, stream = null;
+    let hasPermission = false;
     
     function generateToken(roomName, identity) {
         const now = Math.floor(Date.now() / 1000);
@@ -145,6 +183,37 @@
         };
         const header = { alg: "HS256", typ: "JWT" };
         return KJUR.jws.JWS.sign("HS256", JSON.stringify(header), JSON.stringify(payload), API_SECRET);
+    }
+    
+    async function requestPermissions() {
+        const errorBox = document.getElementById('errorBox');
+        const permissionBox = document.getElementById('permissionBox');
+        
+        try {
+            // Test both camera and microphone
+            const testStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            testStream.getTracks().forEach(track => track.stop());
+            hasPermission = true;
+            permissionBox.style.background = '#d4edda';
+            permissionBox.style.border = '1px solid #28a745';
+            permissionBox.innerHTML = '✅ Camera & Microphone Access Granted!<br><small>You can now join meetings</small>';
+            errorBox.style.display = 'none';
+            return true;
+        } catch (err) {
+            console.error('Permission error:', err);
+            let errorMsg = '';
+            if (err.name === 'NotAllowedError') {
+                errorMsg = '❌ You denied camera/microphone access.\n\nPlease:\n1. Tap the camera/mic icon in the address bar\n2. Select "Allow"\n3. Refresh the page and click "Request Permission" again';
+            } else if (err.name === 'NotFoundError') {
+                errorMsg = '❌ No camera or microphone found on this device.';
+            } else {
+                errorMsg = `❌ Error: ${err.message}`;
+            }
+            errorBox.innerText = errorMsg;
+            errorBox.style.display = 'block';
+            hasPermission = false;
+            return false;
+        }
     }
     
     function addVideo(track, name, isSelf = false) {
@@ -164,38 +233,86 @@
     }
     
     async function join() {
+        const errorBox = document.getElementById('errorBox');
+        errorBox.style.display = 'none';
+        
+        // Check if we're on HTTPS
+        if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+            errorBox.innerText = '⚠️ HTTPS required! Please deploy this page to a server with HTTPS (like Vercel or Netlify).';
+            errorBox.style.display = 'block';
+            return;
+        }
+        
+        // Check permissions first
+        if (!hasPermission) {
+            const granted = await requestPermissions();
+            if (!granted) return;
+        }
+        
         const userName = document.getElementById('userName').value.trim() || 'Guest';
         const roomName = document.getElementById('roomName').value.trim() || 'main';
         const status = document.getElementById('status');
         
-        status.innerText = 'Requesting camera...';
+        if (!userName) {
+            errorBox.innerText = 'Please enter your name';
+            errorBox.style.display = 'block';
+            return;
+        }
+        
+        status.innerText = '🎤 Requesting camera & microphone...';
+        
         try {
+            // Request media again (or reuse)
             stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
             const videoTrack = stream.getVideoTracks()[0];
             const audioTrack = stream.getAudioTracks()[0];
             
-            status.innerText = 'Connecting...';
+            status.innerText = '🔌 Connecting to LiveKit...';
+            
             const token = generateToken(roomName, userName);
             room = new LivekitClient.Room();
             await room.connect(WS_URL, token);
             
+            // Switch UI
             document.getElementById('joinScreen').classList.add('hidden');
             document.getElementById('meetingScreen').classList.add('active');
             
+            // Publish tracks
             localVideo = new LivekitClient.LocalVideoTrack(videoTrack);
             localAudio = new LivekitClient.LocalAudioTrack(audioTrack);
             await room.localParticipant.publishTrack(localVideo);
             await room.localParticipant.publishTrack(localAudio);
             addVideo(videoTrack, userName, true);
             
-            status.innerText = `Connected to "${roomName}"`;
+            status.innerText = `✅ Connected to "${roomName}" as ${userName}`;
             
+            // Handle remote participants
             room.on(LivekitClient.RoomEvent.TrackSubscribed, (track, pub, participant) => {
-                if (track.kind === 'video') addVideo(track.mediaStreamTrack, participant.identity);
+                if (track.kind === 'video' && track.mediaStreamTrack) {
+                    addVideo(track.mediaStreamTrack, participant.identity);
+                }
             });
+            
+            room.on(LivekitClient.RoomEvent.ParticipantDisconnected, (p) => {
+                const tiles = document.querySelectorAll('.participant');
+                tiles.forEach(tile => {
+                    const label = tile.querySelector('.label');
+                    if (label && label.innerText.includes(p.identity)) {
+                        tile.remove();
+                    }
+                });
+            });
+            
         } catch (err) {
-            status.innerText = `Error: ${err.message}`;
-            alert('Failed to join. Make sure you allowed camera access.');
+            console.error('Join error:', err);
+            status.innerText = `❌ Error: ${err.message}`;
+            errorBox.innerText = `Failed to join: ${err.message}\n\nMake sure:\n1. You allowed camera/microphone\n2. You're on HTTPS\n3. Your LiveKit credentials are correct`;
+            errorBox.style.display = 'block';
+            
+            if (stream) {
+                stream.getTracks().forEach(t => t.stop());
+                stream = null;
+            }
         }
     }
     
@@ -214,7 +331,9 @@
         if (localAudio) {
             const enabled = !localAudio.enabled;
             await localAudio.setEnabled(enabled);
-            document.getElementById('micBtn').style.background = enabled ? '#4f46e5' : '#2d2d44';
+            const micBtn = document.getElementById('micBtn');
+            micBtn.style.background = enabled ? '#4f46e5' : '#2d2d44';
+            micBtn.style.opacity = enabled ? '1' : '0.5';
         }
     }
     
@@ -222,14 +341,29 @@
         if (localVideo) {
             const enabled = !localVideo.enabled;
             await localVideo.setEnabled(enabled);
-            document.getElementById('camBtn').style.background = enabled ? '#4f46e5' : '#2d2d44';
+            const camBtn = document.getElementById('camBtn');
+            camBtn.style.background = enabled ? '#4f46e5' : '#2d2d44';
+            camBtn.style.opacity = enabled ? '1' : '0.5';
         }
     }
     
+    // Event listeners
     document.getElementById('joinBtn').onclick = join;
     document.getElementById('leaveBtn').onclick = leave;
     document.getElementById('micBtn').onclick = toggleMic;
     document.getElementById('camBtn').onclick = toggleCam;
+    document.getElementById('requestPermBtn').onclick = requestPermissions;
+    
+    // Check HTTPS on load
+    if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+        document.getElementById('errorBox').innerText = '⚠️ This page must be served over HTTPS to access camera/microphone.\n\nDeploy to Vercel or Netlify for free!';
+        document.getElementById('errorBox').style.display = 'block';
+    }
+    
+    // Auto-request permissions on load
+    setTimeout(() => {
+        requestPermissions();
+    }, 500);
 </script>
 </body>
 </html>
