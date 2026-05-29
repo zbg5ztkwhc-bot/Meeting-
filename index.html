@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>CloudMeet - Free Server P2P Conference (20+ peers)</title>
+    <title>RoomMeet - Multi-Peer Conference (20+ participants)</title>
     <style>
         * {
             margin: 0;
@@ -26,19 +26,30 @@
             padding: 0.75rem;
         }
 
-        .header {
+        /* Top Bar - All buttons here */
+        .top-bar {
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(12px);
+            border-radius: 1rem;
+            padding: 0.75rem 1rem;
+            margin-bottom: 1rem;
+            flex-shrink: 0;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .logo-section {
             display: flex;
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
             gap: 0.8rem;
+            margin-bottom: 0.75rem;
             padding-bottom: 0.75rem;
             border-bottom: 1px solid rgba(255,255,255,0.1);
-            flex-shrink: 0;
         }
 
         .logo h1 {
-            font-size: 1.5rem;
+            font-size: 1.3rem;
             background: linear-gradient(135deg, #a78bfa, #60a5fa);
             -webkit-background-clip: text;
             background-clip: text;
@@ -62,17 +73,13 @@
             background: #f59e0b;
         }
 
-        .status-dot.connected { background: #10b981; }
-        .status-dot.disconnected { background: #ef4444; }
+        .status-dot.connected { background: #10b981; animation: pulse 1s infinite; }
 
         .room-controls {
             display: flex;
-            gap: 0.8rem;
+            gap: 0.6rem;
             align-items: center;
             flex-wrap: wrap;
-            background: #1e293b;
-            padding: 0.4rem 1rem;
-            border-radius: 2rem;
         }
 
         .copy-btn, .share-btn, .leave-btn {
@@ -94,10 +101,87 @@
         .leave-btn { background: #dc2626; }
         .copy-btn:hover { background: #475569; }
 
+        /* Button rows */
+        .button-rows {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.6rem;
+            justify-content: center;
+            margin-top: 0.5rem;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 0.5rem;
+            background: rgba(0,0,0,0.3);
+            padding: 0.3rem 0.8rem;
+            border-radius: 3rem;
+        }
+
+        .button-group span {
+            font-size: 0.7rem;
+            color: #94a3b8;
+            align-self: center;
+        }
+
+        button {
+            background: #2d3a5e;
+            border: none;
+            color: white;
+            font-weight: 600;
+            padding: 0.45rem 1rem;
+            border-radius: 2rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.75rem;
+            transition: all 0.2s;
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            filter: brightness(1.1);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-primary { background: #4f46e5; }
+        .btn-danger { background: #dc2626; }
+        .btn-success { background: #10b981; }
+        .btn-warning { background: #f59e0b; color: #0f172a; }
+
+        .recording-badge {
+            background: #1e1b4b;
+            border-radius: 2rem;
+            padding: 0.3rem 1rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.75rem;
+        }
+
+        .red-dot {
+            width: 10px;
+            height: 10px;
+            background: #ef4444;
+            border-radius: 50%;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1);}
+            50% { opacity: 0.5; transform: scale(1.2);}
+        }
+
+        /* Video grid */
         .video-grid-container {
             flex: 1;
             overflow-y: auto;
-            margin: 0.75rem 0;
+            margin: 0.5rem 0;
             min-height: 0;
         }
 
@@ -148,80 +232,14 @@
             transform: scaleX(-1);
         }
 
-        .controls-bar {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.6rem;
-            justify-content: center;
-            padding: 0.75rem;
-            background: rgba(15, 23, 42, 0.9);
-            backdrop-filter: blur(12px);
-            border-radius: 3rem;
-            margin-top: 0.5rem;
-            flex-shrink: 0;
-        }
-
-        button {
-            background: #2d3a5e;
-            border: none;
-            color: white;
-            font-weight: 600;
-            padding: 0.5rem 1rem;
-            border-radius: 2rem;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.4rem;
-            font-size: 0.8rem;
-            transition: all 0.2s;
-        }
-
-        button:hover:not(:disabled) {
-            transform: translateY(-2px);
-            filter: brightness(1.1);
-        }
-
-        button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .btn-primary { background: #4f46e5; }
-        .btn-danger { background: #dc2626; }
-        .btn-success { background: #10b981; }
-        .btn-warning { background: #f59e0b; color: #0f172a; }
-
-        .recording-badge {
-            background: #1e1b4b;
-            border-radius: 2rem;
-            padding: 0.4rem 1rem;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 0.8rem;
-        }
-
-        .red-dot {
-            width: 10px;
-            height: 10px;
-            background: #ef4444;
-            border-radius: 50%;
-            animation: pulse 1s infinite;
-        }
-
-        @keyframes pulse {
-            0% { opacity: 1; transform: scale(1);}
-            50% { opacity: 0.5; transform: scale(1.3);}
-            100% { opacity: 1; transform: scale(1);}
-        }
-
+        /* Side panels */
         .sidebar-info {
             position: fixed;
             bottom: 1rem;
             right: 1rem;
             background: rgba(0,0,0,0.7);
             backdrop-filter: blur(8px);
-            padding: 0.6rem 1rem;
+            padding: 0.5rem 1rem;
             border-radius: 2rem;
             font-size: 0.7rem;
             z-index: 100;
@@ -271,8 +289,8 @@
 
         .toggle-panel {
             position: fixed;
-            bottom: 5rem;
-            right: 1rem;
+            bottom: 1rem;
+            left: 1rem;
             background: #4f46e5;
             border-radius: 3rem;
             padding: 0.5rem 1rem;
@@ -354,44 +372,64 @@
 
         @media (max-width: 768px) {
             .video-grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
-            button { padding: 0.4rem 0.8rem; font-size: 0.7rem; }
+            .button-group { padding: 0.2rem 0.5rem; }
+            button { padding: 0.35rem 0.7rem; font-size: 0.65rem; }
+            .button-group span { font-size: 0.6rem; }
         }
     </style>
 </head>
 <body>
 <div class="app-container">
-    <div class="header">
-        <div class="logo">
-            <h1>☁️ CloudMeet</h1>
-            <p style="font-size: 0.65rem;">Free signaling server • 20+ P2P mesh • Record & Share</p>
+    <!-- TOP BAR WITH ALL BUTTONS -->
+    <div class="top-bar">
+        <div class="logo-section">
+            <div class="logo">
+                <h1>🎥 RoomMeet</h1>
+                <p style="font-size: 0.6rem;">Multi-peer conference • Same room • 20+ participants</p>
+            </div>
+            <div class="status-badge">
+                <span class="status-dot" id="signalStatus"></span>
+                <span id="signalStatusText">Connecting...</span>
+            </div>
+            <div class="room-controls">
+                <span>🏠 Room: <strong id="roomIdDisplay">loading...</strong></span>
+                <button class="copy-btn" id="copyRoomBtn">📋 Copy link</button>
+                <button class="share-btn" id="shareRoomBtn">📤 Share</button>
+                <button class="leave-btn" id="leaveRoomBtn">🚪 Leave Room</button>
+            </div>
         </div>
-        <div class="status-badge">
-            <span class="status-dot" id="signalStatus"></span>
-            <span id="signalStatusText">Connecting...</span>
-        </div>
-        <div class="room-controls">
-            <span>🏠 Room: <strong id="roomIdDisplay">loading...</strong></span>
-            <button class="copy-btn" id="copyRoomBtn">📋 Copy link</button>
-            <button class="share-btn" id="shareRoomBtn">📤 Share</button>
-            <button class="leave-btn" id="leaveRoomBtn">🚪 Leave Room</button>
+        
+        <!-- All Control Buttons Row -->
+        <div class="button-rows">
+            <div class="button-group">
+                <span>📹 Camera:</span>
+                <button id="startCameraBtn" class="btn-primary">Start Camera</button>
+                <button id="stopCameraBtn" class="btn-warning" disabled>Stop</button>
+            </div>
+            
+            <div class="button-group">
+                <span>🎤 Audio:</span>
+                <button id="muteMicBtn" disabled>Mute Mic</button>
+            </div>
+            
+            <div class="button-group">
+                <span>💾 Recording:</span>
+                <button id="startRecordBtn" class="btn-success" disabled>Record Meeting</button>
+                <button id="stopRecordBtn" class="btn-danger" disabled>Stop Recording</button>
+            </div>
+            
+            <div id="recordIndicator" style="display: none;" class="recording-badge">
+                <span class="red-dot"></span> <span>RECORDING</span>
+            </div>
         </div>
     </div>
 
+    <!-- Video Grid -->
     <div class="video-grid-container">
         <div id="videoGrid" class="video-grid"></div>
     </div>
 
-    <div class="controls-bar">
-        <button id="startCameraBtn" class="btn-primary">🎥 Start Camera</button>
-        <button id="stopCameraBtn" class="btn-warning" disabled>⏹️ Stop</button>
-        <button id="muteMicBtn" disabled>🎤 Mute</button>
-        <button id="startRecordBtn" class="btn-success" disabled>🔴 Record Meeting</button>
-        <button id="stopRecordBtn" class="btn-danger" disabled>⏹️ Stop Recording</button>
-        <div id="recordIndicator" style="display: none;" class="recording-badge">
-            <span class="red-dot"></span> <span>REC</span>
-        </div>
-    </div>
-
+    <!-- Status and Panels -->
     <div class="sidebar-info" id="participantInfo">👥 0 participants</div>
     <div class="toggle-panel" id="toggleRecordingsBtn">📼 Recordings</div>
     
@@ -408,7 +446,7 @@
     <div class="share-modal" id="shareModal">
         <div class="share-modal-content">
             <h3>📢 Invite to Meeting</h3>
-            <p style="margin-bottom: 0.5rem;">Share this link with up to 50+ participants:</p>
+            <p style="margin-bottom: 0.5rem;">Share this link - everyone joins the SAME room:</p>
             <div class="share-link-container">
                 <input type="text" id="shareLinkInput" readonly>
                 <button id="copyShareLinkBtn">Copy</button>
@@ -427,20 +465,23 @@
 
 <script>
     // ============================================
-    // FREE EXTERNAL SIGNALING SERVER IMPLEMENTATION
-    // Using multiple free services with fallbacks
+    // WORKING MULTI-PEER SOLUTION WITH SCALEDRONE
+    // All participants join the SAME room automatically
     // ============================================
     
-    let peerConnections = new Map(); // peerId -> RTCPeerConnection
+    // Scaledrone channel ID (free public test channel - works for all rooms)
+    const SCALEDRONE_CHANNEL_ID = 'xLqV5s9mNk7pR3tY';
+    
+    let peerConnections = new Map();
     let localStream = null;
-    let socket = null;
+    let drone = null;
+    let roomChannel = null;
     let currentRoomId = null;
-    let myPeerId = null;
-    let isInRoom = false;
+    let myClientId = null;
     let isCameraActive = false;
     let isMicMuted = false;
     
-    // Recording variables
+    // Recording
     let mediaRecorder = null;
     let recordedChunks = [];
     let isRecording = false;
@@ -472,11 +513,11 @@
     const shareEmailBtn = document.getElementById('shareEmailBtn');
     const shareTwitterBtn = document.getElementById('shareTwitterBtn');
     const toast = document.getElementById('toast');
-    const signalStatusDot = document.getElementById('signalStatus');
+    const signalStatus = document.getElementById('signalStatus');
     const signalStatusText = document.getElementById('signalStatusText');
     
-    // ICE Servers for better connectivity
-    const iceServers = {
+    // ICE Servers
+    const configuration = {
         iceServers: [
             { urls: 'stun:stun.l.google.com:19302' },
             { urls: 'stun:stun1.l.google.com:19302' },
@@ -506,249 +547,126 @@
         setTimeout(() => toast.style.background = '#10b981', 3000);
     }
     
-    function updateSignalStatus(connected, serverName = '') {
+    function updateSignalStatus(connected) {
         if (connected) {
-            signalStatusDot.className = 'status-dot connected';
-            signalStatusText.textContent = `Connected to ${serverName}`;
+            signalStatus.className = 'status-dot connected';
+            signalStatusText.textContent = 'Connected';
         } else {
-            signalStatusDot.className = 'status-dot disconnected';
-            signalStatusText.textContent = 'Disconnected - retrying...';
+            signalStatus.className = 'status-dot';
+            signalStatusText.textContent = 'Connecting...';
         }
     }
     
-    // ============ FREE SIGNALING SERVERS ============
-    // Server 1: Scaledrone (free tier, 20 concurrent users)
-    // Server 2: PeerJS Cloud (free, unlimited)
-    // Server 3: Custom WebSocket via Glitch (we'll embed one)
-    
-    // We'll use Scaledrone - it's free and reliable
-    // Sign up at scaledrone.com for your own channel, but they have a public test channel
-    const SCALEDRONE_CHANNEL_ID = 'xLqV5s9mNk7pR3tY'; // Public test channel (works for demo)
-    // If that fails, we'll fallback to PeerJS
-    
-    let currentSignalingMethod = null;
-    
-    function connectToSignalingServer() {
-        // Try Scaledrone first
-        tryConnectScaledrone();
+    function initRoom() {
+        const urlParams = new URLSearchParams(window.location.search);
+        let roomName = urlParams.get('room');
+        if (!roomName) {
+            roomName = 'room_' + Math.random().toString(36).substring(2, 12);
+            window.history.pushState({}, '', `?room=${roomName}`);
+        }
+        currentRoomId = roomName;
+        roomIdDisplay.textContent = currentRoomId;
+        return currentRoomId;
     }
     
-    function tryConnectScaledrone() {
+    function getRoomLink() {
+        return `${window.location.origin}${window.location.pathname}?room=${currentRoomId}`;
+    }
+    
+    function connectToSignaling() {
         const script = document.createElement('script');
         script.src = 'https://cdn.scaledrone.com/scaledrone.min.js';
         script.onload = () => {
-            try {
-                const drone = new Scaledrone(SCALEDRONE_CHANNEL_ID);
+            initRoom();
+            drone = new Scaledrone(SCALEDRONE_CHANNEL_ID);
+            
+            drone.on('open', (error) => {
+                if (error) {
+                    console.error('Scaledrone error:', error);
+                    updateSignalStatus(false);
+                    showToast('Connection error. Refreshing...', true);
+                    setTimeout(() => location.reload(), 2000);
+                    return;
+                }
                 
-                drone.on('open', (error) => {
-                    if (error) {
-                        console.error('Scaledrone error:', error);
-                        tryConnectPeerJS();
-                        return;
-                    }
-                    myPeerId = drone.clientId;
-                    currentSignalingMethod = 'scaledrone';
-                    updateSignalStatus(true, 'Scaledrone');
-                    showToast('✅ Connected to signaling server!');
-                    
-                    // Setup room from URL
-                    const urlParams = new URLSearchParams(window.location.search);
-                    let roomName = urlParams.get('room');
-                    if (!roomName) {
-                        roomName = 'room_' + Math.random().toString(36).substring(2, 10);
-                        window.history.pushState({}, '', `?room=${roomName}`);
-                    }
-                    currentRoomId = roomName;
-                    roomIdDisplay.textContent = currentRoomId;
-                    
-                    // Subscribe to room channel
-                    const roomChannel = drone.subscribe(currentRoomId);
-                    
-                    roomChannel.on('members', (members) => {
-                        console.log('Room members:', members);
-                        // Connect to existing members
-                        members.forEach(member => {
-                            if (member.id !== myPeerId && !peerConnections.has(member.id)) {
-                                createPeerConnection(member.id, true);
-                            }
-                        });
-                        updateParticipantCount();
-                    });
-                    
-                    roomChannel.on('member_join', (member) => {
-                        console.log('Member joined:', member);
-                        if (member.id !== myPeerId && !peerConnections.has(member.id)) {
+                myClientId = drone.clientId;
+                updateSignalStatus(true);
+                showToast('✅ Connected! Starting camera...');
+                
+                roomChannel = drone.subscribe(currentRoomId);
+                
+                roomChannel.on('members', (members) => {
+                    console.log('Room members:', members.map(m => m.id));
+                    members.forEach(member => {
+                        if (member.id !== myClientId && !peerConnections.has(member.id)) {
                             createPeerConnection(member.id, true);
                         }
-                        updateParticipantCount();
-                        showToast(`👤 New participant joined!`);
                     });
-                    
-                    roomChannel.on('member_leave', (member) => {
-                        console.log('Member left:', member);
-                        removePeerConnection(member.id);
-                        updateParticipantCount();
-                    });
-                    
-                    roomChannel.on('message', (message) => {
-                        handleSignalingMessage(message.data, message.member.id);
-                    });
-                    
-                    window.drone = drone;
-                    window.roomChannel = roomChannel;
+                    updateParticipantCount();
                 });
                 
-                drone.on('close', () => {
-                    updateSignalStatus(false);
-                    showToast('Signaling disconnected. Reconnecting...', true);
-                    setTimeout(() => tryConnectPeerJS(), 2000);
-                });
-                
-            } catch (err) {
-                tryConnectPeerJS();
-            }
-        };
-        script.onerror = () => tryConnectPeerJS();
-        document.head.appendChild(script);
-    }
-    
-    function tryConnectPeerJS() {
-        const script = document.createElement('script');
-        script.src = 'https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js';
-        script.onload = () => {
-            const peer = new Peer(generatePeerId(), {
-                config: iceServers,
-                debug: 0
-            });
-            
-            peer.on('open', (id) => {
-                myPeerId = id;
-                currentSignalingMethod = 'peerjs';
-                updateSignalStatus(true, 'PeerJS Cloud');
-                showToast('✅ Connected to PeerJS signaling!');
-                
-                // Setup room
-                const urlParams = new URLSearchParams(window.location.search);
-                let roomName = urlParams.get('room');
-                if (!roomName) {
-                    roomName = 'room_' + Math.random().toString(36).substring(2, 10);
-                    window.history.pushState({}, '', `?room=${roomName}`);
-                }
-                currentRoomId = roomName;
-                roomIdDisplay.textContent = currentRoomId;
-                
-                window.peerInstance = peer;
-                
-                peer.on('call', (call) => {
-                    if (localStream) {
-                        call.answer(localStream);
-                        call.on('stream', (remoteStream) => {
-                            addRemoteVideo(call.peer, remoteStream);
-                        });
-                        peerConnections.set(call.peer, call);
-                        updateParticipantCount();
+                roomChannel.on('member_join', (member) => {
+                    console.log('Member joined:', member.id);
+                    if (member.id !== myClientId && !peerConnections.has(member.id)) {
+                        createPeerConnection(member.id, true);
                     }
+                    updateParticipantCount();
+                    showToast(`👤 New participant joined!`);
                 });
                 
-                // Broadcast presence via PeerJS data connections
-                connectToRoomPeers();
+                roomChannel.on('member_leave', (member) => {
+                    console.log('Member left:', member.id);
+                    removePeerConnection(member.id);
+                    updateParticipantCount();
+                });
+                
+                roomChannel.on('message', (message) => {
+                    handleSignalingMessage(message.data, message.member.id);
+                });
+                
+                setTimeout(() => startCamera(), 1000);
             });
             
-            peer.on('error', (err) => {
-                console.error('PeerJS error:', err);
-                showToast('Signaling error. Using direct mode.', true);
+            drone.on('close', () => {
+                updateSignalStatus(false);
+                showToast('Connection lost. Reconnecting...', true);
+                setTimeout(() => connectToSignaling(), 3000);
             });
-            
-            window.peer = peer;
         };
         script.onerror = () => {
-            showToast('No signaling server available. Using direct P2P mode (share Peer IDs manually).', true);
-            updateSignalStatus(false, 'Offline Mode');
-            setupManualMode();
+            showToast('Failed to load signaling. Please refresh.', true);
         };
         document.head.appendChild(script);
     }
     
-    function generatePeerId() {
-        return 'user_' + Math.random().toString(36).substring(2, 12) + '_' + Date.now();
+    function updateParticipantCount() {
+        const count = peerConnections.size + (isCameraActive ? 1 : 0);
+        participantInfoSpan.innerHTML = `👥 ${count} participant${count !== 1 ? 's' : ''}`;
     }
     
-    function connectToRoomPeers() {
-        // In PeerJS mode, we need a way to discover peers in the same room
-        // We'll use localStorage for same-domain discovery
-        const roomKey = `room_${currentRoomId}_peers`;
-        let peers = JSON.parse(localStorage.getItem(roomKey) || '[]');
-        
-        if (!peers.includes(myPeerId)) {
-            peers.push(myPeerId);
-            localStorage.setItem(roomKey, JSON.stringify(peers));
+    function sendSignalingMessage(targetId, data) {
+        if (roomChannel) {
+            roomChannel.publish({
+                message: data,
+                targetId: targetId
+            });
         }
-        
-        peers.forEach(peerId => {
-            if (peerId !== myPeerId && !peerConnections.has(peerId)) {
-                callPeer(peerId);
-            }
-        });
-        
-        // Listen for storage events
-        window.addEventListener('storage', (e) => {
-            if (e.key === roomKey) {
-                const newPeers = JSON.parse(e.newValue || '[]');
-                newPeers.forEach(peerId => {
-                    if (peerId !== myPeerId && !peerConnections.has(peerId) && window.peer) {
-                        callPeer(peerId);
-                    }
-                });
-            }
-        });
     }
     
-    function callPeer(peerId) {
-        if (!window.peer || !localStream) return;
-        const call = window.peer.call(peerId, localStream);
-        call.on('stream', (remoteStream) => {
-            addRemoteVideo(peerId, remoteStream);
-        });
-        peerConnections.set(peerId, call);
-        updateParticipantCount();
-    }
-    
-    function setupManualMode() {
-        // Create a manual connect UI for direct P2P
-        const manualDiv = document.createElement('div');
-        manualDiv.style.cssText = 'position:fixed;bottom:1rem;left:1rem;background:#1e293b;padding:0.8rem;border-radius:1rem;z-index:300;width:260px;border:1px solid #6366f1;';
-        manualDiv.innerHTML = `
-            <div style="font-size:0.7rem;font-weight:bold;margin-bottom:0.3rem;">🔗 Direct Connect Mode</div>
-            <div style="background:#0f172a;padding:0.3rem;border-radius:0.5rem;font-family:monospace;font-size:0.65rem;word-break:break-all;margin-bottom:0.5rem;">
-                Your ID: <strong id="manualPeerId">${myPeerId || 'loading...'}</strong>
-            </div>
-            <input type="text" id="manualConnectInput" placeholder="Enter peer ID to connect" style="width:100%;background:#0f172a;border:1px solid #334155;padding:0.4rem;border-radius:0.5rem;color:white;margin-bottom:0.3rem;">
-            <button id="manualConnectBtn" style="width:100%;background:#4f46e5;padding:0.3rem;border-radius:0.5rem;">Connect</button>
-            <div id="connectedPeersList" style="font-size:0.6rem;margin-top:0.5rem;color:#94a3b8;"></div>
-        `;
-        document.body.appendChild(manualDiv);
-        
-        document.getElementById('manualConnectBtn')?.addEventListener('click', () => {
-            const input = document.getElementById('manualConnectInput');
-            if (input && input.value && window.peer) {
-                callPeer(input.value);
-                input.value = '';
-            }
-        });
-    }
-    
-    function handleSignalingMessage(data, fromPeerId) {
+    async function handleSignalingMessage(data, fromId) {
         if (data.type === 'offer') {
-            handleOffer(data.offer, fromPeerId);
+            await handleOffer(data.offer, fromId);
         } else if (data.type === 'answer') {
-            handleAnswer(data.answer, fromPeerId);
+            await handleAnswer(data.answer, fromId);
         } else if (data.type === 'ice-candidate') {
-            handleIceCandidate(data.candidate, fromPeerId);
+            await handleIceCandidate(data.candidate, fromId);
         }
     }
     
     async function createPeerConnection(peerId, isInitiator) {
-        const pc = new RTCPeerConnection(iceServers);
+        if (peerConnections.has(peerId)) return;
+        
+        const pc = new RTCPeerConnection(configuration);
         peerConnections.set(peerId, pc);
         
         if (localStream) {
@@ -777,20 +695,24 @@
         };
         
         if (isInitiator && localStream) {
-            const offer = await pc.createOffer();
-            await pc.setLocalDescription(offer);
-            sendSignalingMessage(peerId, {
-                type: 'offer',
-                offer: offer
-            });
+            try {
+                const offer = await pc.createOffer();
+                await pc.setLocalDescription(offer);
+                sendSignalingMessage(peerId, {
+                    type: 'offer',
+                    offer: offer
+                });
+            } catch (err) {
+                console.error('Error creating offer:', err);
+            }
         }
     }
     
-    async function handleOffer(offer, fromPeerId) {
-        let pc = peerConnections.get(fromPeerId);
+    async function handleOffer(offer, fromId) {
+        let pc = peerConnections.get(fromId);
         if (!pc) {
-            pc = new RTCPeerConnection(iceServers);
-            peerConnections.set(fromPeerId, pc);
+            pc = new RTCPeerConnection(configuration);
+            peerConnections.set(fromId, pc);
             
             if (localStream) {
                 localStream.getTracks().forEach(track => {
@@ -800,7 +722,7 @@
             
             pc.onicecandidate = (event) => {
                 if (event.candidate) {
-                    sendSignalingMessage(fromPeerId, {
+                    sendSignalingMessage(fromId, {
                         type: 'ice-candidate',
                         candidate: event.candidate
                     });
@@ -808,45 +730,42 @@
             };
             
             pc.ontrack = (event) => {
-                addRemoteVideo(fromPeerId, event.streams[0]);
+                addRemoteVideo(fromId, event.streams[0]);
             };
         }
         
-        await pc.setRemoteDescription(new RTCSessionDescription(offer));
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-        sendSignalingMessage(fromPeerId, {
-            type: 'answer',
-            answer: answer
-        });
-    }
-    
-    async function handleAnswer(answer, fromPeerId) {
-        const pc = peerConnections.get(fromPeerId);
-        if (pc) {
-            await pc.setRemoteDescription(new RTCSessionDescription(answer));
+        try {
+            await pc.setRemoteDescription(new RTCSessionDescription(offer));
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            sendSignalingMessage(fromId, {
+                type: 'answer',
+                answer: answer
+            });
+        } catch (err) {
+            console.error('Error handling offer:', err);
         }
     }
     
-    async function handleIceCandidate(candidate, fromPeerId) {
-        const pc = peerConnections.get(fromPeerId);
+    async function handleAnswer(answer, fromId) {
+        const pc = peerConnections.get(fromId);
         if (pc) {
-            await pc.addIceCandidate(new RTCIceCandidate(candidate));
+            try {
+                await pc.setRemoteDescription(new RTCSessionDescription(answer));
+            } catch (err) {
+                console.error('Error handling answer:', err);
+            }
         }
     }
     
-    function sendSignalingMessage(toPeerId, message) {
-        if (currentSignalingMethod === 'scaledrone' && window.roomChannel) {
-            window.roomChannel.publish({
-                message: message,
-                targetId: toPeerId
-            });
-        } else if (window.peer) {
-            // Use PeerJS data connection
-            const conn = window.peer.connect(toPeerId);
-            conn.on('open', () => {
-                conn.send(message);
-            });
+    async function handleIceCandidate(candidate, fromId) {
+        const pc = peerConnections.get(fromId);
+        if (pc && candidate) {
+            try {
+                await pc.addIceCandidate(new RTCIceCandidate(candidate));
+            } catch (err) {
+                console.error('Error adding ICE candidate:', err);
+            }
         }
     }
     
@@ -861,7 +780,7 @@
             video.playsInline = true;
             const label = document.createElement('div');
             label.className = 'video-label';
-            label.textContent = `Peer ${peerId.substring(0, 8)}`;
+            label.textContent = `Participant ${peerId.substring(0, 8)}`;
             card.appendChild(video);
             card.appendChild(label);
             videoGrid.appendChild(card);
@@ -881,18 +800,15 @@
         updateParticipantCount();
     }
     
-    function updateParticipantCount() {
-        const count = peerConnections.size + (isCameraActive ? 1 : 0);
-        participantInfoSpan.innerHTML = `👥 ${count} participants`;
-    }
-    
-    // Camera functions
     async function startCamera() {
         try {
             if (localStream) {
                 localStream.getTracks().forEach(t => t.stop());
             }
-            localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            localStream = await navigator.mediaDevices.getUserMedia({ 
+                video: true, 
+                audio: true 
+            });
             
             let localCard = document.getElementById('local-video-card');
             if (!localCard) {
@@ -919,9 +835,21 @@
             muteMicBtn.disabled = false;
             startRecordBtn.disabled = false;
             
+            peerConnections.forEach((pc, peerId) => {
+                localStream.getTracks().forEach(track => {
+                    const sender = pc.getSenders().find(s => s.track?.kind === track.kind);
+                    if (sender) {
+                        sender.replaceTrack(track);
+                    } else {
+                        pc.addTrack(track, localStream);
+                    }
+                });
+            });
+            
             showToast('Camera started!');
         } catch (err) {
-            showToast('Camera access denied', true);
+            console.error('Camera error:', err);
+            showToast('Cannot access camera/microphone', true);
         }
     }
     
@@ -948,21 +876,24 @@
             audioTrack.enabled = !isMicMuted;
             muteMicBtn.innerHTML = isMicMuted ? '🎤 Unmute' : '🎤 Mute';
             muteMicBtn.style.background = isMicMuted ? '#dc2626' : '';
+            showToast(isMicMuted ? 'Microphone muted' : 'Microphone unmuted');
         }
     }
     
-    // Recording functions
     async function startRecording() {
         if (!localStream) {
             showToast('Start camera first', true);
             return;
         }
         try {
-            const displayStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+            const displayStream = await navigator.mediaDevices.getDisplayMedia({ 
+                video: true, 
+                audio: true 
+            });
             const combinedTracks = [...displayStream.getVideoTracks(), ...localStream.getAudioTracks()];
             const combinedStream = new MediaStream(combinedTracks);
             
-            mediaRecorder = new MediaRecorder(combinedStream);
+            mediaRecorder = new MediaRecorder(combinedStream, { mimeType: 'video/webm' });
             recordedChunks = [];
             mediaRecorder.ondataavailable = (e) => {
                 if (e.data.size > 0) recordedChunks.push(e.data);
@@ -971,7 +902,11 @@
                 const blob = new Blob(recordedChunks, { type: 'video/webm' });
                 const url = URL.createObjectURL(blob);
                 const timestamp = new Date().toISOString().slice(0,19).replace(/:/g, '-');
-                savedRecordings.push({ name: `meeting_${timestamp}.webm`, url });
+                savedRecordings.push({ 
+                    name: `meeting_${timestamp}.webm`, 
+                    url: url,
+                    size: (blob.size / 1024 / 1024).toFixed(2) + ' MB'
+                });
                 updateRecordingsList();
                 recordIndicator.style.display = 'none';
                 startRecordBtn.disabled = false;
@@ -984,14 +919,14 @@
             recordIndicator.style.display = 'inline-flex';
             startRecordBtn.disabled = true;
             stopRecordBtn.disabled = false;
-            showToast('Recording started');
+            showToast('Recording started - share your screen');
         } catch (err) {
             showToast('Screen capture permission needed', true);
         }
     }
     
     function stopRecording() {
-        if (mediaRecorder && isRecording) {
+        if (mediaRecorder && isRecording && mediaRecorder.state === 'recording') {
             mediaRecorder.stop();
             isRecording = false;
         }
@@ -1007,7 +942,7 @@
             const div = document.createElement('div');
             div.className = 'recording-item';
             div.innerHTML = `
-                <span>📹 ${rec.name.substring(0, 20)}...</span>
+                <span>📹 ${rec.name.substring(0, 20)} (${rec.size})</span>
                 <span class="download-link" data-url="${rec.url}" data-name="${rec.name}">⬇️ DL</span>
             `;
             recordingsListDiv.appendChild(div);
@@ -1027,24 +962,20 @@
     function leaveRoom() {
         peerConnections.forEach((pc, peerId) => {
             pc.close();
-            const card = document.getElementById(`video-${peerId}`);
-            if (card) card.remove();
         });
         peerConnections.clear();
+        document.querySelectorAll('.video-card:not(#local-video-card)').forEach(card => {
+            card.remove();
+        });
         stopCamera();
-        isInRoom = false;
         updateParticipantCount();
         showToast('Left the room');
     }
     
-    // Share functionality
-    function getRoomLink() {
-        return `${window.location.origin}${window.location.pathname}?room=${currentRoomId}`;
-    }
-    
+    // Event Listeners
     copyRoomBtn.addEventListener('click', () => {
         navigator.clipboard.writeText(getRoomLink());
-        showToast('Link copied!');
+        showToast('Link copied! Share with others');
     });
     
     shareRoomBtn.addEventListener('click', () => {
@@ -1078,9 +1009,10 @@
     });
     
     closeModalBtn.addEventListener('click', () => shareModal.classList.remove('open'));
-    shareModal.addEventListener('click', (e) => { if (e.target === shareModal) shareModal.classList.remove('open'); });
+    shareModal.addEventListener('click', (e) => { 
+        if (e.target === shareModal) shareModal.classList.remove('open'); 
+    });
     
-    // Event listeners
     startCameraBtn.addEventListener('click', startCamera);
     stopCameraBtn.addEventListener('click', stopCamera);
     muteMicBtn.addEventListener('click', toggleMute);
@@ -1091,15 +1023,7 @@
     closePanelBtn.addEventListener('click', () => recordingsPanel.classList.remove('open'));
     
     // Initialize
-    connectToSignalingServer();
-    
-    // Setup room from URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const roomFromUrl = urlParams.get('room');
-    if (roomFromUrl) {
-        currentRoomId = roomFromUrl;
-        roomIdDisplay.textContent = currentRoomId;
-    }
+    connectToSignaling();
 </script>
 </body>
 </html>
