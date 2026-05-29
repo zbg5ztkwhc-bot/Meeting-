@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>ScalaMeet - 20+ Participant Video Conference + Recording</title>
+    <title>MeetHub - 20+ Participant Video Conference + Recording + Share</title>
     <style>
         * {
             margin: 0;
@@ -56,13 +56,27 @@
             border-radius: 2rem;
         }
 
-        .copy-btn, .leave-btn {
+        .copy-btn, .share-btn, .leave-btn {
             background: #334155;
             padding: 0.3rem 1rem;
             border-radius: 2rem;
             cursor: pointer;
             font-size: 0.75rem;
-            transition: 0.2s;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            border: none;
+            color: white;
+        }
+
+        .share-btn {
+            background: #10b981;
+        }
+
+        .share-btn:hover {
+            background: #059669;
+            transform: translateY(-1px);
         }
 
         .leave-btn {
@@ -273,6 +287,78 @@
             z-index: 200;
         }
 
+        /* Share modal */
+        .share-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+ backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+        }
+
+        .share-modal.open {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .share-modal-content {
+            background: #1e293b;
+            border-radius: 1.5rem;
+            padding: 1.5rem;
+            max-width: 500px;
+            width: 90%;
+            border: 1px solid #6366f1;
+            box-shadow: 0 20px 35px -10px rgba(0,0,0,0.5);
+        }
+
+        .share-modal-content h3 {
+            margin-bottom: 1rem;
+            font-size: 1.3rem;
+        }
+
+        .share-link-container {
+            display: flex;
+            gap: 0.5rem;
+            margin: 1rem 0;
+        }
+
+        .share-link-container input {
+            flex: 1;
+            background: #0f172a;
+            border: 1px solid #334155;
+            padding: 0.6rem;
+            border-radius: 0.8rem;
+            color: white;
+            font-size: 0.8rem;
+        }
+
+        .share-buttons {
+            display: flex;
+            gap: 0.8rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+
+        .share-buttons button {
+            flex: 1;
+            justify-content: center;
+        }
+
+        .close-modal {
+            background: #334155;
+            margin-top: 1rem;
+            width: 100%;
+        }
+
         @media (max-width: 768px) {
             .video-grid {
                 grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -288,13 +374,14 @@
 <div class="app-container">
     <div class="header">
         <div class="logo">
-            <h1>🎥 ScalaMeet</h1>
-            <p style="font-size: 0.65rem;">20+ participant SFU conference • Record everything</p>
+            <h1>🎥 MeetHub</h1>
+            <p style="font-size: 0.65rem;">20+ participant SFU conference • Record • Share</p>
         </div>
         <div class="room-controls">
             <span>🔑 Room: <strong id="roomIdDisplay">---</strong></span>
-            <span class="copy-btn" id="copyRoomBtn">📋 Copy invite</span>
-            <span class="leave-btn" id="leaveRoomBtn">🚪 Leave</span>
+            <button class="copy-btn" id="copyRoomBtn">📋 Copy link</button>
+            <button class="share-btn" id="shareRoomBtn">📤 Share</button>
+            <button class="leave-btn" id="leaveRoomBtn">🚪 Leave</button>
         </div>
     </div>
 
@@ -329,23 +416,29 @@
             <div style="color: #6b7280; text-align: center;">No recordings yet</div>
         </div>
     </div>
+
+    <!-- Share Modal -->
+    <div class="share-modal" id="shareModal">
+        <div class="share-modal-content">
+            <h3>📢 Invite to Meeting</h3>
+            <p style="margin-bottom: 0.5rem;">Share this link with up to 50+ participants:</p>
+            <div class="share-link-container">
+                <input type="text" id="shareLinkInput" readonly>
+                <button id="copyShareLinkBtn" style="padding: 0.6rem 1rem;">Copy</button>
+            </div>
+            <div class="share-buttons">
+                <button id="shareWhatsAppBtn">💬 WhatsApp</button>
+                <button id="shareTelegramBtn">✈️ Telegram</button>
+                <button id="shareEmailBtn">📧 Email</button>
+                <button id="shareTwitterBtn">🐦 X (Twitter)</button>
+            </div>
+            <button class="close-modal" id="closeModalBtn">Close</button>
+        </div>
+    </div>
 </div>
 
 <script>
     // ==================== LiveKit SFU Integration ====================
-    // Using LiveKit's free cloud tier - supports 50+ participants per room
-    // LiveKit provides WebRTC SFU, recording, and scalable infrastructure
-    // Sign up free at livekit.io (no credit card) - but for demo, I'll use a public test server
-    // For immediate functionality, I'll connect to a public LiveKit test server (lkt-fjnu96qn)
-    
-    // IMPORTANT: For production, replace with your own LiveKit credentials
-    // But for this demo to work instantly, I'll use a temporary public key (valid for testing)
-    // Users will need to enter their own or use demo? Better to provide working demo with free tier.
-    
-    // I'll embed LiveKit SDK and connect to a hosted demo instance
-    // LiveKit requires a token - for demo purposes, I'll generate a token using a helper service
-    // Alternative: Use a public test server that accepts any room name
-    
     // Load LiveKit SDK dynamically
     const script = document.createElement('script');
     script.src = 'https://unpkg.com/livekit-client@1.15.0/dist/livekit-client.umd.js';
@@ -353,15 +446,11 @@
     document.head.appendChild(script);
     
     let room = null;
-    let localParticipant = null;
-    let videoTrackPublication = null;
-    let audioTrackPublication = null;
     let isConnected = false;
     let isCameraActive = false;
     let isMicMuted = false;
-    let mediaEnabled = false;
     
-    // Recording via MediaRecorder (client-side recording of the meeting view)
+    // Recording via MediaRecorder
     let mediaRecorder = null;
     let recordedChunks = [];
     let isRecording = false;
@@ -372,6 +461,7 @@
     const videoGrid = document.getElementById('videoGrid');
     const roomIdDisplay = document.getElementById('roomIdDisplay');
     const copyRoomBtn = document.getElementById('copyRoomBtn');
+    const shareRoomBtn = document.getElementById('shareRoomBtn');
     const leaveRoomBtn = document.getElementById('leaveRoomBtn');
     const joinRoomBtn = document.getElementById('joinRoomBtn');
     const toggleMediaBtn = document.getElementById('toggleMediaBtn');
@@ -386,6 +476,16 @@
     const closePanelBtn = document.getElementById('closePanelBtn');
     const recordingsListDiv = document.getElementById('recordingsList');
     
+    // Share modal elements
+    const shareModal = document.getElementById('shareModal');
+    const shareLinkInput = document.getElementById('shareLinkInput');
+    const copyShareLinkBtn = document.getElementById('copyShareLinkBtn');
+    const shareWhatsAppBtn = document.getElementById('shareWhatsAppBtn');
+    const shareTelegramBtn = document.getElementById('shareTelegramBtn');
+    const shareEmailBtn = document.getElementById('shareEmailBtn');
+    const shareTwitterBtn = document.getElementById('shareTwitterBtn');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+    
     let currentRoomName = null;
     
     // Generate or get room from URL
@@ -393,51 +493,94 @@
         const urlParams = new URLSearchParams(window.location.search);
         let roomName = urlParams.get('room');
         if (!roomName) {
-            roomName = 'meeting_' + Math.random().toString(36).substring(2, 10);
+            roomName = 'meeting_' + Math.random().toString(36).substring(2, 12);
             window.history.pushState({}, '', `?room=${roomName}`);
         }
         currentRoomName = roomName;
         roomIdDisplay.textContent = roomName;
+        updateShareLink();
     }
     
     function getRoomLink() {
         return `${window.location.origin}${window.location.pathname}?room=${currentRoomName}`;
     }
     
+    function updateShareLink() {
+        if (shareLinkInput) {
+            shareLinkInput.value = getRoomLink();
+        }
+    }
+    
+    // Share functionality
     copyRoomBtn.addEventListener('click', () => {
         navigator.clipboard.writeText(getRoomLink());
         copyRoomBtn.textContent = '✅ Copied!';
-        setTimeout(() => { copyRoomBtn.textContent = '📋 Copy invite'; }, 2000);
+        setTimeout(() => { copyRoomBtn.textContent = '📋 Copy link'; }, 2000);
     });
     
-    // LiveKit connection (using free public LiveKit server for demo)
-    // For real use, sign up at livekit.io and get your own URL & API key
-    // Using public test server that accepts any token for demo (limited to 24hrs)
-    // This ensures 20+ participants work out of the box
+    // Open share modal
+    shareRoomBtn.addEventListener('click', () => {
+        updateShareLink();
+        shareModal.classList.add('open');
+    });
     
+    function closeShareModal() {
+        shareModal.classList.remove('open');
+    }
+    
+    copyShareLinkBtn.addEventListener('click', () => {
+        navigator.clipboard.writeText(getRoomLink());
+        copyShareLinkBtn.textContent = '✅ Copied!';
+        setTimeout(() => { copyShareLinkBtn.textContent = 'Copy'; }, 2000);
+    });
+    
+    // Share to WhatsApp
+    shareWhatsAppBtn.addEventListener('click', () => {
+        const text = encodeURIComponent(`Join my video meeting on MeetHub!\n${getRoomLink()}`);
+        window.open(`https://wa.me/?text=${text}`, '_blank');
+        closeShareModal();
+    });
+    
+    // Share to Telegram
+    shareTelegramBtn.addEventListener('click', () => {
+        const text = encodeURIComponent(`Join my video meeting: ${getRoomLink()}`);
+        window.open(`https://t.me/share/url?url=${encodeURIComponent(getRoomLink())}&text=Join%20my%20video%20meeting!`, '_blank');
+        closeShareModal();
+    });
+    
+    // Share via Email
+    shareEmailBtn.addEventListener('click', () => {
+        const subject = encodeURIComponent('Video Meeting Invitation');
+        const body = encodeURIComponent(`You're invited to join my video meeting!\n\nClick this link to join: ${getRoomLink()}\n\nMeetHub - Multi-participant video conference`);
+        window.location.href = `mailto:?subject=${subject}&body=${body}`;
+        closeShareModal();
+    });
+    
+    // Share to Twitter/X
+    shareTwitterBtn.addEventListener('click', () => {
+        const text = encodeURIComponent(`Join my video meeting on MeetHub! 🎥\n\n${getRoomLink()}`);
+        window.open(`https://twitter.com/intent/tweet?text=${text}`, '_blank');
+        closeShareModal();
+    });
+    
+    closeModalBtn.addEventListener('click', closeShareModal);
+    
+    // Close modal when clicking outside
+    shareModal.addEventListener('click', (e) => {
+        if (e.target === shareModal) closeShareModal();
+    });
+    
+    // LiveKit connection
     async function connectToRoom() {
         if (room && room.state === 'connected') {
             console.log('Already connected');
             return;
         }
         
-        // LiveKit Cloud demo credentials (public test instance)
-        // Replace with your own for production
         const LIVEKIT_URL = 'wss://meet-verse-4lxbhxhw.livekit.cloud';
-        // For demo, we'll use a token generator service (public)
-        // Since tokens require signing, I'll provide a simple endpoint or use a demo token approach
-        // Many public demo servers require tokens. I'll use a free token generator.
-        
-        // Alternative: Use a simple WebRTC SFU that's open source? For reliability, I'll implement
-        // a working connection using LiveKit's sandbox that accepts any room name with demo key.
-        // But to not break, I'll show connection via LiveKit's quickstart token.
-        
-        // Generate a participant name
         const participantName = 'User_' + Math.floor(Math.random() * 10000);
         
         try {
-            // For demo, we'll fetch a token from a public test server (valid for 1 hour)
-            // This token server is for demonstration only
             const tokenResponse = await fetch(`https://livekit-token-generator-2g3g.onrender.com/token?room=${currentRoomName}&identity=${participantName}`);
             if (!tokenResponse.ok) throw new Error('Failed to get token');
             const token = await tokenResponse.text();
@@ -456,12 +599,11 @@
                 toggleMediaBtn.disabled = true;
                 stopMediaBtn.disabled = true;
                 toggleMicBtn.disabled = true;
-                document.getElementById('participantInfo').innerHTML = '👥 Disconnected';
+                participantInfoSpan.innerHTML = '👥 Disconnected';
             });
             
             await room.connect(LIVEKIT_URL, token);
             isConnected = true;
-            localParticipant = room.localParticipant;
             updateParticipantCount();
             joinRoomBtn.disabled = true;
             toggleMediaBtn.disabled = false;
@@ -469,12 +611,11 @@
             toggleMicBtn.disabled = false;
             startRecordingBtn.disabled = false;
             
-            // Automatically publish default camera/mic if available
             await enableMedia();
             
         } catch (err) {
             console.error('Connection failed:', err);
-            alert('Connection failed. Using fallback: This demo requires LiveKit cloud. For instant 20+ meetings, please refresh or use modern browser.\n\nNote: Public token server may be rate limited. For production, get your own LiveKit API keys.');
+            alert('Connection failed. Please refresh or check your internet connection.\n\nNote: Public token server may have limits. For production, use your own LiveKit instance.');
         }
     }
     
@@ -487,7 +628,6 @@
             toggleMediaBtn.textContent = '📷 Camera On';
             toggleMicBtn.innerHTML = '🎤 Mute';
             toggleMicBtn.style.background = '';
-            mediaEnabled = true;
             updateLocalVideoUI();
         } catch (err) {
             console.error('Media enable error:', err);
@@ -499,7 +639,6 @@
         await room.localParticipant.setCameraEnabled(false);
         await room.localParticipant.setMicrophoneEnabled(false);
         isCameraActive = false;
-        mediaEnabled = false;
         toggleMediaBtn.textContent = '🎥 Start Camera';
         toggleMicBtn.innerHTML = '🎤 Mic Off';
         updateLocalVideoUI();
@@ -573,8 +712,6 @@
     }
     
     function updateLocalVideoUI() {
-        // LiveKit handles local video automatically - but we need to show local participant as a separate track
-        // Since LiveKit doesn't auto-add local video to grid by default, we add it manually
         if (room && room.localParticipant && isCameraActive) {
             let localCard = document.getElementById('local-video-card');
             if (!localCard) {
@@ -592,7 +729,6 @@
                 localCard.appendChild(label);
                 videoGrid.insertBefore(localCard, videoGrid.firstChild);
             }
-            // Get local video track
             const videoTrack = room.localParticipant.videoTrackPublications.values().next().value;
             if (videoTrack && videoTrack.track) {
                 const videoEl = localCard.querySelector('video');
@@ -604,14 +740,12 @@
         }
     }
     
-    // Client-side recording (captures the meeting view for the local user)
+    // Client-side recording
     async function startClientRecording() {
         if (!room || room.state !== 'connected') {
             alert('Join a room first');
             return;
         }
-        // Capture the video grid as a stream
-        const gridElement = document.getElementById('videoGridContainer');
         try {
             screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
             mediaRecorder = new MediaRecorder(screenStream);
@@ -708,15 +842,12 @@
     
     function initLiveKit() {
         initRoom();
-        console.log('LiveKit SDK loaded — Ready for 20+ participants!');
+        console.log('LiveKit SDK loaded — Ready for 20+ participants! Share button active');
     }
     
     if (window.LivekitClient) {
         initLiveKit();
     }
-    
-    // Fallback note
-    console.log('ScalaMeet - Supports 20+ peers via LiveKit SFU');
 </script>
 </body>
 </html>
