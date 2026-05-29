@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>MeetFlow - Online Meeting & Recording Studio</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            background: linear-gradient(145deg, #0b1120 0%, #111827 100%);
+            min-height: 100vh;
+            color: #eef2ff;
+            padding: 1.5rem;
+        }
+
+        /* Main container */
+        .app-container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            flex-wrap: wrap;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid rgba(255,255,255,0.15);
+            padding-bottom: 1rem;
+        }
+        .logo h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #a5f3ff, #7c3aed);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            letter-spacing: -0.5px;
+        }
+        .logo p {
+            font-size: 0.8rem;
+            color: #9ca3af;
+        }
+        .status-badge {
+            background: #1f2937;
+            padding: 0.4rem 1rem;
+            border-radius: 40px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+
+        /* two column layout */
+        .meeting-layout {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.8rem;
+        }
+        .video-panel {
+            flex: 2;
+            min-width: 280px;
+        }
+        .controls-panel {
+            flex: 1.2;
+            min-width: 260px;
+            background: rgba(17, 24, 39, 0.7);
+            backdrop-filter: blur(8px);
+            border-radius: 2rem;
+            padding: 1.2rem;
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 20px 35px -12px rgba(0,0,0,0.4);
+        }
+
+        /* Video grid */
+        .video-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 1.2rem;
+            margin-bottom: 1.5rem;
+        }
+        .video-card {
+            background: #020617;
+            border-radius: 1.5rem;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: 0 10px 20px -5px rgba(0,0,0,0.5);
+            transition: transform 0.2s ease;
+        }
+        .video-card:hover {
+            transform: scale(1.01);
+            border-color: #7c3aed60;
+        }
+        .video-label {
+            background: rgba(0,0,0,0.65);
+            padding: 0.3rem 0.8rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            backdrop-filter: blur(4px);
+        }
+        video {
+            width: 100%;
+            background: #000000cc;
+            aspect-ratio: 16 / 9;
+            object-fit: cover;
+            display: block;
+        }
+        .local-video video {
+            transform: scaleX(-1); /* mirror effect for natural selfie view */
+        }
+
+        /* recording & controls */
+        .recording-section {
+            background: #0f172ad9;
+            border-radius: 1.5rem;
+            padding: 1rem;
+            margin-top: 0.8rem;
+        }
+        .ctrl-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.8rem;
+            margin: 1rem 0;
+            justify-content: center;
+        }
+        button {
+            background: #2d3a5e;
+            border: none;
+            color: white;
+            font-weight: 600;
+            padding: 0.6rem 1.2rem;
+            border-radius: 3rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        button i { font-style: normal; font-weight: bold; }
+        button:hover {
+            transform: translateY(-2px);
+            filter: brightness(1.05);
+        }
+        button:active {
+            transform: translateY(1px);
+        }
+        .btn-primary {
+            background: #4f46e5;
+            box-shadow: 0 4px 12px #4f46e550;
+        }
+        .btn-danger {
+            background: #dc2626;
+        }
+        .btn-warning {
+            background: #eab308;
+            color: #0f172a;
+        }
+        .btn-success {
+            background: #10b981;
+        }
+        .recording-indicator {
+            background: #1e1b4b;
+            border-radius: 2rem;
+            padding: 0.5rem 1rem;
+            text-align: center;
+            font-size: 0.85rem;
+            margin-top: 0.8rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .red-dot {
+            width: 12px;
+            height: 12px;
+            background: #ef4444;
+            border-radius: 50%;
+            animation: pulse 1.2s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; transform: scale(1);}
+            50% { opacity: 0.5; transform: scale(1.2);}
+            100% { opacity: 1; transform: scale(1);}
+        }
+        .download-list {
+            background: #111827aa;
+            border-radius: 1.2rem;
+            padding: 0.8rem;
+            margin-top: 1.2rem;
+            max-height: 220px;
+            overflow-y: auto;
+        }
+        .download-item {
+            background: #1f2937;
+            margin: 0.4rem 0;
+            padding: 0.5rem 0.8rem;
+            border-radius: 2rem;
+            font-size: 0.75rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            word-break: break-all;
+        }
+        .download-link {
+            color: #a5f3ff;
+            text-decoration: none;
+            cursor: pointer;
+            background: #374151;
+            padding: 0.2rem 0.8rem;
+            border-radius: 2rem;
+            font-size: 0.7rem;
+        }
+        hr {
+            border-color: #334155;
+            margin: 1rem 0;
+        }
+        .info-text {
+            font-size: 0.7rem;
+            color: #9ca3af;
+            text-align: center;
+        }
+        .mute-btn {
+            background: #4b5563;
+        }
+        @media (max-width: 780px) {
+            body { padding: 1rem; }
+            .ctrl-group button { padding: 0.4rem 1rem; font-size: 0.75rem; }
+        }
+        footer {
+            margin-top: 2rem;
+            text-align: center;
+            font-size: 0.7rem;
+            color: #6b7280;
+        }
+    </style>
+</head>
+<body>
+<div class="app-container">
+    <div class="header">
+        <div class="logo">
+            <h1>🎥 MeetFlow</h1>
+            <p>Secure online meetings • Record with one click</p>
+        </div>
+        <div class="status-badge" id="connectionStatus">🟢 Live session</div>
+    </div>
+
+    <div class="meeting-layout">
+        <!-- Video section -->
+        <div class="video-panel">
+            <div class="video-grid" id="videoGrid">
+                <!-- local video card -->
+                <div class="video-card local-video" id="localVideoCard">
+                    <div class="video-label">📸 You (local)</div>
+                    <video id="localVideo" autoplay playsinline muted></video>
+                </div>
+                <!-- remote video placeholder (simulated remote user for demo) -->
+                <div class="video-card" id="remoteVideoCard">
+                    <div class="video-label">🔄 Remote peer (simulated)</div>
+                    <video id="remoteVideo" autoplay playsinline></video>
+                </div>
+            </div>
+            <div class="recording-section">
+                <div class="ctrl-group">
+                    <button id="startCameraBtn" class="btn-primary">📷 Start Camera & Mic</button>
+                    <button id="stopCameraBtn" class="mute-btn">⏹️ Stop Stream</button>
+                    <button id="toggleMicBtn" class="mute-btn">🎤 Mute Mic</button>
+                </div>
+                <div class="ctrl-group">
+                    <button id="startRecordBtn" class="btn-success">🔴 Start Recording</button>
+                    <button id="stopRecordBtn" class="btn-danger" disabled>⏹️ Stop Recording</button>
+                </div>
+                <div id="recordingStatus" class="recording-indicator" style="display: none;">
+                    <span class="red-dot"></span> <span id="recordingText">Recording in progress...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Controls & recordings list -->
+        <div class="controls-panel">
+            <h3 style="margin-bottom: 0.5rem;">📌 Meeting Tools</h3>
+            <p style="font-size: 0.75rem; margin-bottom: 1rem;">✓ Camera + microphone capture<br>✓ Record video + audio (WebM)<br>✓ Download recordings instantly</p>
+            <button id="simulateRemoteBtn" class="btn-primary" style="background:#3b2e6e; width:100%;">🔄 Simulate Remote Peer (demo)</button>
+            <hr>
+            <h4>📼 Recorded Meetings</h4>
+            <div id="recordingsList" class="download-list">
+                <div class="info-text">No recordings yet. Start recording → stop → file appears here.</div>
+            </div>
+            <div class="info-text" style="margin-top: 1rem;">
+                💡 Recording uses MediaRecorder API. Works on Chrome, Edge, Firefox.<br>
+                * Remote peer is for demonstration — real WebRTC requires signaling server.
+            </div>
+        </div>
+    </div>
+    <footer>
+        MeetFlow | Privacy-first: recordings stay on your device. Click "Start Recording" to capture your video & audio.
+    </footer>
+</div>
+
+<script>
+    // ----- DOM elements -----
+    const localVideo = document.getElementById('localVideo');
+    const remoteVideo = document.getElementById('remoteVideo');
+    const startCameraBtn = document.getElementById('startCameraBtn');
+    const stopCameraBtn = document.getElementById('stopCameraBtn');
+    const toggleMicBtn = document.getElementById('toggleMicBtn');
+    const startRecordBtn = document.getElementById('startRecordBtn');
+    const stopRecordBtn = document.getElementById('stopRecordBtn');
+    const recordingStatusDiv = document.getElementById('recordingStatus');
+    const recordingTextSpan = document.getElementById('recordingText');
+    const recordingsListDiv = document.getElementById('recordingsList');
+    const simulateRemoteBtn = document.getElementById('simulateRemoteBtn');
+
+    // Media stream variables
+    let localStream = null;          // MediaStream from camera+mic
+    let mediaRecorder = null;
+    let recordedChunks = [];
+    let isRecording = false;
+    let micMuted = false;
+    let currentStreamActive = false;
+
+    // For remote simulation: we'll generate a synthetic MediaStream using canvas + microphone? 
+    // For simplicity & cross-browser, we create a fake color bars stream + optional audio oscillator? 
+    // But we don't need full audio, just visual representation to demo "online meeting" feel.
+    let remoteStream = null;
+    let remoteAnimationId = null;
+    let remoteCanvas = null;
+
+    // Helper: update recordings list UI
+    function updateRecordingsList() {
+        // stored recordings in localStorage? For persistence but we'll just show from an in-memory array
+        // Actually we store blobs URLs in a global array to keep them available until page refresh.
+        if (!window.savedRecordings) window.savedRecordings = [];  // each { name, url, timestamp }
+        const container = recordingsListDiv;
+        if (!window.savedRecordings.length) {
+            container.innerHTML = `<div class="info-text">No recordings yet. Start recording → stop → file appears here.</div>`;
+            return;
+        }
+        container.innerHTML = '';
+        window.savedRecordings.slice().reverse().forEach((rec, idx) => {
+            const div = document.createElement('div');
+            div.className = 'download-item';
+            div.innerHTML = `
+                <span>📹 ${rec.name}</span>
+                <a class="download-link" data-url="${rec.url}" data-filename="${rec.name}">⬇️ Download</a>
+            `;
+            container.appendChild(div);
+        });
+        // attach download listeners
+        document.querySelectorAll('.download-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const url = link.getAttribute('data-url');
+                const filename = link.getAttribute('data-filename');
+                if (url) {
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                }
+            });
+        });
+    }
+
+    // add recording to the list
+    function addRecordingToList(blob, durationSec = null) {
+        const url = URL.createObjectURL(blob);
+        const timestamp = new Date().toISOString().slice(0,19).replace(/:/g, '-');
+        const filename = `meeting_${timestamp}.webm`;
+        if (!window.savedRecordings) window.savedRecordings = [];
+        window.savedRecordings.push({ name: filename, url: url, timestamp: Date.now() });
+        updateRecordingsList();
+    }
+
+    // Stop media recorder & finalize
+    function stopRecordingAndSave() {
+        if (mediaRecorder && isRecording && mediaRecorder.state === 'recording') {
+            mediaRecorder.stop();
+            isRecording = false;
+            if (recordingStatusDiv) recordingStatusDiv.style.display = 'none';
+            startRecordBtn.disabled = false;
+            stopRecordBtn.disabled = true;
+            recordingTextSpan.innerText = "Processing recording...";
+        } else {
+            // if no active recording, just reset UI
+            if (mediaRecorder && mediaRecorder.state === 'inactive') {
+                startRecordBtn.disabled = false;
+                stopRecordBtn.disabled = true;
+                recordingStatusDiv.style.display = 'none';
+            }
+        }
+    }
+
+    // Initialize MediaRecorder on the local stream
+    function startRecording() {
+        if (!localStream) {
+            alert("Please start your camera/microphone first (click 'Start Camera & Mic')");
+            return;
+        }
+        if (isRecording) {
+            alert("Recording already in progress!");
+            return;
+        }
+        // Reset recorded chunks
+        recordedChunks = [];
+        try {
+            // Use preferred mime type, fallback to webm
+            const mimeType = MediaRecorder.isTypeSupported('video/webm') ? 'video/webm' : '';
+            mediaRecorder = new MediaRecorder(localStream, { mimeType: mimeType });
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data && event.data.size > 0) {
+                    recordedChunks.push(event.data);
+                }
+            };
+            mediaRecorder.onstop = () => {
+                if (recordedChunks.length) {
+                    const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                    addRecordingToList(blob);
+                    recordedChunks = [];
+                } else {
+                    console.warn("No data recorded.");
+                }
+                startRecordBtn.disabled = false;
+                stopRecordBtn.disabled = true;
+                recordingStatusDiv.style.display = 'none';
+                isRecording = false;
+            };
+            mediaRecorder.start(1000); // capture every second for smooth chunking
+            isRecording = true;
+            startRecordBtn.disabled = true;
+            stopRecordBtn.disabled = false;
+            recordingStatusDiv.style.display = 'flex';
+            recordingTextSpan.innerText = "🔴 Recording meeting...";
+        } catch (err) {
+            console.error("MediaRecorder error:", err);
+            alert("Recording not supported in this browser. Please use Chrome/Edge/Firefox.");
+            startRecordBtn.disabled = false;
+            stopRecordBtn.disabled = true;
+        }
+    }
+
+    // Camera & Mic start
+    async function initLocalStream() {
+        try {
+            if (localStream) {
+                stopLocalTracks();
+            }
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            localStream = stream;
+            localVideo.srcObject = stream;
+            currentStreamActive = true;
+            micMuted = false;
+            toggleMicBtn.innerHTML = "🎤 Mute Mic";
+            updateMicButtonState();
+            // enable stop button & recording possibilities
+            stopCameraBtn.disabled = false;
+            startRecordBtn.disabled = false;
+            // ensure stop recording button becomes not active unless recording started
+            if (!isRecording) stopRecordBtn.disabled = true;
+            startCameraBtn.disabled = true;
+            return true;
+        } catch (err) {
+            console.error("getUserMedia error:", err);
+            alert("Could not access camera/microphone. Check permissions.");
+            return false;
+        }
+    }
+
+    function stopLocalTracks() {
+        if (localStream) {
+            localStream.getTracks().forEach(track => {
+                track.stop();
+            });
+            localStream = null;
+        }
+        localVideo.srcObject = null;
+        currentStreamActive = false;
+        micMuted = false;
+        toggleMicBtn.innerHTML = "🎤 Mute Mic";
+        if (!isRecording) {
+            startRecordBtn.disabled = true;
+            stopRecordBtn.disabled = true;
+        } else {
+            // if recording ongoing but stream stopped: force stop recording
+            if (isRecording) stopRecordingAndSave();
+            startRecordBtn.disabled = true;
+            stopRecordBtn.disabled = true;
+        }
+        startCameraBtn.disabled = false;
+        stopCameraBtn.disabled = true;
+    }
+
+    function toggleMuteMicrophone() {
+        if (!localStream) {
+            alert("No active stream. Start camera first.");
+            return;
+        }
+        const audioTracks = localStream.getAudioTracks();
+        if (audioTracks.length === 0) {
+            alert("No audio track available.");
+            return;
+        }
+        micMuted = !micMuted;
+        audioTracks.forEach(track => {
+            track.enabled = !micMuted;
+        });
+        toggleMicBtn.innerHTML = micMuted ? "🎤 Unmute Mic" : "🎤 Mute Mic";
+        if (micMuted) toggleMicBtn.style.background = "#dc2626";
+        else toggleMicBtn.style.background = "#4b5563";
+    }
+
+    function updateMicButtonState() {
+        if (!localStream || !localStream.getAudioTracks().length) {
+            toggleMicBtn.disabled = true;
+        } else {
+            toggleMicBtn.disabled = false;
+        }
+    }
+
+    // ---- SIMULATED REMOTE PEER FOR DEMO (No WebRTC complexity) ----
+    // Creates a canvas + optional fake audio? To show "meeting" concept. We'll generate a moving color bars + random user label
+    function startRemoteSimulation() {
+        if (remoteStream) {
+            stopRemoteSimulation();
+        }
+        // create canvas element for video track
+        const canvas = document.createElement('canvas');
+        remoteCanvas = canvas;
+        canvas.width = 640;
+        canvas.height = 360;
+        const ctx = canvas.getContext('2d');
+        
+        let frameCount = 0;
+        function drawFrame() {
+            if (!remoteCanvas) return;
+            ctx.fillStyle = '#0a0f1e';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            // animated bars
+            const time = Date.now() / 1000;
+            const barWidth = 40;
+            for (let i = 0; i < 12; i++) {
+                const height = 60 + Math.sin(time + i) * 40;
+                ctx.fillStyle = `hsl(${i * 30 + time * 60 % 360}, 70%, 60%)`;
+                ctx.fillRect(i * barWidth + 15, canvas.height - height, barWidth - 5, height);
+            }
+            ctx.font = "bold 22px 'Segoe UI'";
+            ctx.fillStyle = "white";
+            ctx.shadowBlur = 0;
+            ctx.fillText("👥 Remote Participant", 20, 50);
+            ctx.font = "14px monospace";
+            ctx.fillStyle = "#cbd5e1";
+            ctx.fillText("Simulated meeting peer (demo mode)", 20, 90);
+            ctx.fillStyle = "#facc15";
+            ctx.fillRect(0, canvas.height-4, canvas.width * ( (Math.sin(time)*0.5+0.5) ), 4);
+            frameCount++;
+            if (remoteAnimationId) requestAnimationFrame(drawFrame);
+        }
+        
+        // start drawing loop
+        remoteAnimationId = requestAnimationFrame(function animate() {
+            drawFrame();
+            if (remoteAnimationId) requestAnimationFrame(animate);
+        });
+        
+        // capture canvas stream
+        const canvasStream = canvas.captureStream(30);
+        // Add a fake audio track? Optional: create oscillator for demo "meeting presence"
+        try {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            oscillator.connect(gain);
+            gain.connect(audioCtx.destination);
+            gain.gain.value = 0; // silent, but just to provide audio track? but not needed. Instead create silent track
+            // we just generate a silent audio track to simulate incoming audio
+            const silentAudioStream = audioCtx.createMediaStreamDestination();
+            // but not needed to be honest, we just use canvas stream without audio to avoid permissions.
+        } catch(e) { console.log("audio not used"); }
+        
+        remoteStream = canvasStream;
+        remoteVideo.srcObject = remoteStream;
+        simulateRemoteBtn.innerText = "⏹️ Stop Remote Simulation";
+        simulateRemoteBtn.style.background = "#dc2626";
+    }
+    
+    function stopRemoteSimulation() {
+        if (remoteAnimationId) {
+            cancelAnimationFrame(remoteAnimationId);
+            remoteAnimationId = null;
+        }
+        if (remoteStream) {
+            remoteStream.getTracks().forEach(track => track.stop());
+            remoteStream = null;
+        }
+        remoteVideo.srcObject = null;
+        simulateRemoteBtn.innerText = "🔄 Simulate Remote Peer (demo)";
+        simulateRemoteBtn.style.background = "#3b2e6e";
+        remoteCanvas = null;
+        // show placeholder maybe a black screen or static text
+        remoteVideo.poster = '';
+    }
+    
+    function toggleRemoteSimulation() {
+        if (remoteStream && remoteVideo.srcObject) {
+            stopRemoteSimulation();
+        } else {
+            startRemoteSimulation();
+        }
+    }
+    
+    // attach listeners and initialize UI state
+    function bindEvents() {
+        startCameraBtn.addEventListener('click', initLocalStream);
+        stopCameraBtn.addEventListener('click', stopLocalTracks);
+        toggleMicBtn.addEventListener('click', toggleMuteMicrophone);
+        startRecordBtn.addEventListener('click', startRecording);
+        stopRecordBtn.addEventListener('click', stopRecordingAndSave);
+        simulateRemoteBtn.addEventListener('click', toggleRemoteSimulation);
+    }
+    
+    // initial state
+    function initUI() {
+        stopCameraBtn.disabled = true;
+        startRecordBtn.disabled = true;
+        stopRecordBtn.disabled = true;
+        toggleMicBtn.disabled = true;
+        bindEvents();
+        updateRecordingsList();
+        // optional: request permissions on page load gracefully? Not forced, but helpful hint.
+        console.log("MeetFlow ready: click Start Camera.");
+    }
+    
+    // handle page unload to release resources
+    window.addEventListener('beforeunload', () => {
+        if (localStream) stopLocalTracks();
+        if (remoteStream) stopRemoteSimulation();
+        if (mediaRecorder && mediaRecorder.state === 'recording') {
+            mediaRecorder.stop();
+        }
+    });
+    
+    initUI();
+</script>
+</body>
+</html>
