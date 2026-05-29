@@ -3,9 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>LiveKit Meeting Room</title>
+    <title>LiveKit Meeting Room - Fixed</title>
     <!-- LiveKit Client SDK -->
     <script src="https://unpkg.com/livekit-client@2.0.0/dist/livekit-client.umd.js"></script>
+    <!-- JWT library for token generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/10.8.0/jsrsasign-all-min.js"></script>
     <style>
         * {
             margin: 0;
@@ -33,12 +35,10 @@
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
         }
 
-        /* Setup Panel */
         .setup-panel {
             padding: 24px;
             background: #16162a;
             border-bottom: 1px solid #2a2a3e;
-            transition: all 0.3s;
         }
 
         .setup-panel.hidden {
@@ -66,7 +66,7 @@
             letter-spacing: 0.5px;
         }
 
-        input, select {
+        input {
             width: 100%;
             padding: 12px 16px;
             background: #0a0a12;
@@ -77,7 +77,7 @@
             transition: 0.2s;
         }
 
-        input:focus, select:focus {
+        input:focus {
             outline: none;
             border-color: #4f46e5;
             box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.3);
@@ -109,15 +109,6 @@
             background: #ef4444;
         }
 
-        button.secondary {
-            background: #334155;
-        }
-
-        button.secondary:hover {
-            background: #475569;
-        }
-
-        /* Meeting Area */
         .meeting-area {
             display: none;
             flex-direction: column;
@@ -129,7 +120,6 @@
             display: flex;
         }
 
-        /* Video grid */
         .video-grid {
             flex: 1;
             display: grid;
@@ -147,7 +137,6 @@
             position: relative;
             aspect-ratio: 16 / 9;
             border: 1px solid #2d2d42;
-            transition: 0.2s;
         }
 
         .participant video {
@@ -167,11 +156,8 @@
             border-radius: 40px;
             font-size: 0.8rem;
             font-weight: 500;
-            z-index: 2;
-            pointer-events: none;
         }
 
-        /* Controls Bar */
         .controls {
             display: flex;
             justify-content: center;
@@ -211,12 +197,6 @@
             background: #0f0f1a;
         }
 
-        h2 {
-            font-size: 1.4rem;
-            margin-bottom: 20px;
-            font-weight: 600;
-        }
-
         .info-badge {
             background: #2a2a3e;
             border-radius: 12px;
@@ -225,6 +205,10 @@
             font-size: 0.8rem;
             text-align: center;
             border-left: 4px solid #4f46e5;
+        }
+
+        .info-badge a {
+            color: #818cf8;
         }
 
         @media (max-width: 700px) {
@@ -244,27 +228,34 @@
     <!-- Setup Panel -->
     <div id="setupPanel" class="setup-panel">
         <div class="info-badge">
-            🎥 <strong>LiveKit Meeting Room</strong> — Enter your Sandbox ID from <a href="https://cloud.livekit.io" target="_blank" style="color:#818cf8">cloud.livekit.io</a>
-            <br>Free tier: 5,000 min/month · Create Project → Settings → Enable Token Server → Copy Sandbox ID
+            🎥 <strong>LiveKit Meeting Room</strong> — Get credentials from <a href="https://cloud.livekit.io" target="_blank">cloud.livekit.io</a><br>
+            Project → Settings → <strong>API Keys</strong> → Create API Key → Copy <strong>API Key</strong>, <strong>API Secret</strong>, and <strong>WebSocket URL</strong>
         </div>
         <div class="form-group">
             <div class="input-field">
-                <label>🔑 Sandbox ID (from LiveKit Cloud)</label>
-                <input type="text" id="sandboxId" placeholder="e.g., my-project-xxxxx" value="">
+                <label>🔑 API Key (Sandbox ID)</label>
+                <input type="text" id="apiKey" placeholder="e.g., API key from LiveKit">
+            </div>
+            <div class="input-field">
+                <label>🔒 API Secret</label>
+                <input type="password" id="apiSecret" placeholder="Your API secret">
+            </div>
+            <div class="input-field">
+                <label>🌐 WebSocket URL</label>
+                <input type="text" id="wsUrl" placeholder="wss://your-project.livekit.cloud">
             </div>
             <div class="input-field">
                 <label>👤 Your Name</label>
-                <input type="text" id="userName" placeholder="Enter your name" value="User_" + Math.floor(Math.random()*1000)>
+                <input type="text" id="userName" placeholder="Your name" value="User">
             </div>
             <div class="input-field">
                 <label>📁 Room Name</label>
-                <input type="text" id="roomName" placeholder="my-meeting-room" value="demo-room">
+                <input type="text" id="roomName" placeholder="room-name" value="meeting-room">
             </div>
             <button id="joinBtn">🚀 Join Meeting</button>
         </div>
         <p style="font-size: 0.7rem; margin-top: 16px; text-align: center; color:#6b7280">
-            ⚠️ Sandbox ID is for development only. Tokens are generated client-side (demo purpose).<br>
-            For production, never expose tokens – use a token server.
+            ⚠️ For development only. In production, generate tokens on your backend server.
         </p>
     </div>
 
@@ -282,9 +273,8 @@
 </div>
 
 <script>
-    // LiveKit client reference
+    // Global variables
     let room = null;
-    let localTrackPublication = null;
     let localVideoTrack = null;
     let localAudioTrack = null;
     let screenTrack = null;
@@ -300,129 +290,16 @@
     const toggleCamBtn = document.getElementById('toggleCam');
     const toggleScreenBtn = document.getElementById('toggleScreen');
 
-    // Helper: generate token using Sandbox ID (Client-side JWT)
-    // This mimics the behavior of LiveKit Sandbox: the server accepts a token signed with the sandbox secret.
-    // IMPORTANT: In a real sandbox environment, LiveKit Cloud expects a token generated with API secret.
-    // For demo simplicity, we use the actual LiveKit Sandbox flow: API Key = Sandbox ID, secret = "sandbox" ?
-    // However, modern LiveKit requires proper JWT. I'll implement a correct JWT generator using the Sandbox ID as API Key
-    // and the Secret Key shown in LiveKit Cloud Settings. For Sandbox mode (Token Server enabled),
-    // the Sandbox ID itself can be used directly by constructing a URL? No – we need a token.
-    // To make this fully functional, we'll generate a JWT using the Sandbox ID (API Key) and the project secret.
-    // The user must provide the API SECRET as well? But the original MeetSpace uses only Sandbox ID.
-    // Actually LiveKit Sandbox (legacy) allowed a simple "sandbox" secret. Let's build a working approach:
-    // We ask user for API Secret (from LiveKit Settings) OR derive from Sandbox? Better: show second input.
-    // But your request says "allow integration of livekit" similar to MeetSpace: only Sandbox ID.
-    // However, to actually connect to LiveKit Cloud, we need WebSocket URL + token. The Sandbox ID provides both?
-    // Based on the official docs: LiveKit Sandbox -> ws://<sandbox-id>.livekit.cloud + token with apiKey = sandbox-id, secret = <secret>.
-    // But MeetSpace likely uses a hidden secret. I'll implement a more robust method: user also provides API Secret (optional, but recommended).
-    // Let's modify the UI slightly: if user only provides Sandbox ID, we use a default secret? That won't work.
-    // For 100% working integration: I'll add a field "API Secret" (from LiveKit Cloud project settings).
-    // That ensures you can actually connect.
-
-    // Enhanced setup: add API Secret field dynamically if missing, but keep it clean. Let's add one more line.
-    // I'll insert it after sandboxId input using JS, but easier: modify HTML slightly.
-    // Since I'm writing full code, I'll add the API Secret field inside the setup panel.
-    // To meet your requirement "allow integration of livekit", it must actually connect. So here's the improved version.
-
-    // Let's add the API secret field in the HTML via innerHTML? I'll rebuild the setup part with JS to avoid confusion.
-    // Actually, I'll just prepend the extra field cleanly.
-    const setupHtml = `
-        <div class="info-badge">
-            🎥 <strong>LiveKit Meeting Room</strong> — Enter your credentials from <a href="https://cloud.livekit.io" target="_blank" style="color:#818cf8">cloud.livekit.io</a><br>
-            Project → Settings → <strong>API Key</strong> (Sandbox ID) & <strong>API Secret</strong>. Also copy WebSocket URL.
-        </div>
-        <div class="form-group">
-            <div class="input-field">
-                <label>🔑 Sandbox ID / API Key</label>
-                <input type="text" id="sandboxId" placeholder="e.g., my-project-xxxxx" value="">
-            </div>
-            <div class="input-field">
-                <label>🔒 API Secret (from LiveKit settings)</label>
-                <input type="password" id="apiSecret" placeholder="Your API secret">
-            </div>
-            <div class="input-field">
-                <label>🌐 WebSocket URL (wss://...)</label>
-                <input type="text" id="wsUrl" placeholder="wss://your-project.livekit.cloud">
-            </div>
-            <div class="input-field">
-                <label>👤 Your Name</label>
-                <input type="text" id="userName" placeholder="Your name" value="User">
-            </div>
-            <div class="input-field">
-                <label>📁 Room Name</label>
-                <input type="text" id="roomName" placeholder="room-name" value="meeting-room">
-            </div>
-            <button id="joinBtn">🚀 Join Meeting</button>
-        </div>
-        <p style="font-size: 0.7rem; margin-top: 16px; text-align: center; color:#6b7280">
-            💡 Sandbox ID is same as API Key. Get WebSocket URL from LiveKit Cloud → Project Settings. This demo creates tokens client-side (for dev only).
-        </p>
-    `;
-    document.querySelector('#setupPanel .info-badge').outerHTML = setupHtml; // quick replace. But easier: just rewrite innerHTML.
-    // Simpler: I will set the entire setupPanel content programmatically to avoid duplication. 
-    // But the current code already has elements. I'll do a clean approach: replace innerHTML.
-    const originalSetup = setupPanel.innerHTML;
-    setupPanel.innerHTML = setupHtml;
-    // re-bind elements after DOM update
-    setTimeout(() => {
-        document.getElementById('joinBtn').addEventListener('click', joinMeeting);
-    }, 0);
-
-    // Helper to generate LiveKit JWT token
-    function generateLiveKitToken(apiKey, apiSecret, roomName, participantName) {
-        // Using JWT library? We need to implement manually or use a simple library.
-        // Since we have no external JWT lib, I'll use the built-in crypto subtle? Too complex.
-        // Instead, I will use a lightweight JWT library from CDN.
-        // Add script for jsrsasign? Let's add a quick CDN for jsjwt.
-        // But to keep standalone, I can rely on LiveKit's helper? Better add a script dynamically.
-        // The easiest: use the livekit-server-sdk? Not for frontend.
-        // For demo, I'll assume the user runs a token server? But no, you asked for Sandbox ID only.
-        // Actually LiveKit Sandbox (deprecated) allowed "sandbox" as secret, but that's insecure.
-        // To make the code fully functional, I will point to an external service? No.
-        // Given the constraints, I will provide a working example using the official LiveKit token generation via 'livekit-client'?
-        // The livekit-client does not generate tokens. So I'll add a method: Fetch token from a public demo? Not good.
-        // For true integration: I'll add a backend-less token generator using 'jwt-js'? Let me embed a lightweight JWT library from CDN.
-    });
-
-    // To avoid complexity, I will finalize with a working JWT generator using jsrsasign. Add script tag.
-    // I'll add it dynamically.
-    const script = document.createElement('script');
-    script.src = "https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/10.8.0/jsrsasign-all-min.js";
-    script.onload = () => {
-        console.log("JWT library loaded");
-    };
-    document.head.appendChild(script);
-
-    // Wait for both libraries
-    let jwtReady = false;
-    script.onload = () => { jwtReady = true; };
-
-    async function joinMeeting() {
-        const apiKey = document.getElementById('sandboxId').value.trim();
-        const apiSecret = document.getElementById('apiSecret').value.trim();
-        const wsUrl = document.getElementById('wsUrl').value.trim();
-        const userName = document.getElementById('userName').value.trim() || "User";
-        const roomName = document.getElementById('roomName').value.trim() || "room";
-
-        if (!apiKey || !apiSecret || !wsUrl) {
-            alert("Please fill Sandbox ID (API Key), API Secret, and WebSocket URL from LiveKit Cloud.");
-            return;
-        }
-
-        connectionStatus.innerText = "🔄 Connecting to LiveKit...";
-        if (!window.KJUR) {
-            alert("JWT library still loading. Please wait a moment and try again.");
-            return;
-        }
-
-        // Generate JWT token
+    // Helper: Generate LiveKit JWT token
+    function generateToken(apiKey, apiSecret, roomName, participantName) {
         const now = Math.floor(Date.now() / 1000);
         const exp = now + 6 * 60 * 60; // 6 hours
-        const tokenPayload = {
+        
+        const payload = {
             "iss": apiKey,
             "exp": exp,
             "nbf": now,
-            "sub": userName,
+            "sub": participantName,
             "video": {
                 "room": roomName,
                 "roomJoin": true,
@@ -430,141 +307,247 @@
                 "canSubscribe": true
             }
         };
-        const sHeader = JSON.stringify({ alg: "HS256", typ: "JWT" });
-        const sPayload = JSON.stringify(tokenPayload);
-        const token = KJUR.jws.JWS.sign("HS256", sHeader, sPayload, apiSecret);
-
-        // Create room
-        room = new LivekitClient.Room();
-        // Event listeners
-        room
-            .on(LivekitClient.RoomEvent.ParticipantConnected, handleParticipantConnected)
-            .on(LivekitClient.RoomEvent.ParticipantDisconnected, handleParticipantDisconnected)
-            .on(LivekitClient.RoomEvent.TrackSubscribed, handleTrackSubscribed)
-            .on(LivekitClient.RoomEvent.TrackUnsubscribed, handleTrackUnsubscribed)
-            .on(LivekitClient.RoomEvent.Disconnected, () => {
-                connectionStatus.innerText = "❌ Disconnected";
-                leaveMeeting();
-            });
-
-        try {
-            await room.connect(wsUrl, token);
-            connectionStatus.innerText = `✅ Connected to "${roomName}" as ${userName}`;
-            setupPanel.classList.add('hidden');
-            meetingArea.classList.add('active');
-
-            // Publish local tracks
-            const localParticipant = room.localParticipant;
-            localAudioTrack = await LivekitClient.createLocalAudioTrack();
-            localVideoTrack = await LivekitClient.createLocalVideoTrack();
-            await localParticipant.publishTrack(localAudioTrack);
-            await localParticipant.publishTrack(localVideoTrack);
-
-            // Add self video
-            addVideoElement(localVideoTrack.mediaStreamTrack, userName, true);
-        } catch (error) {
-            console.error(error);
-            connectionStatus.innerText = `❌ Connection failed: ${error.message}`;
-            alert("Connection failed. Check credentials and WebSocket URL.");
-        }
+        
+        const header = { alg: "HS256", typ: "JWT" };
+        const token = KJUR.jws.JWS.sign("HS256", JSON.stringify(header), JSON.stringify(payload), apiSecret);
+        return token;
     }
 
+    // Add video element to grid
     function addVideoElement(track, participantName, isLocal = false) {
         const mediaStream = new MediaStream([track]);
-        const containerId = `participant-${participantName}-${Date.now()}`;
+        const containerId = `participant-${participantName.replace(/\s/g, '_')}-${Date.now()}`;
         const container = document.createElement('div');
         container.className = 'participant';
         container.id = containerId;
+        
         const video = document.createElement('video');
         video.srcObject = mediaStream;
         video.autoplay = true;
         video.playsInline = true;
+        
         const label = document.createElement('div');
         label.className = 'label';
         label.innerText = `${participantName} ${isLocal ? '(You)' : ''}`;
+        
         container.appendChild(video);
         container.appendChild(label);
         videoGrid.appendChild(container);
-        // Store track to later remove
-        if (!window.participantElements) window.participantElements = {};
-        window.participantElements[participantName] = container;
+        
+        return container;
     }
 
-    function handleParticipantConnected(participant) {
-        connectionStatus.innerText = `👋 ${participant.identity} joined`;
+    // Remove participant video
+    function removeParticipantVideo(participantName) {
+        const elements = document.querySelectorAll(`[id^="participant-${participantName.replace(/\s/g, '_')}"]`);
+        elements.forEach(el => el.remove());
     }
 
-    function handleParticipantDisconnected(participant) {
-        const el = document.querySelector(`#participant-${participant.identity}`);
-        if (el) el.remove();
-        connectionStatus.innerText = `👋 ${participant.identity} left`;
-    }
-
+    // Handle incoming tracks
     function handleTrackSubscribed(track, publication, participant) {
-        if (track.kind === 'video' || track.kind === 'audio') {
-            const existing = document.getElementById(`participant-${participant.identity}`);
-            if (!existing && track.kind === 'video') {
+        if (track.kind === 'video' && track.mediaStreamTrack) {
+            const existingId = `participant-${participant.identity.replace(/\s/g, '_')}`;
+            if (!document.getElementById(existingId)) {
                 addVideoElement(track.mediaStreamTrack, participant.identity);
             }
         }
     }
 
-    function handleTrackUnsubscribed(track, publication, participant) {
-        const el = document.getElementById(`participant-${participant.identity}`);
-        if (el) el.remove();
+    // Handle participant connection
+    function handleParticipantConnected(participant) {
+        connectionStatus.innerText = `👋 ${participant.identity} joined the room`;
     }
 
-    // Controls
-    toggleMicBtn.onclick = async () => {
-        if (localAudioTrack) {
-            const enabled = !localAudioTrack.enabled;
-            await localAudioTrack.setEnabled(enabled);
-            toggleMicBtn.style.opacity = enabled ? "1" : "0.5";
-        }
-    };
-    toggleCamBtn.onclick = async () => {
-        if (localVideoTrack) {
-            const enabled = !localVideoTrack.enabled;
-            await localVideoTrack.setEnabled(enabled);
-            toggleCamBtn.style.opacity = enabled ? "1" : "0.5";
-        }
-    };
-    toggleScreenBtn.onclick = async () => {
-        if (!room) return;
-        if (screenTrack) {
-            await room.localParticipant.unpublishTrack(screenTrack);
-            screenTrack.stop();
-            screenTrack = null;
-            toggleScreenBtn.style.opacity = "0.5";
-        } else {
-            try {
-                const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-                screenTrack = new LivekitClient.LocalVideoTrack(stream.getVideoTracks()[0]);
-                await room.localParticipant.publishTrack(screenTrack);
-                toggleScreenBtn.style.opacity = "1";
-            } catch (e) {
-                alert("Screen share cancelled/failed");
-            }
-        }
-    };
-    leaveBtn.onclick = leaveMeeting;
+    // Handle participant disconnection
+    function handleParticipantDisconnected(participant) {
+        removeParticipantVideo(participant.identity);
+        connectionStatus.innerText = `👋 ${participant.identity} left the room`;
+    }
 
-    function leaveMeeting() {
+    // Leave/Cleanup function
+    async function leaveMeeting() {
         if (room) {
             room.disconnect();
             room = null;
         }
-        if (localVideoTrack) localVideoTrack.stop();
-        if (localAudioTrack) localAudioTrack.stop();
-        if (screenTrack) screenTrack.stop();
+        
+        if (localVideoTrack) {
+            localVideoTrack.stop();
+            localVideoTrack = null;
+        }
+        
+        if (localAudioTrack) {
+            localAudioTrack.stop();
+            localAudioTrack = null;
+        }
+        
+        if (screenTrack) {
+            screenTrack.stop();
+            screenTrack = null;
+        }
+        
+        // Clear video grid
         videoGrid.innerHTML = '';
+        
+        // Show setup panel
         setupPanel.classList.remove('hidden');
         meetingArea.classList.remove('active');
-        connectionStatus.innerText = "🔌 Not connected";
+        connectionStatus.innerText = '🔌 Disconnected';
     }
 
-    // Rebind join button after dynamic HTML
-    document.getElementById('joinBtn')?.addEventListener('click', joinMeeting);
+    // Main join function
+    async function joinMeeting() {
+        // Get input values
+        const apiKey = document.getElementById('apiKey').value.trim();
+        const apiSecret = document.getElementById('apiSecret').value.trim();
+        const wsUrl = document.getElementById('wsUrl').value.trim();
+        const userName = document.getElementById('userName').value.trim() || `User_${Math.floor(Math.random() * 1000)}`;
+        const roomName = document.getElementById('roomName').value.trim() || 'meeting-room';
+        
+        // Validation
+        if (!apiKey || !apiSecret || !wsUrl) {
+            alert('Please fill in all fields: API Key, API Secret, and WebSocket URL');
+            return;
+        }
+        
+        if (!wsUrl.startsWith('wss://')) {
+            alert('WebSocket URL must start with wss://');
+            return;
+        }
+        
+        // Check if KJUR is available
+        if (typeof KJUR === 'undefined') {
+            alert('JWT library still loading. Please wait a moment and try again.');
+            return;
+        }
+        
+        // Check if LiveKit client is available
+        if (typeof LivekitClient === 'undefined') {
+            alert('LiveKit client library still loading. Please wait and try again.');
+            return;
+        }
+        
+        try {
+            connectionStatus.innerText = '🔄 Connecting to LiveKit...';
+            
+            // Generate token
+            const token = generateToken(apiKey, apiSecret, roomName, userName);
+            
+            // Create room instance
+            room = new LivekitClient.Room();
+            
+            // Set up event listeners
+            room.on(LivekitClient.RoomEvent.ParticipantConnected, handleParticipantConnected);
+            room.on(LivekitClient.RoomEvent.ParticipantDisconnected, handleParticipantDisconnected);
+            room.on(LivekitClient.RoomEvent.TrackSubscribed, handleTrackSubscribed);
+            room.on(LivekitClient.RoomEvent.Disconnected, () => {
+                connectionStatus.innerText = '❌ Disconnected from room';
+                leaveMeeting();
+            });
+            
+            // Connect to room
+            await room.connect(wsUrl, token);
+            connectionStatus.innerText = `✅ Connected to "${roomName}" as ${userName}`;
+            
+            // Hide setup, show meeting
+            setupPanel.classList.add('hidden');
+            meetingArea.classList.add('active');
+            
+            // Create and publish local tracks
+            const localParticipant = room.localParticipant;
+            
+            // Get user media
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            const videoTrack = stream.getVideoTracks()[0];
+            const audioTrack = stream.getAudioTracks()[0];
+            
+            localVideoTrack = new LivekitClient.LocalVideoTrack(videoTrack);
+            localAudioTrack = new LivekitClient.LocalAudioTrack(audioTrack);
+            
+            // Publish tracks
+            await localParticipant.publishTrack(localVideoTrack);
+            await localParticipant.publishTrack(localAudioTrack);
+            
+            // Add self video to grid
+            addVideoElement(videoTrack, userName, true);
+            
+            // Update control button states
+            toggleMicBtn.style.opacity = '1';
+            toggleCamBtn.style.opacity = '1';
+            toggleMicBtn.classList.add('active');
+            toggleCamBtn.classList.add('active');
+            
+        } catch (error) {
+            console.error('Connection error:', error);
+            connectionStatus.innerText = `❌ Connection failed: ${error.message}`;
+            alert(`Failed to join meeting:\n${error.message}\n\nCheck your credentials and WebSocket URL.`);
+            await leaveMeeting();
+        }
+    }
+
+    // Control button handlers
+    toggleMicBtn.onclick = async () => {
+        if (localAudioTrack) {
+            const newState = !localAudioTrack.enabled;
+            await localAudioTrack.setEnabled(newState);
+            toggleMicBtn.style.opacity = newState ? '1' : '0.5';
+            toggleMicBtn.style.background = newState ? '#4f46e5' : '#2d2d44';
+        }
+    };
+    
+    toggleCamBtn.onclick = async () => {
+        if (localVideoTrack) {
+            const newState = !localVideoTrack.enabled;
+            await localVideoTrack.setEnabled(newState);
+            toggleCamBtn.style.opacity = newState ? '1' : '0.5';
+            toggleCamBtn.style.background = newState ? '#4f46e5' : '#2d2d44';
+        }
+    };
+    
+    toggleScreenBtn.onclick = async () => {
+        if (!room) return;
+        
+        if (screenTrack) {
+            // Stop screen share
+            await room.localParticipant.unpublishTrack(screenTrack);
+            screenTrack.stop();
+            screenTrack = null;
+            toggleScreenBtn.style.opacity = '0.5';
+            toggleScreenBtn.style.background = '#2d2d44';
+        } else {
+            // Start screen share
+            try {
+                const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+                const screenVideoTrack = screenStream.getVideoTracks()[0];
+                screenTrack = new LivekitClient.LocalVideoTrack(screenVideoTrack);
+                await room.localParticipant.publishTrack(screenTrack);
+                toggleScreenBtn.style.opacity = '1';
+                toggleScreenBtn.style.background = '#4f46e5';
+                
+                // Stop when user ends screen share via browser UI
+                screenVideoTrack.onended = () => {
+                    if (screenTrack) {
+                        room.localParticipant.unpublishTrack(screenTrack);
+                        screenTrack.stop();
+                        screenTrack = null;
+                        toggleScreenBtn.style.opacity = '0.5';
+                        toggleScreenBtn.style.background = '#2d2d44';
+                    }
+                };
+            } catch (err) {
+                console.error('Screen share error:', err);
+                alert('Screen share cancelled or failed.');
+            }
+        }
+    };
+    
+    leaveBtn.onclick = leaveMeeting;
+    
+    // Make sure join button has event listener
+    joinBtn.addEventListener('click', joinMeeting);
+    
+    // Auto-focus on API key field
+    document.getElementById('apiKey').focus();
 </script>
 </body>
 </html>
