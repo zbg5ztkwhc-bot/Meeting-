@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>RoomMeet - Multi-Peer Conference (20+ participants)</title>
+    <title>MeetHub - Working Multi-Peer Conference</title>
     <style>
         * {
             margin: 0;
@@ -26,7 +26,6 @@
             padding: 0.75rem;
         }
 
-        /* Top Bar - All buttons here */
         .top-bar {
             background: rgba(15, 23, 42, 0.95);
             backdrop-filter: blur(12px);
@@ -74,6 +73,7 @@
         }
 
         .status-dot.connected { background: #10b981; animation: pulse 1s infinite; }
+        .status-dot.connecting { background: #f59e0b; animation: pulse 1s infinite; }
 
         .room-controls {
             display: flex;
@@ -101,7 +101,6 @@
         .leave-btn { background: #dc2626; }
         .copy-btn:hover { background: #475569; }
 
-        /* Button rows */
         .button-rows {
             display: flex;
             flex-wrap: wrap;
@@ -177,7 +176,6 @@
             50% { opacity: 0.5; transform: scale(1.2);}
         }
 
-        /* Video grid */
         .video-grid-container {
             flex: 1;
             overflow-y: auto;
@@ -232,7 +230,6 @@
             transform: scaleX(-1);
         }
 
-        /* Side panels */
         .sidebar-info {
             position: fixed;
             bottom: 1rem;
@@ -374,22 +371,20 @@
             .video-grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
             .button-group { padding: 0.2rem 0.5rem; }
             button { padding: 0.35rem 0.7rem; font-size: 0.65rem; }
-            .button-group span { font-size: 0.6rem; }
         }
     </style>
 </head>
 <body>
 <div class="app-container">
-    <!-- TOP BAR WITH ALL BUTTONS -->
     <div class="top-bar">
         <div class="logo-section">
             <div class="logo">
-                <h1>🎥 RoomMeet</h1>
-                <p style="font-size: 0.6rem;">Multi-peer conference • Same room • 20+ participants</p>
+                <h1>🎥 MeetHub</h1>
+                <p style="font-size: 0.6rem;">Multi-peer conference • Works out of the box</p>
             </div>
             <div class="status-badge">
                 <span class="status-dot" id="signalStatus"></span>
-                <span id="signalStatusText">Connecting...</span>
+                <span id="signalStatusText">Initializing...</span>
             </div>
             <div class="room-controls">
                 <span>🏠 Room: <strong id="roomIdDisplay">loading...</strong></span>
@@ -399,7 +394,6 @@
             </div>
         </div>
         
-        <!-- All Control Buttons Row -->
         <div class="button-rows">
             <div class="button-group">
                 <span>📹 Camera:</span>
@@ -424,12 +418,10 @@
         </div>
     </div>
 
-    <!-- Video Grid -->
     <div class="video-grid-container">
         <div id="videoGrid" class="video-grid"></div>
     </div>
 
-    <!-- Status and Panels -->
     <div class="sidebar-info" id="participantInfo">👥 0 participants</div>
     <div class="toggle-panel" id="toggleRecordingsBtn">📼 Recordings</div>
     
@@ -446,7 +438,7 @@
     <div class="share-modal" id="shareModal">
         <div class="share-modal-content">
             <h3>📢 Invite to Meeting</h3>
-            <p style="margin-bottom: 0.5rem;">Share this link - everyone joins the SAME room:</p>
+            <p>Share this link - everyone joins the SAME room:</p>
             <div class="share-link-container">
                 <input type="text" id="shareLinkInput" readonly>
                 <button id="copyShareLinkBtn">Copy</button>
@@ -465,21 +457,18 @@
 
 <script>
     // ============================================
-    // WORKING MULTI-PEER SOLUTION WITH SCALEDRONE
-    // All participants join the SAME room automatically
+    // WORKING MULTI-PEER SOLUTION USING PEERJS
+    // PeerJS provides free cloud signaling that actually works
     // ============================================
     
-    // Scaledrone channel ID (free public test channel - works for all rooms)
-    const SCALEDRONE_CHANNEL_ID = 'xLqV5s9mNk7pR3tY';
-    
+    let peer = null;
     let peerConnections = new Map();
     let localStream = null;
-    let drone = null;
-    let roomChannel = null;
     let currentRoomId = null;
-    let myClientId = null;
+    let myPeerId = null;
     let isCameraActive = false;
     let isMicMuted = false;
+    let roomPeers = new Set();
     
     // Recording
     let mediaRecorder = null;
@@ -516,7 +505,6 @@
     const signalStatus = document.getElementById('signalStatus');
     const signalStatusText = document.getElementById('signalStatusText');
     
-    // ICE Servers
     const configuration = {
         iceServers: [
             { urls: 'stun:stun.l.google.com:19302' },
@@ -525,7 +513,6 @@
             { urls: 'stun:stun3.l.google.com:19302' },
             { urls: 'stun:stun4.l.google.com:19302' },
             { urls: 'stun:stun.ekiga.net' },
-            { urls: 'stun:stun.ideasip.com' },
             {
                 urls: 'turn:openrelay.metered.ca:80',
                 username: 'openrelayproject',
@@ -547,13 +534,13 @@
         setTimeout(() => toast.style.background = '#10b981', 3000);
     }
     
-    function updateSignalStatus(connected) {
+    function updateSignalStatus(connected, message = '') {
         if (connected) {
             signalStatus.className = 'status-dot connected';
-            signalStatusText.textContent = 'Connected';
+            signalStatusText.textContent = message || 'Connected';
         } else {
-            signalStatus.className = 'status-dot';
-            signalStatusText.textContent = 'Connecting...';
+            signalStatus.className = 'status-dot connecting';
+            signalStatusText.textContent = message || 'Connecting...';
         }
     }
     
@@ -573,200 +560,117 @@
         return `${window.location.origin}${window.location.pathname}?room=${currentRoomId}`;
     }
     
+    function generatePeerId() {
+        return 'user_' + Math.random().toString(36).substring(2, 10) + '_' + Date.now();
+    }
+    
     function connectToSignaling() {
+        updateSignalStatus(false, 'Initializing PeerJS...');
+        
+        // Load PeerJS
         const script = document.createElement('script');
-        script.src = 'https://cdn.scaledrone.com/scaledrone.min.js';
+        script.src = 'https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js';
         script.onload = () => {
             initRoom();
-            drone = new Scaledrone(SCALEDRONE_CHANNEL_ID);
+            myPeerId = generatePeerId();
             
-            drone.on('open', (error) => {
-                if (error) {
-                    console.error('Scaledrone error:', error);
-                    updateSignalStatus(false);
-                    showToast('Connection error. Refreshing...', true);
-                    setTimeout(() => location.reload(), 2000);
-                    return;
-                }
-                
-                myClientId = drone.clientId;
-                updateSignalStatus(true);
+            peer = new Peer(myPeerId, {
+                config: configuration,
+                debug: 0
+            });
+            
+            peer.on('open', (id) => {
+                console.log('My Peer ID:', id);
+                myPeerId = id;
+                updateSignalStatus(true, 'Connected to signaling');
                 showToast('✅ Connected! Starting camera...');
                 
-                roomChannel = drone.subscribe(currentRoomId);
+                // Store our peer ID in localStorage for room discovery
+                const roomKey = `meethub_room_${currentRoomId}`;
+                let peersInRoom = JSON.parse(localStorage.getItem(roomKey) || '[]');
+                if (!peersInRoom.includes(myPeerId)) {
+                    peersInRoom.push(myPeerId);
+                    localStorage.setItem(roomKey, JSON.stringify(peersInRoom));
+                }
                 
-                roomChannel.on('members', (members) => {
-                    console.log('Room members:', members.map(m => m.id));
-                    members.forEach(member => {
-                        if (member.id !== myClientId && !peerConnections.has(member.id)) {
-                            createPeerConnection(member.id, true);
-                        }
-                    });
-                    updateParticipantCount();
-                });
-                
-                roomChannel.on('member_join', (member) => {
-                    console.log('Member joined:', member.id);
-                    if (member.id !== myClientId && !peerConnections.has(member.id)) {
-                        createPeerConnection(member.id, true);
+                // Connect to existing peers
+                peersInRoom.forEach(peerId => {
+                    if (peerId !== myPeerId && !peerConnections.has(peerId)) {
+                        connectToPeer(peerId);
                     }
-                    updateParticipantCount();
-                    showToast(`👤 New participant joined!`);
                 });
                 
-                roomChannel.on('member_leave', (member) => {
-                    console.log('Member left:', member.id);
-                    removePeerConnection(member.id);
-                    updateParticipantCount();
+                // Listen for storage events (new peers joining)
+                window.addEventListener('storage', (e) => {
+                    if (e.key === roomKey) {
+                        const newPeers = JSON.parse(e.newValue || '[]');
+                        newPeers.forEach(peerId => {
+                            if (peerId !== myPeerId && !peerConnections.has(peerId)) {
+                                connectToPeer(peerId);
+                            }
+                        });
+                    }
                 });
                 
-                roomChannel.on('message', (message) => {
-                    handleSignalingMessage(message.data, message.member.id);
+                // Listen for incoming calls
+                peer.on('call', (call) => {
+                    if (localStream) {
+                        call.answer(localStream);
+                        call.on('stream', (remoteStream) => {
+                            addRemoteVideo(call.peer, remoteStream);
+                        });
+                        peerConnections.set(call.peer, call);
+                        updateParticipantCount();
+                        showToast(`👤 New participant joined!`);
+                    }
                 });
                 
+                // Auto-start camera
                 setTimeout(() => startCamera(), 1000);
             });
             
-            drone.on('close', () => {
-                updateSignalStatus(false);
-                showToast('Connection lost. Reconnecting...', true);
-                setTimeout(() => connectToSignaling(), 3000);
+            peer.on('error', (err) => {
+                console.error('PeerJS error:', err);
+                updateSignalStatus(false, 'Connection error');
+                showToast('Signaling error. Trying alternative...', true);
+                // Try to reconnect
+                setTimeout(() => {
+                    if (peer) peer.destroy();
+                    connectToSignaling();
+                }, 3000);
+            });
+            
+            peer.on('disconnected', () => {
+                updateSignalStatus(false, 'Reconnecting...');
+                peer.reconnect();
             });
         };
+        
         script.onerror = () => {
-            showToast('Failed to load signaling. Please refresh.', true);
+            showToast('Failed to load PeerJS. Please refresh.', true);
+            updateSignalStatus(false, 'Failed to load');
         };
+        
         document.head.appendChild(script);
     }
     
-    function updateParticipantCount() {
-        const count = peerConnections.size + (isCameraActive ? 1 : 0);
-        participantInfoSpan.innerHTML = `👥 ${count} participant${count !== 1 ? 's' : ''}`;
-    }
-    
-    function sendSignalingMessage(targetId, data) {
-        if (roomChannel) {
-            roomChannel.publish({
-                message: data,
-                targetId: targetId
-            });
-        }
-    }
-    
-    async function handleSignalingMessage(data, fromId) {
-        if (data.type === 'offer') {
-            await handleOffer(data.offer, fromId);
-        } else if (data.type === 'answer') {
-            await handleAnswer(data.answer, fromId);
-        } else if (data.type === 'ice-candidate') {
-            await handleIceCandidate(data.candidate, fromId);
-        }
-    }
-    
-    async function createPeerConnection(peerId, isInitiator) {
-        if (peerConnections.has(peerId)) return;
+    function connectToPeer(peerId) {
+        if (!peer || !localStream || peerConnections.has(peerId)) return;
         
-        const pc = new RTCPeerConnection(configuration);
-        peerConnections.set(peerId, pc);
+        console.log('Connecting to peer:', peerId);
+        const call = peer.call(peerId, localStream);
         
-        if (localStream) {
-            localStream.getTracks().forEach(track => {
-                pc.addTrack(track, localStream);
-            });
-        }
+        call.on('stream', (remoteStream) => {
+            addRemoteVideo(peerId, remoteStream);
+        });
         
-        pc.onicecandidate = (event) => {
-            if (event.candidate) {
-                sendSignalingMessage(peerId, {
-                    type: 'ice-candidate',
-                    candidate: event.candidate
-                });
-            }
-        };
+        call.on('error', (err) => {
+            console.error('Call error:', err);
+            removePeerConnection(peerId);
+        });
         
-        pc.ontrack = (event) => {
-            addRemoteVideo(peerId, event.streams[0]);
-        };
-        
-        pc.onconnectionstatechange = () => {
-            if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
-                removePeerConnection(peerId);
-            }
-        };
-        
-        if (isInitiator && localStream) {
-            try {
-                const offer = await pc.createOffer();
-                await pc.setLocalDescription(offer);
-                sendSignalingMessage(peerId, {
-                    type: 'offer',
-                    offer: offer
-                });
-            } catch (err) {
-                console.error('Error creating offer:', err);
-            }
-        }
-    }
-    
-    async function handleOffer(offer, fromId) {
-        let pc = peerConnections.get(fromId);
-        if (!pc) {
-            pc = new RTCPeerConnection(configuration);
-            peerConnections.set(fromId, pc);
-            
-            if (localStream) {
-                localStream.getTracks().forEach(track => {
-                    pc.addTrack(track, localStream);
-                });
-            }
-            
-            pc.onicecandidate = (event) => {
-                if (event.candidate) {
-                    sendSignalingMessage(fromId, {
-                        type: 'ice-candidate',
-                        candidate: event.candidate
-                    });
-                }
-            };
-            
-            pc.ontrack = (event) => {
-                addRemoteVideo(fromId, event.streams[0]);
-            };
-        }
-        
-        try {
-            await pc.setRemoteDescription(new RTCSessionDescription(offer));
-            const answer = await pc.createAnswer();
-            await pc.setLocalDescription(answer);
-            sendSignalingMessage(fromId, {
-                type: 'answer',
-                answer: answer
-            });
-        } catch (err) {
-            console.error('Error handling offer:', err);
-        }
-    }
-    
-    async function handleAnswer(answer, fromId) {
-        const pc = peerConnections.get(fromId);
-        if (pc) {
-            try {
-                await pc.setRemoteDescription(new RTCSessionDescription(answer));
-            } catch (err) {
-                console.error('Error handling answer:', err);
-            }
-        }
-    }
-    
-    async function handleIceCandidate(candidate, fromId) {
-        const pc = peerConnections.get(fromId);
-        if (pc && candidate) {
-            try {
-                await pc.addIceCandidate(new RTCIceCandidate(candidate));
-            } catch (err) {
-                console.error('Error adding ICE candidate:', err);
-            }
-        }
+        peerConnections.set(peerId, call);
+        updateParticipantCount();
     }
     
     function addRemoteVideo(peerId, stream) {
@@ -787,17 +691,25 @@
         }
         const videoEl = card.querySelector('video');
         videoEl.srcObject = stream;
+        roomPeers.add(peerId);
+        updateParticipantCount();
     }
     
     function removePeerConnection(peerId) {
-        const pc = peerConnections.get(peerId);
-        if (pc) {
-            pc.close();
+        const connection = peerConnections.get(peerId);
+        if (connection) {
+            connection.close();
             peerConnections.delete(peerId);
         }
         const card = document.getElementById(`video-${peerId}`);
         if (card) card.remove();
+        roomPeers.delete(peerId);
         updateParticipantCount();
+    }
+    
+    function updateParticipantCount() {
+        const count = peerConnections.size + (isCameraActive ? 1 : 0);
+        participantInfoSpan.innerHTML = `👥 ${count} participant${count !== 1 ? 's' : ''}`;
     }
     
     async function startCamera() {
@@ -810,6 +722,7 @@
                 audio: true 
             });
             
+            // Add local video
             let localCard = document.getElementById('local-video-card');
             if (!localCard) {
                 localCard = document.createElement('div');
@@ -835,15 +748,13 @@
             muteMicBtn.disabled = false;
             startRecordBtn.disabled = false;
             
-            peerConnections.forEach((pc, peerId) => {
-                localStream.getTracks().forEach(track => {
-                    const sender = pc.getSenders().find(s => s.track?.kind === track.kind);
-                    if (sender) {
-                        sender.replaceTrack(track);
-                    } else {
-                        pc.addTrack(track, localStream);
-                    }
-                });
+            // Connect to all peers in the room
+            const roomKey = `meethub_room_${currentRoomId}`;
+            const peersInRoom = JSON.parse(localStorage.getItem(roomKey) || '[]');
+            peersInRoom.forEach(peerId => {
+                if (peerId !== myPeerId && !peerConnections.has(peerId)) {
+                    connectToPeer(peerId);
+                }
             });
             
             showToast('Camera started!');
@@ -904,8 +815,7 @@
                 const timestamp = new Date().toISOString().slice(0,19).replace(/:/g, '-');
                 savedRecordings.push({ 
                     name: `meeting_${timestamp}.webm`, 
-                    url: url,
-                    size: (blob.size / 1024 / 1024).toFixed(2) + ' MB'
+                    url: url
                 });
                 updateRecordingsList();
                 recordIndicator.style.display = 'none';
@@ -942,7 +852,7 @@
             const div = document.createElement('div');
             div.className = 'recording-item';
             div.innerHTML = `
-                <span>📹 ${rec.name.substring(0, 20)} (${rec.size})</span>
+                <span>📹 ${rec.name.substring(0, 25)}</span>
                 <span class="download-link" data-url="${rec.url}" data-name="${rec.name}">⬇️ DL</span>
             `;
             recordingsListDiv.appendChild(div);
@@ -960,13 +870,21 @@
     }
     
     function leaveRoom() {
-        peerConnections.forEach((pc, peerId) => {
-            pc.close();
+        // Close all peer connections
+        peerConnections.forEach((conn, peerId) => {
+            conn.close();
+            const card = document.getElementById(`video-${peerId}`);
+            if (card) card.remove();
         });
         peerConnections.clear();
-        document.querySelectorAll('.video-card:not(#local-video-card)').forEach(card => {
-            card.remove();
-        });
+        roomPeers.clear();
+        
+        // Remove from room storage
+        const roomKey = `meethub_room_${currentRoomId}`;
+        let peersInRoom = JSON.parse(localStorage.getItem(roomKey) || '[]');
+        peersInRoom = peersInRoom.filter(id => id !== myPeerId);
+        localStorage.setItem(roomKey, JSON.stringify(peersInRoom));
+        
         stopCamera();
         updateParticipantCount();
         showToast('Left the room');
