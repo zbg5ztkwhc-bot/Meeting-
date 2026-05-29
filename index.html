@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>LiveKit Meeting Room - Recording Feature</title>
+    <title>LiveKit Meeting Room - Fixed Audio</title>
     <script src="https://unpkg.com/livekit-client@2.0.0/dist/livekit-client.umd.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/10.8.0/jsrsasign-all-min.js"></script>
     <style>
@@ -64,7 +64,7 @@
             letter-spacing: 0.5px;
         }
 
-        input {
+        input, select {
             width: 100%;
             padding: 12px 16px;
             background: #0a0a12;
@@ -75,7 +75,7 @@
             transition: 0.2s;
         }
 
-        input:focus {
+        input:focus, select:focus {
             outline: none;
             border-color: #4f46e5;
             box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.3);
@@ -284,6 +284,35 @@
             animation: pulse 1s infinite;
         }
 
+        /* Audio test indicator */
+        .audio-test {
+            background: #2a2a3e;
+            border-radius: 12px;
+            padding: 10px;
+            margin-bottom: 15px;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .mic-level {
+            flex: 1;
+            height: 30px;
+            background: #0a0a12;
+            border-radius: 15px;
+            overflow: hidden;
+        }
+
+        .mic-level-fill {
+            width: 0%;
+            height: 100%;
+            background: #4f46e5;
+            transition: width 0.05s;
+        }
+
         @media (max-width: 700px) {
             .video-grid {
                 grid-template-columns: 1fr;
@@ -311,6 +340,17 @@
             🎥 <strong>LiveKit Meeting Room</strong> — Get credentials from <a href="https://cloud.livekit.io" target="_blank">cloud.livekit.io</a><br>
             Project → Settings → API Keys → Create API Key → Copy <strong>API Key</strong>, <strong>API Secret</strong>, and <strong>WebSocket URL</strong>
         </div>
+        
+        <!-- Audio Test Panel -->
+        <div class="audio-test" id="audioTestPanel">
+            <span>🎤 Microphone Test:</span>
+            <div class="mic-level">
+                <div class="mic-level-fill" id="micLevelFill"></div>
+            </div>
+            <span id="micStatus" style="color: #ef4444;">🔴 Not active</span>
+            <button id="testMicBtn" style="padding: 6px 12px; font-size: 0.8rem;">Test Mic</button>
+        </div>
+        
         <div class="form-group">
             <div class="input-field">
                 <label>🔑 API Key (Sandbox ID)</label>
@@ -334,6 +374,15 @@
             </div>
             <button id="joinBtn">🚀 Join Meeting</button>
         </div>
+        
+        <!-- Microphone device selector -->
+        <div class="form-group" style="margin-top: 16px;">
+            <div class="input-field">
+                <label>🎙️ Select Microphone</label>
+                <select id="micSelect"></select>
+            </div>
+        </div>
+        
         <p style="font-size: 0.7rem; margin-top: 16px; text-align: center; color:#6b7280">
             ⚠️ For development only. Recording saves locally as WebM file.
         </p>
@@ -374,6 +423,8 @@
     let currentApiKey = '';
     let currentApiSecret = '';
     let currentWsUrl = '';
+    let currentStream = null;
+    let testStream = null;
     
     // Recording variables
     let mediaRecorder = null;
@@ -381,7 +432,6 @@
     let isRecording = false;
     let recordingStartTime = null;
     let recordingTimer = null;
-    let screenStream = null;
     let combinedStream = null;
 
     // DOM elements
@@ -402,39 +452,122 @@
     const currentRoomNameSpan = document.getElementById('currentRoomName');
     const recordingIndicator = document.getElementById('recordingIndicator');
     const recordingTimeSpan = document.getElementById('recordingTime');
+    const micSelect = document.getElementById('micSelect');
+    const testMicBtn = document.getElementById('testMicBtn');
+    const micLevelFill = document.getElementById('micLevelFill');
+    const micStatus = document.getElementById('micStatus');
 
-    // Start recording
+    // Load available microphones
+    async function loadMicrophones() {
+        try {
+            await navigator.mediaDevices.getUserMedia({ audio: true });
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const audioInputs = devices.filter(device => device.kind === 'audioinput');
+            
+            micSelect.innerHTML = '<option value="">Default Microphone</option>';
+            audioInputs.forEach(mic => {
+                const option = document.createElement('option');
+                option.value = mic.deviceId;
+                option.textContent = mic.label || `Microphone ${micSelect.length}`;
+                micSelect.appendChild(option);
+            });
+        } catch (err) {
+            console.log('Could not enumerate microphones:', err);
+        }
+    }
+
+    // Test microphone with visual feedback
+    async function testMicrophone() {
+        // Stop any existing test
+        if (testStream) {
+            testStream.getTracks().forEach(track => track.stop());
+        }
+        
+        const deviceId = micSelect.value;
+        const constraints = {
+            audio: deviceId ? { deviceId: { exact: deviceId } } : true
+        };
+        
+        try {
+            testStream = await navigator.mediaDevices.getUserMedia(constraints);
+            const audioContext = new AudioContext();
+            const source = audioContext.createMediaStreamSource(testStream);
+            const analyser = audioContext.createAnalyser();
+            analyser.fftSize = 256;
+            source.connect(analyser);
+            
+            const dataArray = new Uint8Array(analyser.frequencyBinCount);
+            
+            micStatus.textContent = '🟢 Active';
+            micStatus.style.color = '#22c55e';
+            
+            function updateMicLevel() {
+                if (!testStream || testStream.getAudioTracks()[0].readyState === 'ended') {
+                    return;
+                }
+                analyser.getByteFrequencyData(dataArray);
+                let average = 0;
+                for (let i = 0; i < dataArray.length; i++) {
+                    average += dataArray[i];
+                }
+                average = average / dataArray.length;
+                const percent = Math.min(100, (average / 255) * 100);
+                micLevelFill.style.width = `${percent}%`;
+                requestAnimationFrame(updateMicLevel);
+            }
+            
+            updateMicLevel();
+            
+            // Start audio context
+            if (audioContext.state === 'suspended') {
+                await audioContext.resume();
+            }
+            
+            setTimeout(() => {
+                if (testStream) {
+                    testStream.getTracks().forEach(track => track.stop());
+                    testStream = null;
+                    micStatus.textContent = '🔴 Test stopped';
+                    micStatus.style.color = '#ef4444';
+                    micLevelFill.style.width = '0%';
+                }
+            }, 5000);
+            
+        } catch (err) {
+            console.error('Microphone test failed:', err);
+            micStatus.textContent = '❌ No microphone access';
+            micStatus.style.color = '#ef4444';
+            alert('Cannot access microphone. Please check permissions:\n1. Click the camera/mic icon in address bar\n2. Allow microphone access\n3. Reload the page');
+        }
+    }
+
+    // Start recording (same as before)
     async function startRecording() {
         if (isRecording) return;
         
         try {
-            // Get all video elements to capture
             const videos = document.querySelectorAll('.participant video');
             if (videos.length === 0) {
                 alert('No video streams to record');
                 return;
             }
             
-            // Create a canvas to combine videos (picture-in-picture style)
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
             canvas.width = 1280;
             canvas.height = 720;
             
-            // Function to draw all videos on canvas
             function drawVideos() {
                 const currentVideos = document.querySelectorAll('.participant video');
                 ctx.fillStyle = '#1a1a2e';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
                 
                 if (currentVideos.length === 1) {
-                    // Single video - full screen
                     const video = currentVideos[0];
                     if (video.videoWidth > 0) {
                         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
                     }
                 } else if (currentVideos.length === 2) {
-                    // Two videos - split screen
                     const video1 = currentVideos[0];
                     const video2 = currentVideos[1];
                     if (video1.videoWidth > 0) {
@@ -444,7 +577,6 @@
                         ctx.drawImage(video2, canvas.width/2, 0, canvas.width/2, canvas.height);
                     }
                 } else {
-                    // Grid layout for 3+ videos
                     const cols = Math.ceil(Math.sqrt(currentVideos.length));
                     const rows = Math.ceil(currentVideos.length / cols);
                     const cellWidth = canvas.width / cols;
@@ -463,18 +595,13 @@
             
             drawVideos();
             
-            // Get canvas stream
             const canvasStream = canvas.captureStream(30);
-            
-            // Get audio from microphone
             const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
             
-            // Combine video and audio
             combinedStream = new MediaStream();
             canvasStream.getVideoTracks().forEach(track => combinedStream.addTrack(track));
             audioStream.getAudioTracks().forEach(track => combinedStream.addTrack(track));
             
-            // Create media recorder
             mediaRecorder = new MediaRecorder(combinedStream, { mimeType: 'video/webm' });
             recordedChunks = [];
             
@@ -496,7 +623,6 @@
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
                 
-                // Stop all tracks
                 if (combinedStream) {
                     combinedStream.getTracks().forEach(track => track.stop());
                 }
@@ -507,17 +633,15 @@
                 alert('Recording saved! Check your downloads folder.');
             };
             
-            mediaRecorder.start(1000); // Capture every second
+            mediaRecorder.start(1000);
             isRecording = true;
             recordingStartTime = Date.now();
             
-            // Update UI
             recordBtn.classList.add('recording-btn');
             recordBtn.style.background = '#dc2626';
             recordBtn.style.animation = 'pulse 1.5s infinite';
             recordingIndicator.classList.add('active');
             
-            // Start timer
             recordingTimer = setInterval(() => {
                 const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
                 const minutes = Math.floor(elapsed / 60);
@@ -531,14 +655,12 @@
         }
     }
     
-    // Stop recording
     function stopRecording() {
         if (!isRecording || !mediaRecorder) return;
         
         mediaRecorder.stop();
         isRecording = false;
         
-        // Clean up UI
         recordBtn.classList.remove('recording-btn');
         recordBtn.style.background = '#2d2d44';
         recordBtn.style.animation = 'none';
@@ -552,7 +674,6 @@
         recordingTimeSpan.textContent = '00:00';
     }
     
-    // Toggle recording
     function toggleRecording() {
         if (isRecording) {
             stopRecording();
@@ -572,7 +693,6 @@
         return `${baseUrl}?${params.toString()}`;
     }
 
-    // Auto-join from URL parameters
     function autoJoinFromUrl() {
         const params = new URLSearchParams(window.location.search);
         const roomName = params.get('room');
@@ -593,7 +713,6 @@
         }
     }
 
-    // Update share panel
     function updateSharePanel(roomName) {
         if (!currentApiKey || !currentApiSecret || !currentWsUrl) return;
         
@@ -603,7 +722,6 @@
         sharePanel.classList.remove('hidden');
     }
 
-    // Generate JWT token
     function generateToken(apiKey, apiSecret, roomName, participantName) {
         const now = Math.floor(Date.now() / 1000);
         const exp = now + 6 * 60 * 60;
@@ -625,7 +743,6 @@
         return KJUR.jws.JWS.sign("HS256", JSON.stringify(header), JSON.stringify(payload), apiSecret);
     }
 
-    // Add video element
     function addVideoElement(track, participantName, isLocal = false) {
         const mediaStream = new MediaStream([track]);
         const containerId = `participant-${participantName.replace(/\s/g, '_')}-${Date.now()}`;
@@ -649,13 +766,11 @@
         return container;
     }
 
-    // Remove participant video
     function removeParticipantVideo(participantName) {
         const elements = document.querySelectorAll(`[id^="participant-${participantName.replace(/\s/g, '_')}"]`);
         elements.forEach(el => el.remove());
     }
 
-    // Handle track subscription
     function handleTrackSubscribed(track, publication, participant) {
         if (track.kind === 'video' && track.mediaStreamTrack) {
             const existingId = `participant-${participant.identity.replace(/\s/g, '_')}`;
@@ -665,7 +780,6 @@
         }
     }
 
-    // Handle participant connection
     function handleParticipantConnected(participant) {
         connectionStatus.innerText = `👋 ${participant.identity} joined the room`;
     }
@@ -675,7 +789,6 @@
         connectionStatus.innerText = `👋 ${participant.identity} left the room`;
     }
 
-    // Leave meeting
     async function leaveMeeting() {
         if (isRecording) {
             stopRecording();
@@ -701,6 +814,11 @@
             screenTrack = null;
         }
         
+        if (currentStream) {
+            currentStream.getTracks().forEach(track => track.stop());
+            currentStream = null;
+        }
+        
         videoGrid.innerHTML = '';
         setupPanel.classList.remove('hidden');
         meetingArea.classList.remove('active');
@@ -708,13 +826,13 @@
         connectionStatus.innerText = '🔌 Disconnected';
     }
 
-    // Join meeting
     async function joinMeeting() {
         const apiKey = document.getElementById('apiKey').value.trim();
         const apiSecret = document.getElementById('apiSecret').value.trim();
         const wsUrl = document.getElementById('wsUrl').value.trim();
         const userName = document.getElementById('userName').value.trim() || `User_${Math.floor(Math.random() * 1000)}`;
         const roomName = document.getElementById('roomName').value.trim() || 'meeting-room';
+        const selectedMicId = micSelect.value;
         
         if (!apiKey || !apiSecret || !wsUrl) {
             alert('Please fill in all fields: API Key, API Secret, and WebSocket URL');
@@ -726,13 +844,30 @@
             return;
         }
         
-        if (typeof KJUR === 'undefined') {
-            alert('JWT library still loading. Please wait a moment and try again.');
-            return;
-        }
-        
         try {
-            connectionStatus.innerText = '🔄 Connecting to LiveKit...';
+            connectionStatus.innerText = '🔄 Requesting microphone & camera...';
+            
+            // Request media with specific microphone if selected
+            const audioConstraints = selectedMicId ? 
+                { deviceId: { exact: selectedMicId } } : true;
+            
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                video: true, 
+                audio: audioConstraints 
+            });
+            
+            currentStream = stream;
+            const videoTrack = stream.getVideoTracks()[0];
+            const audioTrack = stream.getAudioTracks()[0];
+            
+            // Verify audio is working
+            if (audioTrack) {
+                connectionStatus.innerText = '✅ Microphone detected - Connecting to LiveKit...';
+                console.log('Audio track enabled:', audioTrack.enabled);
+                console.log('Audio track settings:', audioTrack.getSettings());
+            } else {
+                console.warn('No audio track found');
+            }
             
             const token = generateToken(apiKey, apiSecret, roomName, userName);
             
@@ -758,9 +893,6 @@
             updateSharePanel(roomName);
             
             const localParticipant = room.localParticipant;
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-            const videoTrack = stream.getVideoTracks()[0];
-            const audioTrack = stream.getAudioTracks()[0];
             
             localVideoTrack = new LivekitClient.LocalVideoTrack(videoTrack);
             localAudioTrack = new LivekitClient.LocalAudioTrack(audioTrack);
@@ -770,20 +902,30 @@
             
             addVideoElement(videoTrack, userName, true);
             
+            // Update UI to show mic is active
             toggleMicBtn.style.opacity = '1';
-            toggleCamBtn.style.opacity = '1';
+            toggleMicBtn.style.background = '#4f46e5';
             toggleMicBtn.classList.add('active');
+            toggleCamBtn.style.opacity = '1';
             toggleCamBtn.classList.add('active');
+            
+            connectionStatus.innerText = `✅ Connected - Microphone is ON`;
             
         } catch (error) {
             console.error('Connection error:', error);
             connectionStatus.innerText = `❌ Connection failed: ${error.message}`;
-            alert(`Failed to join meeting:\n${error.message}\n\nMake sure you allowed camera/microphone access.`);
+            
+            if (error.name === 'NotAllowedError') {
+                alert('Permission denied! Please:\n1. Click the camera/mic icon in address bar\n2. Allow camera and microphone\n3. Reload the page');
+            } else if (error.name === 'NotFoundError') {
+                alert('No microphone found! Please connect a microphone and try again.');
+            } else {
+                alert(`Failed to join meeting:\n${error.message}`);
+            }
             await leaveMeeting();
         }
     }
 
-    // Copy link
     async function copyShareLink() {
         try {
             await navigator.clipboard.writeText(shareLinkInput.value);
@@ -797,7 +939,6 @@
         }
     }
 
-    // Send invite
     function sendInvite() {
         const link = shareLinkInput.value;
         const subject = encodeURIComponent('Join my LiveKit Meeting');
@@ -811,6 +952,7 @@
     copyLinkBtn.addEventListener('click', copyShareLink);
     inviteBtn.addEventListener('click', sendInvite);
     recordBtn.addEventListener('click', toggleRecording);
+    testMicBtn.addEventListener('click', testMicrophone);
     
     toggleMicBtn.onclick = async () => {
         if (localAudioTrack) {
@@ -818,6 +960,10 @@
             await localAudioTrack.setEnabled(newState);
             toggleMicBtn.style.opacity = newState ? '1' : '0.5';
             toggleMicBtn.style.background = newState ? '#4f46e5' : '#2d2d44';
+            connectionStatus.innerText = newState ? '🎤 Microphone ON' : '🔇 Microphone OFF';
+            setTimeout(() => {
+                connectionStatus.innerText = `✅ Connected to room`;
+            }, 2000);
         }
     };
     
@@ -863,6 +1009,8 @@
         }
     };
     
+    // Initialize
+    loadMicrophones();
     autoJoinFromUrl();
     document.getElementById('apiKey').focus();
 </script>
