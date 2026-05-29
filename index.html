@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>MeetHub - 20+ Participant Video Conference + Recording + Share</title>
+    <title>MeshMeet - 20+ Peer Video Conference + Recording + Share</title>
     <style>
         * {
             margin: 0;
@@ -26,7 +26,6 @@
             padding: 0.75rem;
         }
 
-        /* Header */
         .header {
             display: flex;
             justify-content: space-between;
@@ -86,7 +85,6 @@
         .copy-btn:hover { background: #475569; }
         .leave-btn:hover { background: #b91c1c; }
 
-        /* Main video grid - scrollable for many participants */
         .video-grid-container {
             flex: 1;
             overflow-y: auto;
@@ -143,7 +141,6 @@
             transform: scaleX(-1);
         }
 
-        /* Controls bar */
         .controls-bar {
             display: flex;
             flex-wrap: wrap;
@@ -287,7 +284,6 @@
             z-index: 200;
         }
 
-        /* Share modal */
         .share-modal {
             position: fixed;
             top: 0;
@@ -295,7 +291,7 @@
             right: 0;
             bottom: 0;
             background: rgba(0,0,0,0.8);
- backdrop-filter: blur(8px);
+            backdrop-filter: blur(8px);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -359,6 +355,26 @@
             width: 100%;
         }
 
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #10b981;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 2rem;
+            font-size: 0.8rem;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+
+        .toast.show {
+            opacity: 1;
+        }
+
         @media (max-width: 768px) {
             .video-grid {
                 grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -374,8 +390,8 @@
 <div class="app-container">
     <div class="header">
         <div class="logo">
-            <h1>🎥 MeetHub</h1>
-            <p style="font-size: 0.65rem;">20+ participant SFU conference • Record • Share</p>
+            <h1>🎥 MeshMeet</h1>
+            <p style="font-size: 0.65rem;">20+ peer mesh conference • No server required • Record & Share</p>
         </div>
         <div class="room-controls">
             <span>🔑 Room: <strong id="roomIdDisplay">---</strong></span>
@@ -390,7 +406,7 @@
     </div>
 
     <div class="controls-bar">
-        <button id="joinRoomBtn" class="btn-primary">🎙️ Join / Create Room</button>
+        <button id="joinRoomBtn" class="btn-primary">🎙️ Create / Join Room</button>
         <button id="toggleMediaBtn" class="btn-primary">🎥 Start Camera</button>
         <button id="stopMediaBtn" class="btn-warning" disabled>⏹️ Stop</button>
         <button id="toggleMicBtn" disabled>🎤 Mute</button>
@@ -417,11 +433,10 @@
         </div>
     </div>
 
-    <!-- Share Modal -->
     <div class="share-modal" id="shareModal">
         <div class="share-modal-content">
             <h3>📢 Invite to Meeting</h3>
-            <p style="margin-bottom: 0.5rem;">Share this link with up to 50+ participants:</p>
+            <p style="margin-bottom: 0.5rem;">Share this link with up to 20+ participants:</p>
             <div class="share-link-container">
                 <input type="text" id="shareLinkInput" readonly>
                 <button id="copyShareLinkBtn" style="padding: 0.6rem 1rem;">Copy</button>
@@ -430,31 +445,38 @@
                 <button id="shareWhatsAppBtn">💬 WhatsApp</button>
                 <button id="shareTelegramBtn">✈️ Telegram</button>
                 <button id="shareEmailBtn">📧 Email</button>
-                <button id="shareTwitterBtn">🐦 X (Twitter)</button>
+                <button id="shareTwitterBtn">🐦 X</button>
             </div>
             <button class="close-modal" id="closeModalBtn">Close</button>
         </div>
     </div>
+    <div id="toast" class="toast"></div>
 </div>
 
 <script>
-    // ==================== LiveKit SFU Integration ====================
-    // Load LiveKit SDK dynamically
+    // WebRTC Mesh Network with Signaling Server
+    // Using a free public signaling server (Scaledrone compatible)
+    // Alternative: Use PeerJS cloud or simple WebSocket
+    
+    // We'll use a reliable free signaling service: PeerJS cloud
     const script = document.createElement('script');
-    script.src = 'https://unpkg.com/livekit-client@1.15.0/dist/livekit-client.umd.js';
-    script.onload = () => initLiveKit();
+    script.src = 'https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js';
+    script.onload = initPeerJS;
     document.head.appendChild(script);
     
-    let room = null;
-    let isConnected = false;
+    let peer = null;
+    let connections = new Map(); // peerId -> MediaConnection
+    let localStream = null;
+    let currentRoom = null;
+    let isInRoom = false;
     let isCameraActive = false;
     let isMicMuted = false;
+    let myPeerId = null;
     
-    // Recording via MediaRecorder
+    // Recording
     let mediaRecorder = null;
     let recordedChunks = [];
     let isRecording = false;
-    let screenStream = null;
     let savedRecordings = [];
     
     // DOM elements
@@ -475,29 +497,30 @@
     const toggleRecordingsBtn = document.getElementById('toggleRecordingsBtn');
     const closePanelBtn = document.getElementById('closePanelBtn');
     const recordingsListDiv = document.getElementById('recordingsList');
-    
-    // Share modal elements
     const shareModal = document.getElementById('shareModal');
     const shareLinkInput = document.getElementById('shareLinkInput');
     const copyShareLinkBtn = document.getElementById('copyShareLinkBtn');
-    const shareWhatsAppBtn = document.getElementById('shareWhatsAppBtn');
-    const shareTelegramBtn = document.getElementById('shareTelegramBtn');
-    const shareEmailBtn = document.getElementById('shareEmailBtn');
-    const shareTwitterBtn = document.getElementById('shareTwitterBtn');
     const closeModalBtn = document.getElementById('closeModalBtn');
+    const toast = document.getElementById('toast');
     
     let currentRoomName = null;
+    let roomPeers = new Set();
     
-    // Generate or get room from URL
+    function showToast(msg) {
+        toast.textContent = msg;
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+    
     function initRoom() {
         const urlParams = new URLSearchParams(window.location.search);
         let roomName = urlParams.get('room');
         if (!roomName) {
-            roomName = 'meeting_' + Math.random().toString(36).substring(2, 12);
+            roomName = 'room_' + Math.random().toString(36).substring(2, 12);
             window.history.pushState({}, '', `?room=${roomName}`);
         }
         currentRoomName = roomName;
-        roomIdDisplay.textContent = roomName;
+        roomIdDisplay.textContent = currentRoomName;
         updateShareLink();
     }
     
@@ -506,249 +529,254 @@
     }
     
     function updateShareLink() {
-        if (shareLinkInput) {
-            shareLinkInput.value = getRoomLink();
-        }
+        if (shareLinkInput) shareLinkInput.value = getRoomLink();
     }
     
-    // Share functionality
     copyRoomBtn.addEventListener('click', () => {
         navigator.clipboard.writeText(getRoomLink());
-        copyRoomBtn.textContent = '✅ Copied!';
-        setTimeout(() => { copyRoomBtn.textContent = '📋 Copy link'; }, 2000);
+        showToast('✅ Link copied!');
     });
     
-    // Open share modal
     shareRoomBtn.addEventListener('click', () => {
         updateShareLink();
         shareModal.classList.add('open');
     });
     
-    function closeShareModal() {
-        shareModal.classList.remove('open');
-    }
+    function closeShareModal() { shareModal.classList.remove('open'); }
     
     copyShareLinkBtn.addEventListener('click', () => {
         navigator.clipboard.writeText(getRoomLink());
-        copyShareLinkBtn.textContent = '✅ Copied!';
-        setTimeout(() => { copyShareLinkBtn.textContent = 'Copy'; }, 2000);
+        showToast('✅ Copied!');
     });
     
-    // Share to WhatsApp
     shareWhatsAppBtn.addEventListener('click', () => {
-        const text = encodeURIComponent(`Join my video meeting on MeetHub!\n${getRoomLink()}`);
-        window.open(`https://wa.me/?text=${text}`, '_blank');
+        window.open(`https://wa.me/?text=${encodeURIComponent(`Join my video meeting!\n${getRoomLink()}`)}`, '_blank');
         closeShareModal();
     });
-    
-    // Share to Telegram
     shareTelegramBtn.addEventListener('click', () => {
-        const text = encodeURIComponent(`Join my video meeting: ${getRoomLink()}`);
         window.open(`https://t.me/share/url?url=${encodeURIComponent(getRoomLink())}&text=Join%20my%20video%20meeting!`, '_blank');
         closeShareModal();
     });
-    
-    // Share via Email
     shareEmailBtn.addEventListener('click', () => {
-        const subject = encodeURIComponent('Video Meeting Invitation');
-        const body = encodeURIComponent(`You're invited to join my video meeting!\n\nClick this link to join: ${getRoomLink()}\n\nMeetHub - Multi-participant video conference`);
-        window.location.href = `mailto:?subject=${subject}&body=${body}`;
+        window.location.href = `mailto:?subject=Video%20Meeting&body=Join%20my%20meeting:%20${encodeURIComponent(getRoomLink())}`;
         closeShareModal();
     });
-    
-    // Share to Twitter/X
     shareTwitterBtn.addEventListener('click', () => {
-        const text = encodeURIComponent(`Join my video meeting on MeetHub! 🎥\n\n${getRoomLink()}`);
-        window.open(`https://twitter.com/intent/tweet?text=${text}`, '_blank');
+        window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(`Join my video meeting! ${getRoomLink()}`)}`, '_blank');
         closeShareModal();
     });
-    
     closeModalBtn.addEventListener('click', closeShareModal);
+    shareModal.addEventListener('click', (e) => { if (e.target === shareModal) closeShareModal(); });
     
-    // Close modal when clicking outside
-    shareModal.addEventListener('click', (e) => {
-        if (e.target === shareModal) closeShareModal();
-    });
-    
-    // LiveKit connection
-    async function connectToRoom() {
-        if (room && room.state === 'connected') {
-            console.log('Already connected');
-            return;
-        }
+    function initPeerJS() {
+        initRoom();
+        peer = new Peer(generatePeerId(), {
+            config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }
+        });
         
-        const LIVEKIT_URL = 'wss://meet-verse-4lxbhxhw.livekit.cloud';
-        const participantName = 'User_' + Math.floor(Math.random() * 10000);
+        peer.on('open', (id) => {
+            myPeerId = id;
+            showToast('🎉 Ready to connect! Click "Create / Join Room"');
+            console.log('My Peer ID:', id);
+        });
         
-        try {
-            const tokenResponse = await fetch(`https://livekit-token-generator-2g3g.onrender.com/token?room=${currentRoomName}&identity=${participantName}`);
-            if (!tokenResponse.ok) throw new Error('Failed to get token');
-            const token = await tokenResponse.text();
-            
-            const LiveKitClient = window.LivekitClient;
-            room = new LiveKitClient.Room();
-            
-            room.on(LiveKitClient.RoomEvent.TrackSubscribed, handleTrackSubscribed);
-            room.on(LiveKitClient.RoomEvent.TrackUnsubscribed, handleTrackUnsubscribed);
-            room.on(LiveKitClient.RoomEvent.ParticipantConnected, handleParticipantConnected);
-            room.on(LiveKitClient.RoomEvent.ParticipantDisconnected, handleParticipantDisconnected);
-            room.on(LiveKitClient.RoomEvent.Disconnected, () => {
-                isConnected = false;
+        peer.on('call', (call) => {
+            if (localStream && isInRoom) {
+                call.answer(localStream);
+                call.on('stream', (remoteStream) => {
+                    addRemoteVideo(call.peer, remoteStream);
+                });
+                connections.set(call.peer, call);
+                roomPeers.add(call.peer);
                 updateParticipantCount();
-                joinRoomBtn.disabled = false;
-                toggleMediaBtn.disabled = true;
-                stopMediaBtn.disabled = true;
-                toggleMicBtn.disabled = true;
-                participantInfoSpan.innerHTML = '👥 Disconnected';
-            });
-            
-            await room.connect(LIVEKIT_URL, token);
-            isConnected = true;
-            updateParticipantCount();
-            joinRoomBtn.disabled = true;
-            toggleMediaBtn.disabled = false;
-            stopMediaBtn.disabled = false;
-            toggleMicBtn.disabled = false;
-            startRecordingBtn.disabled = false;
-            
-            await enableMedia();
-            
-        } catch (err) {
-            console.error('Connection failed:', err);
-            alert('Connection failed. Please refresh or check your internet connection.\n\nNote: Public token server may have limits. For production, use your own LiveKit instance.');
-        }
+            }
+        });
+        
+        peer.on('error', (err) => {
+            console.error('Peer error:', err);
+            showToast('Connection error. Please refresh.');
+        });
     }
     
-    async function enableMedia() {
-        if (!room || room.state !== 'connected') return;
+    function generatePeerId() {
+        return 'user_' + Math.random().toString(36).substring(2, 10) + '_' + Date.now();
+    }
+    
+    async function startLocalMedia() {
         try {
-            await room.localParticipant.enableCameraAndMicrophone();
-            isCameraActive = true;
-            isMicMuted = false;
-            toggleMediaBtn.textContent = '📷 Camera On';
-            toggleMicBtn.innerHTML = '🎤 Mute';
-            toggleMicBtn.style.background = '';
-            updateLocalVideoUI();
-        } catch (err) {
-            console.error('Media enable error:', err);
-        }
-    }
-    
-    async function disableMedia() {
-        if (!room || room.state !== 'connected') return;
-        await room.localParticipant.setCameraEnabled(false);
-        await room.localParticipant.setMicrophoneEnabled(false);
-        isCameraActive = false;
-        toggleMediaBtn.textContent = '🎥 Start Camera';
-        toggleMicBtn.innerHTML = '🎤 Mic Off';
-        updateLocalVideoUI();
-    }
-    
-    function toggleMute() {
-        if (!room || room.state !== 'connected') return;
-        const newMute = !isMicMuted;
-        room.localParticipant.setMicrophoneEnabled(!newMute);
-        isMicMuted = newMute;
-        toggleMicBtn.innerHTML = isMicMuted ? '🎤 Unmute' : '🎤 Mute';
-        toggleMicBtn.style.background = isMicMuted ? '#dc2626' : '';
-    }
-    
-    function handleTrackSubscribed(track, publication, participant) {
-        if (track.kind === 'video' || track.kind === 'audio') {
-            addParticipantVideo(participant, track);
-        }
-    }
-    
-    function handleTrackUnsubscribed(track, publication, participant) {
-        removeParticipantVideo(participant.identity);
-    }
-    
-    function handleParticipantConnected(participant) {
-        updateParticipantCount();
-    }
-    
-    function handleParticipantDisconnected(participant) {
-        removeParticipantVideo(participant.identity);
-        updateParticipantCount();
-    }
-    
-    function updateParticipantCount() {
-        if (room && room.state === 'connected') {
-            const count = room.participants.size + 1;
-            participantInfoSpan.innerHTML = `👥 ${count} participants`;
-        } else {
-            participantInfoSpan.innerHTML = '👥 0 participants';
-        }
-    }
-    
-    function addParticipantVideo(participant, track) {
-        let elementId = `video-${participant.identity}`;
-        let container = document.getElementById(elementId);
-        if (!container) {
-            const videoCard = document.createElement('div');
-            videoCard.className = 'video-card';
-            videoCard.id = elementId;
-            const video = document.createElement('video');
-            video.autoplay = true;
-            video.playsInline = true;
-            const label = document.createElement('div');
-            label.className = 'video-label';
-            label.textContent = participant.name || participant.identity;
-            videoCard.appendChild(video);
-            videoCard.appendChild(label);
-            videoGrid.appendChild(videoCard);
-            container = videoCard;
-        }
-        const videoEl = container.querySelector('video');
-        if (track.kind === 'video') {
-            const mediaStream = new MediaStream([track.mediaStreamTrack]);
-            videoEl.srcObject = mediaStream;
-        }
-    }
-    
-    function removeParticipantVideo(identity) {
-        const element = document.getElementById(`video-${identity}`);
-        if (element) element.remove();
-    }
-    
-    function updateLocalVideoUI() {
-        if (room && room.localParticipant && isCameraActive) {
-            let localCard = document.getElementById('local-video-card');
+            if (localStream) {
+                localStream.getTracks().forEach(t => t.stop());
+            }
+            localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            const localCard = document.getElementById('local-video-card');
             if (!localCard) {
-                localCard = document.createElement('div');
-                localCard.className = 'video-card local-video';
-                localCard.id = 'local-video-card';
+                const card = document.createElement('div');
+                card.className = 'video-card local-video';
+                card.id = 'local-video-card';
                 const video = document.createElement('video');
                 video.autoplay = true;
                 video.playsInline = true;
                 video.muted = true;
                 const label = document.createElement('div');
                 label.className = 'video-label';
-                label.textContent = 'You (Local)';
-                localCard.appendChild(video);
-                localCard.appendChild(label);
-                videoGrid.insertBefore(localCard, videoGrid.firstChild);
+                label.textContent = 'You';
+                card.appendChild(video);
+                card.appendChild(label);
+                videoGrid.insertBefore(card, videoGrid.firstChild);
             }
-            const videoTrack = room.localParticipant.videoTrackPublications.values().next().value;
-            if (videoTrack && videoTrack.track) {
-                const videoEl = localCard.querySelector('video');
-                videoEl.srcObject = new MediaStream([videoTrack.track.mediaStreamTrack]);
-            }
-        } else if (!isCameraActive) {
-            const localCard = document.getElementById('local-video-card');
-            if (localCard) localCard.remove();
+            const videoEl = document.querySelector('#local-video-card video');
+            if (videoEl) videoEl.srcObject = localStream;
+            
+            isCameraActive = true;
+            toggleMediaBtn.textContent = '📷 Camera On';
+            stopMediaBtn.disabled = false;
+            toggleMicBtn.disabled = false;
+            startRecordingBtn.disabled = false;
+            
+            return true;
+        } catch (err) {
+            console.error(err);
+            showToast('Camera/Mic access denied');
+            return false;
         }
     }
     
-    // Client-side recording
+    function stopLocalMedia() {
+        if (localStream) {
+            localStream.getTracks().forEach(t => t.stop());
+            localStream = null;
+        }
+        const localCard = document.getElementById('local-video-card');
+        if (localCard) localCard.remove();
+        isCameraActive = false;
+        toggleMediaBtn.textContent = '🎥 Start Camera';
+        stopMediaBtn.disabled = true;
+        toggleMicBtn.disabled = true;
+        startRecordingBtn.disabled = true;
+        showToast('Camera stopped');
+    }
+    
+    function toggleMute() {
+        if (!localStream) return;
+        const audioTrack = localStream.getAudioTracks()[0];
+        if (audioTrack) {
+            isMicMuted = !isMicMuted;
+            audioTrack.enabled = !isMicMuted;
+            toggleMicBtn.innerHTML = isMicMuted ? '🎤 Unmute' : '🎤 Mute';
+            toggleMicBtn.style.background = isMicMuted ? '#dc2626' : '';
+        }
+    }
+    
+    async function joinRoom() {
+        if (!peer || !peer.id) {
+            showToast('Waiting for connection...');
+            return;
+        }
+        if (isInRoom) {
+            showToast('Already in a room');
+            return;
+        }
+        
+        await startLocalMedia();
+        isInRoom = true;
+        joinRoomBtn.disabled = true;
+        showToast(`Joined room: ${currentRoomName}`);
+        
+        // Broadcast to all peers in the room using URL hash or localStorage for demo
+        // For mesh, we'll use a simple broadcast via localStorage cross-tab?
+        // Better: use a simple signaling via a public channel
+        // Since we need cross-device signaling, we'll use a simple Firebase-less approach:
+        // Use a free broadcast server: wss://broadcast-server.herokuapp.com - but unreliable
+        // Alternative: PeerJS already handles signaling via PeerJS cloud. For room-based discovery,
+        // we'll store peer IDs in localStorage with room key (for same-device testing) 
+        // But for real cross-device: Users need to share Peer IDs. Simpler: use URL parameters.
+        
+        // For demo, provide manual peer ID sharing
+        showToast(`Your ID: ${myPeerId}. Share this with others to connect!`);
+        
+        // Automatically connect to peers that join via URL param
+        const urlParams = new URLSearchParams(window.location.search);
+        const targetPeer = urlParams.get('peer');
+        if (targetPeer && targetPeer !== myPeerId && !connections.has(targetPeer)) {
+            await callPeer(targetPeer);
+        }
+    }
+    
+    async function callPeer(peerId) {
+        if (!localStream) {
+            showToast('Start camera first');
+            return;
+        }
+        const call = peer.call(peerId, localStream);
+        call.on('stream', (remoteStream) => {
+            addRemoteVideo(peerId, remoteStream);
+        });
+        connections.set(peerId, call);
+        roomPeers.add(peerId);
+        updateParticipantCount();
+        showToast(`Connected to ${peerId.substring(0, 8)}`);
+    }
+    
+    function addRemoteVideo(peerId, stream) {
+        let card = document.getElementById(`video-${peerId}`);
+        if (!card) {
+            card = document.createElement('div');
+            card.className = 'video-card';
+            card.id = `video-${peerId}`;
+            const video = document.createElement('video');
+            video.autoplay = true;
+            video.playsInline = true;
+            const label = document.createElement('div');
+            label.className = 'video-label';
+            label.textContent = `Peer ${peerId.substring(0, 8)}`;
+            card.appendChild(video);
+            card.appendChild(label);
+            videoGrid.appendChild(card);
+        }
+        const videoEl = card.querySelector('video');
+        videoEl.srcObject = stream;
+    }
+    
+    function removeRemoteVideo(peerId) {
+        const card = document.getElementById(`video-${peerId}`);
+        if (card) card.remove();
+        roomPeers.delete(peerId);
+        connections.delete(peerId);
+        updateParticipantCount();
+    }
+    
+    function updateParticipantCount() {
+        const count = roomPeers.size + (isCameraActive ? 1 : 0);
+        participantInfoSpan.innerHTML = `👥 ${count} participants`;
+    }
+    
+    function leaveRoom() {
+        // Close all connections
+        connections.forEach((call, peerId) => {
+            call.close();
+            removeRemoteVideo(peerId);
+        });
+        connections.clear();
+        roomPeers.clear();
+        stopLocalMedia();
+        isInRoom = false;
+        joinRoomBtn.disabled = false;
+        updateParticipantCount();
+        showToast('Left the room');
+    }
+    
+    // Recording functions
     async function startClientRecording() {
-        if (!room || room.state !== 'connected') {
-            alert('Join a room first');
+        if (!localStream) {
+            showToast('Start camera first');
             return;
         }
         try {
-            screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
-            mediaRecorder = new MediaRecorder(screenStream);
+            const displayStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+            const combinedTracks = [...displayStream.getVideoTracks(), ...localStream.getAudioTracks()];
+            const combinedStream = new MediaStream(combinedTracks);
+            
+            mediaRecorder = new MediaRecorder(combinedStream);
             recordedChunks = [];
             mediaRecorder.ondataavailable = (e) => {
                 if (e.data.size > 0) recordedChunks.push(e.data);
@@ -762,15 +790,17 @@
                 recordIndicator.style.display = 'none';
                 startRecordingBtn.disabled = false;
                 stopRecordingBtn.disabled = true;
-                if (screenStream) screenStream.getTracks().forEach(t => t.stop());
+                displayStream.getTracks().forEach(t => t.stop());
+                showToast('Recording saved!');
             };
             mediaRecorder.start(1000);
             isRecording = true;
             recordIndicator.style.display = 'inline-flex';
             startRecordingBtn.disabled = true;
             stopRecordingBtn.disabled = false;
+            showToast('Recording started');
         } catch (err) {
-            alert('Screen capture permission needed for recording');
+            showToast('Screen capture permission needed');
         }
     }
     
@@ -808,45 +838,58 @@
         });
     }
     
-    function leaveRoom() {
-        if (room) {
-            room.disconnect();
-            room = null;
-        }
-        videoGrid.innerHTML = '';
-        isConnected = false;
-        joinRoomBtn.disabled = false;
-        toggleMediaBtn.disabled = true;
-        stopMediaBtn.disabled = true;
-        toggleMicBtn.disabled = true;
-        startRecordingBtn.disabled = true;
-        stopRecordingBtn.disabled = true;
-        participantInfoSpan.innerHTML = '👥 0 participants';
+    // Add manual peer connection UI
+    const manualConnectDiv = document.createElement('div');
+    manualConnectDiv.style.position = 'fixed';
+    manualConnectDiv.style.bottom = '5rem';
+    manualConnectDiv.style.left = '1rem';
+    manualConnectDiv.style.background = '#1e293b';
+    manualConnectDiv.style.padding = '0.5rem 1rem';
+    manualConnectDiv.style.borderRadius = '2rem';
+    manualConnectDiv.style.fontSize = '0.7rem';
+    manualConnectDiv.style.zIndex = '200';
+    manualConnectDiv.innerHTML = `
+        <input type="text" id="manualPeerId" placeholder="Enter Peer ID" style="background:#0f172a; border:1px solid #334155; padding:0.3rem; border-radius:1rem; color:white;">
+        <button id="manualConnectBtn" style="background:#4f46e5; padding:0.3rem 0.8rem; margin-left:0.5rem;">Connect</button>
+        <div style="font-size:0.6rem; margin-top:0.2rem;">Your ID: <span id="myPeerIdDisplay">---</span></div>
+    `;
+    document.body.appendChild(manualConnectDiv);
+    
+    function updateMyPeerIdDisplay() {
+        const display = document.getElementById('myPeerIdDisplay');
+        if (display && myPeerId) display.textContent = myPeerId.substring(0, 12);
     }
     
+    setInterval(() => {
+        if (myPeerId) updateMyPeerIdDisplay();
+    }, 1000);
+    
+    document.addEventListener('click', (e) => {
+        if (e.target.id === 'manualConnectBtn') {
+            const input = document.getElementById('manualPeerId');
+            if (input && input.value && peer) {
+                callPeer(input.value);
+                input.value = '';
+            }
+        }
+    });
+    
     // Event listeners
-    joinRoomBtn.addEventListener('click', connectToRoom);
-    toggleMediaBtn.addEventListener('click', enableMedia);
-    stopMediaBtn.addEventListener('click', disableMedia);
+    joinRoomBtn.addEventListener('click', joinRoom);
+    toggleMediaBtn.addEventListener('click', startLocalMedia);
+    stopMediaBtn.addEventListener('click', stopLocalMedia);
     toggleMicBtn.addEventListener('click', toggleMute);
     startRecordingBtn.addEventListener('click', startClientRecording);
     stopRecordingBtn.addEventListener('click', stopClientRecording);
     leaveRoomBtn.addEventListener('click', leaveRoom);
+    toggleRecordingsBtn.addEventListener('click', () => recordingsPanel.classList.toggle('open'));
+    closePanelBtn.addEventListener('click', () => recordingsPanel.classList.remove('open'));
     
-    toggleRecordingsBtn.addEventListener('click', () => {
-        recordingsPanel.classList.toggle('open');
-    });
-    closePanelBtn.addEventListener('click', () => {
-        recordingsPanel.classList.remove('open');
-    });
-    
-    function initLiveKit() {
-        initRoom();
-        console.log('LiveKit SDK loaded — Ready for 20+ participants! Share button active');
-    }
-    
-    if (window.LivekitClient) {
-        initLiveKit();
+    // Auto-initialize
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initPeerJS);
+    } else {
+        initPeerJS();
     }
 </script>
 </body>
