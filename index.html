@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>LiveKit Meeting - Direct Connection</title>
+    <title>MeetSpace - LiveKit Video Meeting</title>
     <script src="https://unpkg.com/livekit-client@2.0.0/dist/livekit-client.umd.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/10.8.0/jsrsasign-all-min.js"></script>
     <style>
@@ -15,36 +15,42 @@
 
         body {
             font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            background: #1a1a2e;
-            color: #eee;
-            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            padding: 20px;
         }
 
         .container {
-            max-width: 800px;
-            width: 100%;
-            background: #0f0f1a;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Setup Panel */
+        .setup-panel {
+            background: rgba(255,255,255,0.95);
             border-radius: 24px;
-            overflow: hidden;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
             padding: 32px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 500px;
+            margin: 50px auto;
+        }
+
+        .setup-panel.hidden {
+            display: none;
         }
 
         h1 {
-            font-size: 1.8rem;
+            font-size: 28px;
             margin-bottom: 8px;
+            color: #1a1a2e;
             text-align: center;
         }
 
         .subtitle {
             text-align: center;
-            color: #aaa;
+            color: #666;
             margin-bottom: 32px;
-            font-size: 0.85rem;
+            font-size: 14px;
         }
 
         .form-group {
@@ -53,60 +59,71 @@
 
         label {
             display: block;
-            font-size: 0.85rem;
-            font-weight: 500;
+            font-size: 14px;
+            font-weight: 600;
             margin-bottom: 8px;
-            color: #aaa;
+            color: #333;
         }
 
         input {
             width: 100%;
-            padding: 14px 18px;
-            background: #0a0a12;
-            border: 1px solid #2c2c40;
+            padding: 14px 16px;
+            border: 2px solid #e0e0e0;
             border-radius: 12px;
-            color: white;
-            font-size: 1rem;
+            font-size: 16px;
+            transition: 0.2s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
         }
 
         button {
             width: 100%;
-            background: #4f46e5;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
-            padding: 14px 24px;
+            padding: 14px;
             border-radius: 40px;
             font-weight: 600;
-            font-size: 1rem;
+            font-size: 16px;
             cursor: pointer;
-            margin-top: 16px;
+            transition: transform 0.2s;
         }
 
         button:hover {
-            background: #6366f1;
+            transform: scale(1.02);
         }
 
-        .status {
-            text-align: center;
-            padding: 12px;
-            font-size: 0.85rem;
-            color: #aaa;
-            margin-top: 16px;
+        /* Meeting Area */
+        .meeting-area {
+            display: none;
+            background: #1a1a2e;
+            border-radius: 24px;
+            overflow: hidden;
+        }
+
+        .meeting-area.active {
+            display: block;
         }
 
         .video-grid {
             display: grid;
-            grid-template-columns: 1fr;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 16px;
-            margin-top: 20px;
+            padding: 20px;
+            min-height: 70vh;
+            background: #0f0f1a;
         }
 
         .participant {
             background: #1e1e2e;
-            border-radius: 20px;
+            border-radius: 16px;
             overflow: hidden;
             position: relative;
             aspect-ratio: 16 / 9;
+            border: 2px solid #333;
         }
 
         .participant video {
@@ -120,28 +137,32 @@
             bottom: 12px;
             left: 12px;
             background: rgba(0,0,0,0.7);
-            padding: 4px 12px;
-            border-radius: 40px;
-            font-size: 0.8rem;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            color: white;
         }
 
         .controls {
             display: flex;
             justify-content: center;
-            gap: 16px;
-            margin-top: 20px;
+            gap: 20px;
+            padding: 20px;
+            background: #16162a;
         }
 
         .control-btn {
             background: #2d2d44;
-            width: 56px;
-            height: 56px;
-            border-radius: 100px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.6rem;
+            font-size: 24px;
             cursor: pointer;
+            transition: 0.2s;
+            color: white;
         }
 
         .control-btn.active {
@@ -152,44 +173,89 @@
             background: #dc2626;
         }
 
-        .hidden {
-            display: none;
+        .status {
+            text-align: center;
+            padding: 12px;
+            font-size: 14px;
+            color: #aaa;
+            background: #0f0f1a;
+        }
+
+        .info-badge {
+            background: #e8f0fe;
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            text-align: center;
+            border-left: 4px solid #667eea;
+            color: #333;
+        }
+
+        @media (max-width: 700px) {
+            .video-grid {
+                grid-template-columns: 1fr;
+            }
+            .control-btn {
+                width: 50px;
+                height: 50px;
+                font-size: 20px;
+            }
         }
     </style>
 </head>
 <body>
 <div class="container">
-    <h1>🎥 LiveKit Meeting</h1>
-    <div class="subtitle">Direct connection - No region fetch</div>
-    
-    <div id="setupPanel">
+    <!-- Setup Panel -->
+    <div id="setupPanel" class="setup-panel">
+        <h1>🎥 MeetSpace</h1>
+        <div class="subtitle">Real-time video meetings powered by LiveKit</div>
+        
+        <div class="info-badge">
+            ✅ Ready to use! Enter your name and join instantly.
+        </div>
+        
         <div class="form-group">
             <label>👤 Your Name</label>
-            <input type="text" id="userName" placeholder="Enter your name" value="iPhoneUser">
+            <input type="text" id="userName" placeholder="Enter your name" value="User">
         </div>
+        
+        <div class="form-group">
+            <label>📁 Room Name</label>
+            <input type="text" id="roomName" placeholder="room-name" value="main-room">
+        </div>
+        
         <button id="joinBtn">🚀 Join Meeting</button>
-        <div id="status" class="status">🔌 Ready to connect</div>
+        <p style="font-size: 12px; text-align: center; margin-top: 20px; color: #999;">
+            🔒 Secure WebRTC connection
+        </p>
     </div>
 
-    <div id="meetingArea" class="hidden">
+    <!-- Meeting Area -->
+    <div id="meetingArea" class="meeting-area">
         <div id="videoGrid" class="video-grid"></div>
         <div class="controls">
-            <div id="toggleMic" class="control-btn active">🎤</div>
-            <div id="toggleCam" class="control-btn active">📹</div>
-            <div id="leaveBtn" class="control-btn leave">🚪</div>
+            <div id="toggleMic" class="control-btn active" title="Microphone">🎤</div>
+            <div id="toggleCam" class="control-btn active" title="Camera">📹</div>
+            <div id="toggleScreen" class="control-btn" title="Share Screen">🖥️</div>
+            <div id="leaveBtn" class="control-btn leave" title="Leave">🚪</div>
         </div>
+        <div id="status" class="status">🔌 Ready to connect</div>
     </div>
 </div>
 
 <script>
-    // YOUR CREDENTIALS
-    const WS_URL = 'wss://meeting-t8djzlpf.livekit.cloud';
-    const API_KEY = 'API6VWLgTHiX4vR';
-    const API_SECRET = 'wSxeUi1FLtzZ9VJSfhg181qP2klwVlAeb9pwwXTt';
+    // YOUR LIVEKIT CREDENTIALS (pre-configured)
+    const LIVEKIT_CONFIG = {
+        wsUrl: 'wss://meeting-t8djzlpf.livekit.cloud',
+        apiKey: 'API6VWLgTHiX4vR',
+        apiSecret: 'wSxeUi1FLtzZ9VJSfhg181qP2klwVlAeb9pwwXTt'
+    };
     
     let room = null;
     let localVideoTrack = null;
     let localAudioTrack = null;
+    let screenTrack = null;
     
     const setupPanel = document.getElementById('setupPanel');
     const meetingArea = document.getElementById('meetingArea');
@@ -199,13 +265,14 @@
     const leaveBtn = document.getElementById('leaveBtn');
     const toggleMicBtn = document.getElementById('toggleMic');
     const toggleCamBtn = document.getElementById('toggleCam');
+    const toggleScreenBtn = document.getElementById('toggleScreen');
 
     function generateToken(roomName, participantName) {
         const now = Math.floor(Date.now() / 1000);
         const exp = now + 6 * 60 * 60;
         
         const payload = {
-            "iss": API_KEY,
+            "iss": LIVEKIT_CONFIG.apiKey,
             "exp": exp,
             "nbf": now,
             "sub": participantName,
@@ -218,16 +285,15 @@
         };
         
         const header = { alg: "HS256", typ: "JWT" };
-        return KJUR.jws.JWS.sign("HS256", JSON.stringify(header), JSON.stringify(payload), API_SECRET);
+        return KJUR.jws.JWS.sign("HS256", JSON.stringify(header), JSON.stringify(payload), LIVEKIT_CONFIG.apiSecret);
     }
 
     function addVideoElement(track, participantName, isLocal = false) {
-        const mediaStream = new MediaStream([track]);
         const container = document.createElement('div');
         container.className = 'participant';
         
         const video = document.createElement('video');
-        video.srcObject = mediaStream;
+        video.srcObject = new MediaStream([track]);
         video.autoplay = true;
         video.playsInline = true;
         
@@ -247,13 +313,12 @@
     }
 
     async function joinMeeting() {
-        const userName = document.getElementById('userName').value.trim() || 'iPhoneUser';
-        const roomName = 'meeting-room';
+        const userName = document.getElementById('userName').value.trim() || 'User';
+        const roomName = document.getElementById('roomName').value.trim() || 'main-room';
         
-        statusDiv.innerText = '🎤 Requesting camera/microphone...';
+        statusDiv.innerText = '🎤 Requesting camera and microphone...';
         
         try {
-            // Request permissions first
             const stream = await navigator.mediaDevices.getUserMedia({ 
                 video: true, 
                 audio: true 
@@ -262,22 +327,19 @@
             const videoTrack = stream.getVideoTracks()[0];
             const audioTrack = stream.getAudioTracks()[0];
             
-            statusDiv.innerText = '✅ Permission granted. Connecting to LiveKit...';
+            statusDiv.innerText = '✅ Connected. Joining room...';
             
             const token = generateToken(roomName, userName);
             
             room = new LivekitClient.Room();
             
-            // Direct connection - no region fetch
-            await room.connect(WS_URL, token);
+            await room.connect(LIVEKIT_CONFIG.wsUrl, token);
             
-            statusDiv.innerText = `✅ Connected to "${roomName}" as ${userName}`;
+            statusDiv.innerText = `✅ In room "${roomName}" as ${userName}`;
             
-            // Switch UI
             setupPanel.classList.add('hidden');
-            meetingArea.classList.remove('hidden');
+            meetingArea.classList.add('active');
             
-            // Publish local tracks
             const localParticipant = room.localParticipant;
             localVideoTrack = new LivekitClient.LocalVideoTrack(videoTrack);
             localAudioTrack = new LivekitClient.LocalAudioTrack(audioTrack);
@@ -287,9 +349,12 @@
             
             addVideoElement(videoTrack, userName, true);
             
-            // Listen for other participants
+            // Handle other participants
             room.on(LivekitClient.RoomEvent.ParticipantConnected, (participant) => {
                 statusDiv.innerText = `👋 ${participant.identity} joined`;
+                setTimeout(() => {
+                    statusDiv.innerText = `✅ In room "${roomName}" - ${videoGrid.children.length} participants`;
+                }, 2000);
             });
             
             room.on(LivekitClient.RoomEvent.TrackSubscribed, (track, publication, participant) => {
@@ -301,22 +366,19 @@
             room.on(LivekitClient.RoomEvent.ParticipantDisconnected, (participant) => {
                 statusDiv.innerText = `👋 ${participant.identity} left`;
                 clearVideoGrid();
-                // Re-add self video
                 if (localVideoTrack) {
                     addVideoElement(localVideoTrack.mediaStreamTrack, userName, true);
                 }
             });
             
         } catch (error) {
-            console.error('Error:', error);
+            console.error(error);
             statusDiv.innerText = `❌ Error: ${error.message}`;
             
             if (error.name === 'NotAllowedError') {
-                alert('Please allow camera and microphone access in your browser settings.');
-            } else if (error.message.includes('fetch')) {
-                alert('Network error. Please check your internet connection and try again.\n\nIf on iPhone, try using Safari browser instead.');
+                alert('Please allow camera and microphone access in your browser.');
             } else {
-                alert(`Failed to join: ${error.message}`);
+                alert(`Failed to join: ${error.message}\n\nMake sure you have a stable internet connection.`);
             }
         }
     }
@@ -337,19 +399,23 @@
             localAudioTrack = null;
         }
         
+        if (screenTrack) {
+            screenTrack.stop();
+            screenTrack = null;
+        }
+        
         clearVideoGrid();
         setupPanel.classList.remove('hidden');
-        meetingArea.classList.add('hidden');
+        meetingArea.classList.remove('active');
         statusDiv.innerText = '🔌 Disconnected';
     }
 
-    // Toggle microphone
     toggleMicBtn.onclick = async () => {
         if (localAudioTrack) {
             const newState = !localAudioTrack.enabled;
             await localAudioTrack.setEnabled(newState);
-            toggleMicBtn.style.opacity = newState ? '1' : '0.5';
             toggleMicBtn.style.background = newState ? '#4f46e5' : '#2d2d44';
+            toggleMicBtn.style.opacity = newState ? '1' : '0.5';
         }
     };
     
@@ -357,8 +423,41 @@
         if (localVideoTrack) {
             const newState = !localVideoTrack.enabled;
             await localVideoTrack.setEnabled(newState);
-            toggleCamBtn.style.opacity = newState ? '1' : '0.5';
             toggleCamBtn.style.background = newState ? '#4f46e5' : '#2d2d44';
+            toggleCamBtn.style.opacity = newState ? '1' : '0.5';
+        }
+    };
+    
+    toggleScreenBtn.onclick = async () => {
+        if (!room) return;
+        
+        if (screenTrack) {
+            await room.localParticipant.unpublishTrack(screenTrack);
+            screenTrack.stop();
+            screenTrack = null;
+            toggleScreenBtn.style.background = '#2d2d44';
+            toggleScreenBtn.style.opacity = '0.5';
+        } else {
+            try {
+                const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+                const screenVideoTrack = screenStream.getVideoTracks()[0];
+                screenTrack = new LivekitClient.LocalVideoTrack(screenVideoTrack);
+                await room.localParticipant.publishTrack(screenTrack);
+                toggleScreenBtn.style.background = '#4f46e5';
+                toggleScreenBtn.style.opacity = '1';
+                
+                screenVideoTrack.onended = () => {
+                    if (screenTrack) {
+                        room.localParticipant.unpublishTrack(screenTrack);
+                        screenTrack.stop();
+                        screenTrack = null;
+                        toggleScreenBtn.style.background = '#2d2d44';
+                        toggleScreenBtn.style.opacity = '0.5';
+                    }
+                };
+            } catch (err) {
+                console.error('Screen share error:', err);
+            }
         }
     };
     
