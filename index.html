@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>LiveKit Meeting Room - Fixed Audio</title>
+    <title>LiveKit Meeting Room - Ready to Use</title>
     <script src="https://unpkg.com/livekit-client@2.0.0/dist/livekit-client.umd.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/10.8.0/jsrsasign-all-min.js"></script>
     <style>
@@ -48,11 +48,12 @@
             flex-wrap: wrap;
             gap: 16px;
             align-items: flex-end;
+            justify-content: center;
         }
 
         .input-field {
             flex: 1;
-            min-width: 200px;
+            min-width: 250px;
         }
 
         label {
@@ -64,9 +65,9 @@
             letter-spacing: 0.5px;
         }
 
-        input, select {
+        input {
             width: 100%;
-            padding: 12px 16px;
+            padding: 14px 18px;
             background: #0a0a12;
             border: 1px solid #2c2c40;
             border-radius: 12px;
@@ -75,7 +76,7 @@
             transition: 0.2s;
         }
 
-        input:focus, select:focus {
+        input:focus {
             outline: none;
             border-color: #4f46e5;
             box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.3);
@@ -85,10 +86,10 @@
             background: #4f46e5;
             color: white;
             border: none;
-            padding: 12px 24px;
+            padding: 14px 32px;
             border-radius: 40px;
             font-weight: 600;
-            font-size: 0.95rem;
+            font-size: 1rem;
             cursor: pointer;
             transition: 0.2s;
             font-family: inherit;
@@ -211,13 +212,14 @@
         }
 
         .info-badge {
-            background: #2a2a3e;
+            background: #22c55e20;
             border-radius: 12px;
             padding: 12px;
             margin-bottom: 20px;
-            font-size: 0.8rem;
+            font-size: 0.85rem;
             text-align: center;
-            border-left: 4px solid #4f46e5;
+            border-left: 4px solid #22c55e;
+            color: #22c55e;
         }
 
         .share-panel {
@@ -284,13 +286,11 @@
             animation: pulse 1s infinite;
         }
 
-        /* Audio test indicator */
-        .audio-test {
+        .mic-test {
             background: #2a2a3e;
             border-radius: 12px;
-            padding: 10px;
-            margin-bottom: 15px;
-            font-size: 0.8rem;
+            padding: 10px 15px;
+            margin-bottom: 20px;
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -337,61 +337,43 @@
     <!-- Setup Panel -->
     <div id="setupPanel" class="setup-panel">
         <div class="info-badge">
-            🎥 <strong>LiveKit Meeting Room</strong> — Get credentials from <a href="https://cloud.livekit.io" target="_blank">cloud.livekit.io</a><br>
-            Project → Settings → API Keys → Create API Key → Copy <strong>API Key</strong>, <strong>API Secret</strong>, and <strong>WebSocket URL</strong>
+            ✅ Ready to use! Your LiveKit credentials are pre-configured.
         </div>
         
-        <!-- Audio Test Panel -->
-        <div class="audio-test" id="audioTestPanel">
+        <!-- Microphone Test Panel -->
+        <div class="mic-test">
             <span>🎤 Microphone Test:</span>
             <div class="mic-level">
                 <div class="mic-level-fill" id="micLevelFill"></div>
             </div>
             <span id="micStatus" style="color: #ef4444;">🔴 Not active</span>
-            <button id="testMicBtn" style="padding: 6px 12px; font-size: 0.8rem;">Test Mic</button>
+            <button id="testMicBtn" style="padding: 6px 15px; font-size: 0.8rem;">Test Mic</button>
         </div>
         
         <div class="form-group">
             <div class="input-field">
-                <label>🔑 API Key (Sandbox ID)</label>
-                <input type="text" id="apiKey" placeholder="e.g., API key from LiveKit">
-            </div>
-            <div class="input-field">
-                <label>🔒 API Secret</label>
-                <input type="password" id="apiSecret" placeholder="Your API secret">
-            </div>
-            <div class="input-field">
-                <label>🌐 WebSocket URL</label>
-                <input type="text" id="wsUrl" placeholder="wss://your-project.livekit.cloud">
-            </div>
-            <div class="input-field">
                 <label>👤 Your Name</label>
-                <input type="text" id="userName" placeholder="Your name" value="User">
-            </div>
-            <div class="input-field">
-                <label>📁 Room Name</label>
-                <input type="text" id="roomName" placeholder="room-name" value="meeting-room">
+                <input type="text" id="userName" placeholder="Enter your name" value="User">
             </div>
             <button id="joinBtn">🚀 Join Meeting</button>
         </div>
         
-        <!-- Microphone device selector -->
         <div class="form-group" style="margin-top: 16px;">
             <div class="input-field">
-                <label>🎙️ Select Microphone</label>
+                <label>🎙️ Select Microphone (optional)</label>
                 <select id="micSelect"></select>
             </div>
         </div>
         
         <p style="font-size: 0.7rem; margin-top: 16px; text-align: center; color:#6b7280">
-            ⚠️ For development only. Recording saves locally as WebM file.
+            🔒 Your API credentials are pre-loaded. Just enter your name and join!
         </p>
     </div>
 
     <!-- Share Panel -->
     <div id="sharePanel" class="share-panel hidden">
         <div class="room-info">
-            📍 Room: <span id="currentRoomName">---</span>
+            📍 Room: <span id="currentRoomName">meeting-room</span>
         </div>
         <div class="share-link-container">
             <input type="text" id="shareLink" readonly value="">
@@ -415,14 +397,18 @@
 </div>
 
 <script>
+    // YOUR PRE-CONFIGURED CREDENTIALS
+    const LIVEKIT_CONFIG = {
+        wsUrl: 'wss://meeting-t8djzlpf.livekit.cloud',
+        apiKey: 'API6VWLgTHiX4vR',
+        apiSecret: 'wSxeUi1FLtzZ9VJSfhg181qP2klwVlAeb9pwwXTt'
+    };
+    
     // Global variables
     let room = null;
     let localVideoTrack = null;
     let localAudioTrack = null;
     let screenTrack = null;
-    let currentApiKey = '';
-    let currentApiSecret = '';
-    let currentWsUrl = '';
     let currentStream = null;
     let testStream = null;
     
@@ -478,7 +464,6 @@
 
     // Test microphone with visual feedback
     async function testMicrophone() {
-        // Stop any existing test
         if (testStream) {
             testStream.getTracks().forEach(track => track.stop());
         }
@@ -502,7 +487,7 @@
             micStatus.style.color = '#22c55e';
             
             function updateMicLevel() {
-                if (!testStream || testStream.getAudioTracks()[0].readyState === 'ended') {
+                if (!testStream || testStream.getAudioTracks()[0]?.readyState === 'ended') {
                     return;
                 }
                 analyser.getByteFrequencyData(dataArray);
@@ -518,7 +503,6 @@
             
             updateMicLevel();
             
-            // Start audio context
             if (audioContext.state === 'suspended') {
                 await audioContext.resume();
             }
@@ -535,13 +519,13 @@
             
         } catch (err) {
             console.error('Microphone test failed:', err);
-            micStatus.textContent = '❌ No microphone access';
+            micStatus.textContent = '❌ No mic access';
             micStatus.style.color = '#ef4444';
-            alert('Cannot access microphone. Please check permissions:\n1. Click the camera/mic icon in address bar\n2. Allow microphone access\n3. Reload the page');
+            alert('Cannot access microphone. Please check permissions:\nClick the camera/mic icon in address bar → Allow');
         }
     }
 
-    // Start recording (same as before)
+    // Start recording
     async function startRecording() {
         if (isRecording) return;
         
@@ -683,30 +667,22 @@
     }
 
     // Generate shareable link
-    function generateShareLink(roomName, apiKey, apiSecret, wsUrl) {
+    function generateShareLink(roomName) {
         const baseUrl = window.location.href.split('?')[0];
         const params = new URLSearchParams();
         params.set('room', roomName);
-        params.set('apiKey', apiKey);
-        params.set('apiSecret', apiSecret);
-        params.set('wsUrl', wsUrl);
+        params.set('auto', '1');
         return `${baseUrl}?${params.toString()}`;
     }
 
     function autoJoinFromUrl() {
         const params = new URLSearchParams(window.location.search);
+        const autoJoin = params.get('auto');
         const roomName = params.get('room');
-        const apiKey = params.get('apiKey');
-        const apiSecret = params.get('apiSecret');
-        const wsUrl = params.get('wsUrl');
         
-        if (roomName && apiKey && apiSecret && wsUrl) {
-            document.getElementById('apiKey').value = apiKey;
-            document.getElementById('apiSecret').value = apiSecret;
-            document.getElementById('wsUrl').value = wsUrl;
+        if (autoJoin === '1' && roomName) {
             document.getElementById('roomName').value = roomName;
             document.getElementById('userName').value = `Guest_${Math.floor(Math.random() * 1000)}`;
-            
             setTimeout(() => {
                 joinBtn.click();
             }, 500);
@@ -714,20 +690,18 @@
     }
 
     function updateSharePanel(roomName) {
-        if (!currentApiKey || !currentApiSecret || !currentWsUrl) return;
-        
-        const shareUrl = generateShareLink(roomName, currentApiKey, currentApiSecret, currentWsUrl);
+        const shareUrl = generateShareLink(roomName);
         shareLinkInput.value = shareUrl;
         currentRoomNameSpan.textContent = roomName;
         sharePanel.classList.remove('hidden');
     }
 
-    function generateToken(apiKey, apiSecret, roomName, participantName) {
+    function generateToken(roomName, participantName) {
         const now = Math.floor(Date.now() / 1000);
         const exp = now + 6 * 60 * 60;
         
         const payload = {
-            "iss": apiKey,
+            "iss": LIVEKIT_CONFIG.apiKey,
             "exp": exp,
             "nbf": now,
             "sub": participantName,
@@ -740,7 +714,7 @@
         };
         
         const header = { alg: "HS256", typ: "JWT" };
-        return KJUR.jws.JWS.sign("HS256", JSON.stringify(header), JSON.stringify(payload), apiSecret);
+        return KJUR.jws.JWS.sign("HS256", JSON.stringify(header), JSON.stringify(payload), LIVEKIT_CONFIG.apiSecret);
     }
 
     function addVideoElement(track, participantName, isLocal = false) {
@@ -827,27 +801,18 @@
     }
 
     async function joinMeeting() {
-        const apiKey = document.getElementById('apiKey').value.trim();
-        const apiSecret = document.getElementById('apiSecret').value.trim();
-        const wsUrl = document.getElementById('wsUrl').value.trim();
         const userName = document.getElementById('userName').value.trim() || `User_${Math.floor(Math.random() * 1000)}`;
-        const roomName = document.getElementById('roomName').value.trim() || 'meeting-room';
+        const roomName = 'meeting-room';
         const selectedMicId = micSelect.value;
         
-        if (!apiKey || !apiSecret || !wsUrl) {
-            alert('Please fill in all fields: API Key, API Secret, and WebSocket URL');
-            return;
-        }
-        
-        if (!wsUrl.startsWith('wss://')) {
-            alert('WebSocket URL must start with wss://');
+        if (!userName) {
+            alert('Please enter your name');
             return;
         }
         
         try {
-            connectionStatus.innerText = '🔄 Requesting microphone & camera...';
+            connectionStatus.innerText = '🎤 Requesting microphone & camera...';
             
-            // Request media with specific microphone if selected
             const audioConstraints = selectedMicId ? 
                 { deviceId: { exact: selectedMicId } } : true;
             
@@ -860,16 +825,14 @@
             const videoTrack = stream.getVideoTracks()[0];
             const audioTrack = stream.getAudioTracks()[0];
             
-            // Verify audio is working
             if (audioTrack) {
-                connectionStatus.innerText = '✅ Microphone detected - Connecting to LiveKit...';
-                console.log('Audio track enabled:', audioTrack.enabled);
+                connectionStatus.innerText = '✅ Microphone detected - Connecting...';
                 console.log('Audio track settings:', audioTrack.getSettings());
             } else {
                 console.warn('No audio track found');
             }
             
-            const token = generateToken(apiKey, apiSecret, roomName, userName);
+            const token = generateToken(roomName, userName);
             
             room = new LivekitClient.Room();
             
@@ -881,12 +844,8 @@
                 leaveMeeting();
             });
             
-            await room.connect(wsUrl, token);
+            await room.connect(LIVEKIT_CONFIG.wsUrl, token);
             connectionStatus.innerText = `✅ Connected to "${roomName}" as ${userName}`;
-            
-            currentApiKey = apiKey;
-            currentApiSecret = apiSecret;
-            currentWsUrl = wsUrl;
             
             setupPanel.classList.add('hidden');
             meetingArea.classList.add('active');
@@ -902,25 +861,29 @@
             
             addVideoElement(videoTrack, userName, true);
             
-            // Update UI to show mic is active
             toggleMicBtn.style.opacity = '1';
             toggleMicBtn.style.background = '#4f46e5';
             toggleMicBtn.classList.add('active');
             toggleCamBtn.style.opacity = '1';
             toggleCamBtn.classList.add('active');
             
-            connectionStatus.innerText = `✅ Connected - Microphone is ON`;
+            connectionStatus.innerText = `✅ Connected - Microphone is ON 🎤`;
+            
+            // Test audio by playing a short beep? Or just show success
+            setTimeout(() => {
+                connectionStatus.innerText = `✅ In meeting "${roomName}" - ${userName}`;
+            }, 3000);
             
         } catch (error) {
             console.error('Connection error:', error);
-            connectionStatus.innerText = `❌ Connection failed: ${error.message}`;
+            connectionStatus.innerText = `❌ Failed: ${error.message}`;
             
             if (error.name === 'NotAllowedError') {
                 alert('Permission denied! Please:\n1. Click the camera/mic icon in address bar\n2. Allow camera and microphone\n3. Reload the page');
             } else if (error.name === 'NotFoundError') {
-                alert('No microphone found! Please connect a microphone and try again.');
+                alert('No microphone found! Please connect a microphone.');
             } else {
-                alert(`Failed to join meeting:\n${error.message}`);
+                alert(`Failed to join: ${error.message}`);
             }
             await leaveMeeting();
         }
@@ -962,7 +925,7 @@
             toggleMicBtn.style.background = newState ? '#4f46e5' : '#2d2d44';
             connectionStatus.innerText = newState ? '🎤 Microphone ON' : '🔇 Microphone OFF';
             setTimeout(() => {
-                connectionStatus.innerText = `✅ Connected to room`;
+                connectionStatus.innerText = `✅ In meeting`;
             }, 2000);
         }
     };
@@ -1012,7 +975,6 @@
     // Initialize
     loadMicrophones();
     autoJoinFromUrl();
-    document.getElementById('apiKey').focus();
 </script>
 </body>
 </html>
