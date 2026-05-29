@@ -250,7 +250,7 @@
 </head>
 <body>
 
-<!-- ══ LOBBY ══════════════════════════════════════════════════ -->
+<!-- LOBBY VIEW -->
 <div id="view-lobby">
   <header class="lobby-header">
     <div class="lobby-logo">
@@ -300,12 +300,12 @@
 
     <div class="github-note">
       <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-      <div><strong>Fully standalone</strong> — this entire app is a single HTML file. Host it on GitHub Pages, Netlify, or any static host. No backend required. Meetings connect peer-to-peer via WebRTC using <a href="https://peerjs.com" target="_blank" style="color:var(--primary)">PeerJS</a>.</div>
+      <div><strong>Fully standalone</strong> — this entire app is a single HTML file. Works on any modern browser with WebRTC support.</div>
     </div>
   </main>
 </div>
 
-<!-- ══ ROOM ═══════════════════════════════════════════════════ -->
+<!-- ROOM VIEW -->
 <div id="view-room">
   <header class="room-header">
     <div class="room-header-left">
@@ -356,7 +356,7 @@
   </div>
 </div>
 
-<!-- ══ MODALS ═════════════════════════════════════════════════ -->
+<!-- MODALS -->
 <div id="m-create" class="modal-backdrop hidden" onclick="if(event.target===this)closeModal('m-create')">
   <div class="modal">
     <div class="modal-title">New meeting</div>
@@ -386,22 +386,54 @@
   </div>
 </div>
 
-<!-- Connecting overlay -->
 <div id="overlay" class="overlay hidden">
   <div class="spinner"></div>
   <p id="overlay-msg">Connecting…</p>
 </div>
 
 <script>
-// ════════════════════════════════════════════════
-//  State
-// ════════════════════════════════════════════════
+// ========== CONFIGURATION WITH IMPROVED ICE SERVERS ==========
+// This resolves the "network error" when multiple users try to connect
+const PEER_CONFIG = {
+  debug: 2,
+  config: {
+    iceServers: [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' },
+      { urls: 'stun:stun2.l.google.com:19302' },
+      { urls: 'stun:stun3.l.google.com:19302' },
+      { urls: 'stun:stun4.l.google.com:19302' },
+      { urls: 'stun:stun.stunprotocol.org:3478' },
+      // Public TURN servers for when direct connection fails (NAT traversal)
+      {
+        urls: 'turn:openrelay.metered.ca:80',
+        username: 'openrelayproject',
+        credential: 'openrelayproject'
+      },
+      {
+        urls: 'turn:openrelay.metered.ca:443',
+        username: 'openrelayproject',
+        credential: 'openrelayproject'
+      },
+      {
+        urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+        username: 'openrelayproject',
+        credential: 'openrelayproject'
+      }
+    ],
+    iceCandidatePoolSize: 10,
+    bundlePolicy: 'max-bundle',
+    rtcpMuxPolicy: 'require'
+  }
+};
+
+// ========== STATE ==========
 const S = {
-  peer: null,           // PeerJS instance
+  peer: null,
   localStream: null,
-  calls: new Map(),     // peerId → MediaConnection
-  dataConns: new Map(), // peerId → DataConnection
-  participants: new Map(), // peerId → { name }
+  calls: new Map(),
+  dataConns: new Map(),
+  participants: new Map(),
   isHost: false,
   roomCode: '',
   myName: '',
@@ -411,6 +443,7 @@ const S = {
   isRec: false,
   recorder: null,
   recChunks: [],
+  connectionAttempts: 0
 };
 
 function initials(n){ return (n||'?').split(' ').map(x=>x[0]).join('').toUpperCase().slice(0,2); }
@@ -418,9 +451,7 @@ function escH(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').re
 function genCode(){ return Math.random().toString(36).slice(2,8).toUpperCase(); }
 function hostPid(code){ return 'ms-' + code.toLowerCase(); }
 
-// ════════════════════════════════════════════════
-//  Modals
-// ════════════════════════════════════════════════
+// ========== MODALS ==========
 function openCreate(){
   document.getElementById('m-create').classList.remove('hidden');
   setTimeout(()=>document.getElementById('in-rname').focus(),50);
@@ -436,9 +467,7 @@ function closeModal(id){ document.getElementById(id).classList.add('hidden'); }
 ['in-code','in-myname-j'].forEach(id=>document.getElementById(id).addEventListener('keydown',e=>e.key==='Enter'&&doJoin()));
 document.getElementById('in-code').addEventListener('input',e=>{ e.target.value=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,''); });
 
-// ════════════════════════════════════════════════
-//  Views
-// ════════════════════════════════════════════════
+// ========== VIEWS ==========
 function showLobby(){
   document.getElementById('view-lobby').style.display='flex';
   document.getElementById('view-room').style.display='none';
@@ -455,9 +484,7 @@ function showOverlay(msg){
 }
 function hideOverlay(){ document.getElementById('overlay').classList.add('hidden'); }
 
-// ════════════════════════════════════════════════
-//  Create room (host)
-// ════════════════════════════════════════════════
+// ========== CREATE ROOM (HOST) ==========
 async function doCreate(){
   const roomName = document.getElementById('in-rname').value.trim();
   const myName   = document.getElementById('in-myname-c').value.trim();
@@ -479,9 +506,8 @@ async function doCreate(){
   }
 
   const pid = hostPid(S.roomCode);
-  S.peer = new Peer(pid, { debug: 0 });
+  S.peer = new Peer(pid, PEER_CONFIG);
 
-  // Bail out if PeerJS server never responds
   const openTimer = setTimeout(()=>{
     if(S.peer){ S.peer.destroy(); S.peer=null; }
     showLobby();
@@ -500,31 +526,25 @@ async function doCreate(){
   S.peer.on('error', err=>{
     clearTimeout(openTimer);
     if(err.type==='unavailable-id'){
-      // Retry with a fresh code automatically
       S.peer.destroy(); S.peer=null;
       S.roomCode = genCode();
       showOverlay('Code taken — trying a new one…');
       setTimeout(doCreate, 300);
-    } else if(err.type==='network' || err.type==='server-error' || err.type==='socket-error'){
-      showLobby();
-      toast('Network error. Check your connection and try again.');
     } else {
       showLobby();
-      toast('Error: ' + err.type + '. Please try again.');
+      toast('Error: ' + (err.type || 'connection failed') + '. Please try again.');
     }
   });
 
-  // Incoming data connections from joiners
+  // Handle incoming data connections
   S.peer.on('connection', conn=>{
     const joinerPid = conn.peer;
     conn.on('open',()=>{
-      // Send existing participants list to the new joiner
       const users = [];
       S.participants.forEach((v,k)=>users.push({peerId:k,name:v.name}));
-      users.push({peerId:pid, name:S.myName}); // include host
+      users.push({peerId:pid, name:S.myName});
       conn.send({type:'welcome', users, roomName:S.roomName, roomCode:S.roomCode});
 
-      // Broadcast new joiner to everyone else
       S.dataConns.forEach((c,k)=>{ if(k!==joinerPid && c.open) c.send({type:'user-joined', peerId:joinerPid, name:conn.metadata?.name||'Guest'}); });
 
       S.dataConns.set(joinerPid, conn);
@@ -536,16 +556,14 @@ async function doCreate(){
     conn.on('error', ()=>handleLeft(joinerPid));
   });
 
-  // Incoming video calls from joiners
+  // Handle incoming video calls
   S.peer.on('call', call=>{
     call.answer(S.localStream || new MediaStream());
     attachStream(call);
   });
 }
 
-// ════════════════════════════════════════════════
-//  Join room (non-host)
-// ════════════════════════════════════════════════
+// ========== JOIN ROOM ==========
 async function doJoin(){
   const code   = document.getElementById('in-code').value.trim().toUpperCase();
   const myName = document.getElementById('in-myname-j').value.trim();
@@ -566,13 +584,12 @@ async function doJoin(){
     catch { toast('Camera/mic access denied.'); S.localStream = null; }
   }
 
-  S.peer = new Peer({ debug: 0 }); // random ID for joiners
+  S.peer = new Peer(PEER_CONFIG);
 
-  // Bail out if we can't connect to signaling server
   const peerOpenTimer = setTimeout(()=>{
     if(S.peer){ S.peer.destroy(); S.peer=null; }
     showLobby();
-    toast('Could not reach the signaling server. Check your internet connection and try again.');
+    toast('Could not connect to signaling server. Please check your network.');
   }, 15000);
 
   S.peer.on('error', err=>{
@@ -580,29 +597,23 @@ async function doJoin(){
     if(err.type==='peer-unavailable'){
       showLobby();
       toast('Room not found. Check the code and try again.');
-    } else if(err.type==='network'||err.type==='server-error'||err.type==='socket-error'){
-      showLobby();
-      toast('Network error. Check your connection and try again.');
     } else {
       showLobby();
-      toast('Error: ' + err.type + '. Please try again.');
+      toast('Connection error: ' + (err.type || 'unknown') + '. Please try again.');
     }
   });
 
   S.peer.on('open', myPid=>{
     clearTimeout(peerOpenTimer);
-    // Connect to host via data channel
     const hostConn = S.peer.connect(hostPid(code), { metadata: { name: myName }, reliable: true });
 
-    // Timeout if host doesn't respond to data connection
     const hostConnTimer = setTimeout(()=>{ toast('Room not found or host is offline.'); showLobby(); }, 12000);
 
     hostConn.on('open',()=>{
-      // Timeout if host doesn't send welcome message
-      const t = setTimeout(()=>{ toast('Host did not respond. Room may be closed.'); showLobby(); }, 8000);
+      const welcomeTimeout = setTimeout(()=>{ toast('Host did not respond.'); showLobby(); }, 8000);
       hostConn.on('data', msg=>{
         clearTimeout(hostConnTimer);
-        clearTimeout(t);
+        clearTimeout(welcomeTimeout);
         if(msg.type==='welcome'){
           S.roomName = msg.roomName;
           document.getElementById('hdr-name').textContent = msg.roomName;
@@ -610,7 +621,6 @@ async function doJoin(){
           renderGrid();
           showRoom();
 
-          // Call every existing participant (including host)
           msg.users.forEach(u=>{
             if(u.peerId === myPid) return;
             S.participants.set(u.peerId, {name:u.name});
@@ -626,7 +636,6 @@ async function doJoin(){
           addTile(msg.peerId, msg.name, null);
           updateCounts();
           toast(msg.name+' joined');
-          // New joiner calls us — we just wait for their call (peer.on call)
         } else if(msg.type==='user-left'){
           handleLeft(msg.peerId);
         }
@@ -636,16 +645,13 @@ async function doJoin(){
     hostConn.on('close',()=>{ toast('Host ended the meeting.'); leaveRoom(); });
   });
 
-  // Answer incoming video calls from existing participants
   S.peer.on('call', call=>{
     call.answer(S.localStream||new MediaStream());
     attachStream(call);
   });
 }
 
-// ════════════════════════════════════════════════
-//  WebRTC helpers
-// ════════════════════════════════════════════════
+// ========== WEBRTC HELPERS ==========
 function attachStream(call){
   const pid = call.peer;
   S.calls.set(pid, call);
@@ -669,15 +675,12 @@ function handleLeft(pid){
   S.participants.delete(pid);
   removeTile(pid);
   updateCounts();
-  // Broadcast to remaining participants (host only)
   if(S.isHost){
     S.dataConns.forEach((c,k)=>{ if(k!==pid && c.open) c.send({type:'user-left',peerId:pid}); });
   }
 }
 
-// ════════════════════════════════════════════════
-//  Grid rendering
-// ════════════════════════════════════════════════
+// ========== GRID RENDERING ==========
 function renderGrid(){
   const g = document.getElementById('video-grid');
   g.innerHTML = '';
@@ -694,11 +697,12 @@ function mkTile(id, name, stream, isLocal){
   const ph = document.createElement('div');
   ph.className='ph'; ph.id='ph-'+id;
   ph.innerHTML=`<div class="vtile-avatar">${initials(name)}</div>`;
-  ph.style.display = (stream && stream.getVideoTracks().length>0 && !S.isCamOff) ? 'none' : 'flex';
+  const hasVideo = stream && stream.getVideoTracks().length > 0 && !S.isCamOff;
+  ph.style.display = hasVideo ? 'none' : 'flex';
 
   const vid = document.createElement('video');
   vid.id='vid-'+id; vid.autoplay=true; vid.playsInline=true; vid.muted=isLocal;
-  if(stream){ vid.srcObject=stream; vid.play().catch(()=>{}); vid.style.display='block'; }
+  if(stream){ vid.srcObject=stream; vid.play().catch(()=>{}); vid.style.display=hasVideo?'block':'none'; }
   else { vid.style.display='none'; }
 
   const bar = document.createElement('div');
@@ -743,9 +747,7 @@ function updateCounts(){
   renderPanel();
 }
 
-// ════════════════════════════════════════════════
-//  Controls
-// ════════════════════════════════════════════════
+// ========== CONTROLS ==========
 function toggleMic(){
   if(!S.localStream) return;
   S.isMuted=!S.isMuted;
@@ -818,9 +820,7 @@ function copyCode(){
   navigator.clipboard.writeText(S.roomCode).then(()=>toast('Room code copied: '+S.roomCode)).catch(()=>toast('Code: '+S.roomCode));
 }
 
-// ════════════════════════════════════════════════
-//  Leave
-// ════════════════════════════════════════════════
+// ========== LEAVE ==========
 function leaveRoom(){
   if(S.isRec) stopRec();
   S.calls.forEach(c=>c.close()); S.calls.clear();
@@ -836,9 +836,7 @@ function leaveRoom(){
   showLobby();
 }
 
-// ════════════════════════════════════════════════
-//  Toast
-// ════════════════════════════════════════════════
+// ========== TOAST ==========
 let _tt=null;
 function toast(msg){
   let t=document.querySelector('.toast'); if(t) t.remove();
