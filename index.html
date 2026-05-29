@@ -3,10 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>LiveKit Meeting Room - Fixed</title>
-    <!-- LiveKit Client SDK -->
+    <title>LiveKit Meeting Room - Recording Feature</title>
     <script src="https://unpkg.com/livekit-client@2.0.0/dist/livekit-client.umd.js"></script>
-    <!-- JWT library for token generation -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/10.8.0/jsrsasign-all-min.js"></script>
     <style>
         * {
@@ -109,6 +107,17 @@
             background: #ef4444;
         }
 
+        button.recording {
+            background: #dc2626;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
+
         .meeting-area {
             display: none;
             flex-direction: column;
@@ -185,6 +194,10 @@
             background: #4f46e5;
         }
 
+        .control-btn.recording-btn {
+            background: #dc2626;
+        }
+
         .control-btn.leave {
             background: #dc2626;
         }
@@ -207,8 +220,68 @@
             border-left: 4px solid #4f46e5;
         }
 
-        .info-badge a {
-            color: #818cf8;
+        .share-panel {
+            background: #1e1e32;
+            padding: 16px 20px;
+            border-bottom: 1px solid #2a2a3e;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .share-panel.hidden {
+            display: none;
+        }
+
+        .share-link-container {
+            flex: 1;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            background: #0a0a12;
+            padding: 8px 16px;
+            border-radius: 40px;
+            border: 1px solid #2d2d44;
+        }
+
+        .share-link-container input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            padding: 8px 0;
+            font-size: 0.85rem;
+            color: #a5b4fc;
+        }
+
+        .recording-indicator {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #dc2626;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 40px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        .recording-indicator.active {
+            display: flex;
+        }
+
+        .recording-dot {
+            width: 10px;
+            height: 10px;
+            background: white;
+            border-radius: 50%;
+            animation: pulse 1s infinite;
         }
 
         @media (max-width: 700px) {
@@ -225,11 +298,18 @@
 </head>
 <body>
 <div class="container">
+    <!-- Recording Indicator -->
+    <div id="recordingIndicator" class="recording-indicator">
+        <div class="recording-dot"></div>
+        <span>🔴 RECORDING</span>
+        <span id="recordingTime">00:00</span>
+    </div>
+
     <!-- Setup Panel -->
     <div id="setupPanel" class="setup-panel">
         <div class="info-badge">
             🎥 <strong>LiveKit Meeting Room</strong> — Get credentials from <a href="https://cloud.livekit.io" target="_blank">cloud.livekit.io</a><br>
-            Project → Settings → <strong>API Keys</strong> → Create API Key → Copy <strong>API Key</strong>, <strong>API Secret</strong>, and <strong>WebSocket URL</strong>
+            Project → Settings → API Keys → Create API Key → Copy <strong>API Key</strong>, <strong>API Secret</strong>, and <strong>WebSocket URL</strong>
         </div>
         <div class="form-group">
             <div class="input-field">
@@ -255,8 +335,20 @@
             <button id="joinBtn">🚀 Join Meeting</button>
         </div>
         <p style="font-size: 0.7rem; margin-top: 16px; text-align: center; color:#6b7280">
-            ⚠️ For development only. In production, generate tokens on your backend server.
+            ⚠️ For development only. Recording saves locally as WebM file.
         </p>
+    </div>
+
+    <!-- Share Panel -->
+    <div id="sharePanel" class="share-panel hidden">
+        <div class="room-info">
+            📍 Room: <span id="currentRoomName">---</span>
+        </div>
+        <div class="share-link-container">
+            <input type="text" id="shareLink" readonly value="">
+            <button id="copyLinkBtn" class="copy-btn">📋 Copy</button>
+        </div>
+        <button id="inviteBtn" class="invite-btn">📧 Send Invite</button>
     </div>
 
     <!-- Meeting Area -->
@@ -266,6 +358,7 @@
             <div id="toggleMic" class="control-btn active" title="Microphone">🎤</div>
             <div id="toggleCam" class="control-btn active" title="Camera">📹</div>
             <div id="toggleScreen" class="control-btn" title="Share Screen">🖥️</div>
+            <div id="recordBtn" class="control-btn" title="Record Meeting">🎥</div>
             <div id="leaveBtn" class="control-btn leave" title="Leave">🚪</div>
         </div>
         <div id="connectionStatus" class="status">🔌 Not connected</div>
@@ -278,10 +371,23 @@
     let localVideoTrack = null;
     let localAudioTrack = null;
     let screenTrack = null;
+    let currentApiKey = '';
+    let currentApiSecret = '';
+    let currentWsUrl = '';
+    
+    // Recording variables
+    let mediaRecorder = null;
+    let recordedChunks = [];
+    let isRecording = false;
+    let recordingStartTime = null;
+    let recordingTimer = null;
+    let screenStream = null;
+    let combinedStream = null;
 
     // DOM elements
     const setupPanel = document.getElementById('setupPanel');
     const meetingArea = document.getElementById('meetingArea');
+    const sharePanel = document.getElementById('sharePanel');
     const videoGrid = document.getElementById('videoGrid');
     const connectionStatus = document.getElementById('connectionStatus');
     const joinBtn = document.getElementById('joinBtn');
@@ -289,11 +395,218 @@
     const toggleMicBtn = document.getElementById('toggleMic');
     const toggleCamBtn = document.getElementById('toggleCam');
     const toggleScreenBtn = document.getElementById('toggleScreen');
+    const recordBtn = document.getElementById('recordBtn');
+    const shareLinkInput = document.getElementById('shareLink');
+    const copyLinkBtn = document.getElementById('copyLinkBtn');
+    const inviteBtn = document.getElementById('inviteBtn');
+    const currentRoomNameSpan = document.getElementById('currentRoomName');
+    const recordingIndicator = document.getElementById('recordingIndicator');
+    const recordingTimeSpan = document.getElementById('recordingTime');
 
-    // Helper: Generate LiveKit JWT token
+    // Start recording
+    async function startRecording() {
+        if (isRecording) return;
+        
+        try {
+            // Get all video elements to capture
+            const videos = document.querySelectorAll('.participant video');
+            if (videos.length === 0) {
+                alert('No video streams to record');
+                return;
+            }
+            
+            // Create a canvas to combine videos (picture-in-picture style)
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = 1280;
+            canvas.height = 720;
+            
+            // Function to draw all videos on canvas
+            function drawVideos() {
+                const currentVideos = document.querySelectorAll('.participant video');
+                ctx.fillStyle = '#1a1a2e';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                if (currentVideos.length === 1) {
+                    // Single video - full screen
+                    const video = currentVideos[0];
+                    if (video.videoWidth > 0) {
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    }
+                } else if (currentVideos.length === 2) {
+                    // Two videos - split screen
+                    const video1 = currentVideos[0];
+                    const video2 = currentVideos[1];
+                    if (video1.videoWidth > 0) {
+                        ctx.drawImage(video1, 0, 0, canvas.width/2, canvas.height);
+                    }
+                    if (video2.videoWidth > 0) {
+                        ctx.drawImage(video2, canvas.width/2, 0, canvas.width/2, canvas.height);
+                    }
+                } else {
+                    // Grid layout for 3+ videos
+                    const cols = Math.ceil(Math.sqrt(currentVideos.length));
+                    const rows = Math.ceil(currentVideos.length / cols);
+                    const cellWidth = canvas.width / cols;
+                    const cellHeight = canvas.height / rows;
+                    
+                    currentVideos.forEach((video, index) => {
+                        if (video.videoWidth > 0) {
+                            const col = index % cols;
+                            const row = Math.floor(index / cols);
+                            ctx.drawImage(video, col * cellWidth, row * cellHeight, cellWidth, cellHeight);
+                        }
+                    });
+                }
+                requestAnimationFrame(drawVideos);
+            }
+            
+            drawVideos();
+            
+            // Get canvas stream
+            const canvasStream = canvas.captureStream(30);
+            
+            // Get audio from microphone
+            const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            
+            // Combine video and audio
+            combinedStream = new MediaStream();
+            canvasStream.getVideoTracks().forEach(track => combinedStream.addTrack(track));
+            audioStream.getAudioTracks().forEach(track => combinedStream.addTrack(track));
+            
+            // Create media recorder
+            mediaRecorder = new MediaRecorder(combinedStream, { mimeType: 'video/webm' });
+            recordedChunks = [];
+            
+            mediaRecorder.ondataavailable = (event) => {
+                if (event.data.size > 0) {
+                    recordedChunks.push(event.data);
+                }
+            };
+            
+            mediaRecorder.onstop = () => {
+                const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+                a.href = url;
+                a.download = `meeting-recording-${timestamp}.webm`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                // Stop all tracks
+                if (combinedStream) {
+                    combinedStream.getTracks().forEach(track => track.stop());
+                }
+                if (audioStream) {
+                    audioStream.getTracks().forEach(track => track.stop());
+                }
+                
+                alert('Recording saved! Check your downloads folder.');
+            };
+            
+            mediaRecorder.start(1000); // Capture every second
+            isRecording = true;
+            recordingStartTime = Date.now();
+            
+            // Update UI
+            recordBtn.classList.add('recording-btn');
+            recordBtn.style.background = '#dc2626';
+            recordBtn.style.animation = 'pulse 1.5s infinite';
+            recordingIndicator.classList.add('active');
+            
+            // Start timer
+            recordingTimer = setInterval(() => {
+                const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
+                const minutes = Math.floor(elapsed / 60);
+                const seconds = elapsed % 60;
+                recordingTimeSpan.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }, 1000);
+            
+        } catch (error) {
+            console.error('Recording error:', error);
+            alert(`Failed to start recording: ${error.message}`);
+        }
+    }
+    
+    // Stop recording
+    function stopRecording() {
+        if (!isRecording || !mediaRecorder) return;
+        
+        mediaRecorder.stop();
+        isRecording = false;
+        
+        // Clean up UI
+        recordBtn.classList.remove('recording-btn');
+        recordBtn.style.background = '#2d2d44';
+        recordBtn.style.animation = 'none';
+        recordingIndicator.classList.remove('active');
+        
+        if (recordingTimer) {
+            clearInterval(recordingTimer);
+            recordingTimer = null;
+        }
+        
+        recordingTimeSpan.textContent = '00:00';
+    }
+    
+    // Toggle recording
+    function toggleRecording() {
+        if (isRecording) {
+            stopRecording();
+        } else {
+            startRecording();
+        }
+    }
+
+    // Generate shareable link
+    function generateShareLink(roomName, apiKey, apiSecret, wsUrl) {
+        const baseUrl = window.location.href.split('?')[0];
+        const params = new URLSearchParams();
+        params.set('room', roomName);
+        params.set('apiKey', apiKey);
+        params.set('apiSecret', apiSecret);
+        params.set('wsUrl', wsUrl);
+        return `${baseUrl}?${params.toString()}`;
+    }
+
+    // Auto-join from URL parameters
+    function autoJoinFromUrl() {
+        const params = new URLSearchParams(window.location.search);
+        const roomName = params.get('room');
+        const apiKey = params.get('apiKey');
+        const apiSecret = params.get('apiSecret');
+        const wsUrl = params.get('wsUrl');
+        
+        if (roomName && apiKey && apiSecret && wsUrl) {
+            document.getElementById('apiKey').value = apiKey;
+            document.getElementById('apiSecret').value = apiSecret;
+            document.getElementById('wsUrl').value = wsUrl;
+            document.getElementById('roomName').value = roomName;
+            document.getElementById('userName').value = `Guest_${Math.floor(Math.random() * 1000)}`;
+            
+            setTimeout(() => {
+                joinBtn.click();
+            }, 500);
+        }
+    }
+
+    // Update share panel
+    function updateSharePanel(roomName) {
+        if (!currentApiKey || !currentApiSecret || !currentWsUrl) return;
+        
+        const shareUrl = generateShareLink(roomName, currentApiKey, currentApiSecret, currentWsUrl);
+        shareLinkInput.value = shareUrl;
+        currentRoomNameSpan.textContent = roomName;
+        sharePanel.classList.remove('hidden');
+    }
+
+    // Generate JWT token
     function generateToken(apiKey, apiSecret, roomName, participantName) {
         const now = Math.floor(Date.now() / 1000);
-        const exp = now + 6 * 60 * 60; // 6 hours
+        const exp = now + 6 * 60 * 60;
         
         const payload = {
             "iss": apiKey,
@@ -309,11 +622,10 @@
         };
         
         const header = { alg: "HS256", typ: "JWT" };
-        const token = KJUR.jws.JWS.sign("HS256", JSON.stringify(header), JSON.stringify(payload), apiSecret);
-        return token;
+        return KJUR.jws.JWS.sign("HS256", JSON.stringify(header), JSON.stringify(payload), apiSecret);
     }
 
-    // Add video element to grid
+    // Add video element
     function addVideoElement(track, participantName, isLocal = false) {
         const mediaStream = new MediaStream([track]);
         const containerId = `participant-${participantName.replace(/\s/g, '_')}-${Date.now()}`;
@@ -343,7 +655,7 @@
         elements.forEach(el => el.remove());
     }
 
-    // Handle incoming tracks
+    // Handle track subscription
     function handleTrackSubscribed(track, publication, participant) {
         if (track.kind === 'video' && track.mediaStreamTrack) {
             const existingId = `participant-${participant.identity.replace(/\s/g, '_')}`;
@@ -358,14 +670,17 @@
         connectionStatus.innerText = `👋 ${participant.identity} joined the room`;
     }
 
-    // Handle participant disconnection
     function handleParticipantDisconnected(participant) {
         removeParticipantVideo(participant.identity);
         connectionStatus.innerText = `👋 ${participant.identity} left the room`;
     }
 
-    // Leave/Cleanup function
+    // Leave meeting
     async function leaveMeeting() {
+        if (isRecording) {
+            stopRecording();
+        }
+        
         if (room) {
             room.disconnect();
             room = null;
@@ -386,25 +701,21 @@
             screenTrack = null;
         }
         
-        // Clear video grid
         videoGrid.innerHTML = '';
-        
-        // Show setup panel
         setupPanel.classList.remove('hidden');
         meetingArea.classList.remove('active');
+        sharePanel.classList.add('hidden');
         connectionStatus.innerText = '🔌 Disconnected';
     }
 
-    // Main join function
+    // Join meeting
     async function joinMeeting() {
-        // Get input values
         const apiKey = document.getElementById('apiKey').value.trim();
         const apiSecret = document.getElementById('apiSecret').value.trim();
         const wsUrl = document.getElementById('wsUrl').value.trim();
         const userName = document.getElementById('userName').value.trim() || `User_${Math.floor(Math.random() * 1000)}`;
         const roomName = document.getElementById('roomName').value.trim() || 'meeting-room';
         
-        // Validation
         if (!apiKey || !apiSecret || !wsUrl) {
             alert('Please fill in all fields: API Key, API Secret, and WebSocket URL');
             return;
@@ -415,28 +726,18 @@
             return;
         }
         
-        // Check if KJUR is available
         if (typeof KJUR === 'undefined') {
             alert('JWT library still loading. Please wait a moment and try again.');
-            return;
-        }
-        
-        // Check if LiveKit client is available
-        if (typeof LivekitClient === 'undefined') {
-            alert('LiveKit client library still loading. Please wait and try again.');
             return;
         }
         
         try {
             connectionStatus.innerText = '🔄 Connecting to LiveKit...';
             
-            // Generate token
             const token = generateToken(apiKey, apiSecret, roomName, userName);
             
-            // Create room instance
             room = new LivekitClient.Room();
             
-            // Set up event listeners
             room.on(LivekitClient.RoomEvent.ParticipantConnected, handleParticipantConnected);
             room.on(LivekitClient.RoomEvent.ParticipantDisconnected, handleParticipantDisconnected);
             room.on(LivekitClient.RoomEvent.TrackSubscribed, handleTrackSubscribed);
@@ -445,18 +746,18 @@
                 leaveMeeting();
             });
             
-            // Connect to room
             await room.connect(wsUrl, token);
             connectionStatus.innerText = `✅ Connected to "${roomName}" as ${userName}`;
             
-            // Hide setup, show meeting
+            currentApiKey = apiKey;
+            currentApiSecret = apiSecret;
+            currentWsUrl = wsUrl;
+            
             setupPanel.classList.add('hidden');
             meetingArea.classList.add('active');
+            updateSharePanel(roomName);
             
-            // Create and publish local tracks
             const localParticipant = room.localParticipant;
-            
-            // Get user media
             const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
             const videoTrack = stream.getVideoTracks()[0];
             const audioTrack = stream.getAudioTracks()[0];
@@ -464,14 +765,11 @@
             localVideoTrack = new LivekitClient.LocalVideoTrack(videoTrack);
             localAudioTrack = new LivekitClient.LocalAudioTrack(audioTrack);
             
-            // Publish tracks
             await localParticipant.publishTrack(localVideoTrack);
             await localParticipant.publishTrack(localAudioTrack);
             
-            // Add self video to grid
             addVideoElement(videoTrack, userName, true);
             
-            // Update control button states
             toggleMicBtn.style.opacity = '1';
             toggleCamBtn.style.opacity = '1';
             toggleMicBtn.classList.add('active');
@@ -480,12 +778,40 @@
         } catch (error) {
             console.error('Connection error:', error);
             connectionStatus.innerText = `❌ Connection failed: ${error.message}`;
-            alert(`Failed to join meeting:\n${error.message}\n\nCheck your credentials and WebSocket URL.`);
+            alert(`Failed to join meeting:\n${error.message}\n\nMake sure you allowed camera/microphone access.`);
             await leaveMeeting();
         }
     }
 
-    // Control button handlers
+    // Copy link
+    async function copyShareLink() {
+        try {
+            await navigator.clipboard.writeText(shareLinkInput.value);
+            const originalText = copyLinkBtn.textContent;
+            copyLinkBtn.textContent = '✅ Copied!';
+            setTimeout(() => {
+                copyLinkBtn.textContent = originalText;
+            }, 2000);
+        } catch (err) {
+            alert('Failed to copy. Select and copy manually.');
+        }
+    }
+
+    // Send invite
+    function sendInvite() {
+        const link = shareLinkInput.value;
+        const subject = encodeURIComponent('Join my LiveKit Meeting');
+        const body = encodeURIComponent(`Join me in the video meeting:\n\n${link}\n\nClick the link to join automatically.`);
+        window.location.href = `mailto:?subject=${subject}&body=${body}`;
+    }
+
+    // Event listeners
+    joinBtn.addEventListener('click', joinMeeting);
+    leaveBtn.addEventListener('click', leaveMeeting);
+    copyLinkBtn.addEventListener('click', copyShareLink);
+    inviteBtn.addEventListener('click', sendInvite);
+    recordBtn.addEventListener('click', toggleRecording);
+    
     toggleMicBtn.onclick = async () => {
         if (localAudioTrack) {
             const newState = !localAudioTrack.enabled;
@@ -508,14 +834,12 @@
         if (!room) return;
         
         if (screenTrack) {
-            // Stop screen share
             await room.localParticipant.unpublishTrack(screenTrack);
             screenTrack.stop();
             screenTrack = null;
             toggleScreenBtn.style.opacity = '0.5';
             toggleScreenBtn.style.background = '#2d2d44';
         } else {
-            // Start screen share
             try {
                 const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
                 const screenVideoTrack = screenStream.getVideoTracks()[0];
@@ -524,7 +848,6 @@
                 toggleScreenBtn.style.opacity = '1';
                 toggleScreenBtn.style.background = '#4f46e5';
                 
-                // Stop when user ends screen share via browser UI
                 screenVideoTrack.onended = () => {
                     if (screenTrack) {
                         room.localParticipant.unpublishTrack(screenTrack);
@@ -536,17 +859,11 @@
                 };
             } catch (err) {
                 console.error('Screen share error:', err);
-                alert('Screen share cancelled or failed.');
             }
         }
     };
     
-    leaveBtn.onclick = leaveMeeting;
-    
-    // Make sure join button has event listener
-    joinBtn.addEventListener('click', joinMeeting);
-    
-    // Auto-focus on API key field
+    autoJoinFromUrl();
     document.getElementById('apiKey').focus();
 </script>
 </body>
