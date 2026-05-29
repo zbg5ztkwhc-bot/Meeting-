@@ -479,9 +479,17 @@ async function doCreate(){
   }
 
   const pid = hostPid(S.roomCode);
-  S.peer = new Peer(pid);
+  S.peer = new Peer(pid, { debug: 0 });
+
+  // Bail out if PeerJS server never responds
+  const openTimer = setTimeout(()=>{
+    if(S.peer){ S.peer.destroy(); S.peer=null; }
+    showLobby();
+    toast('Could not reach the signaling server. Check your internet connection and try again.');
+  }, 15000);
 
   S.peer.on('open', ()=>{
+    clearTimeout(openTimer);
     document.getElementById('hdr-name').textContent = roomName;
     document.getElementById('hdr-code').textContent = S.roomCode;
     renderGrid();
@@ -490,10 +498,19 @@ async function doCreate(){
   });
 
   S.peer.on('error', err=>{
+    clearTimeout(openTimer);
     if(err.type==='unavailable-id'){
-      toast('Room code taken — try a different name.'); showLobby();
+      // Retry with a fresh code automatically
+      S.peer.destroy(); S.peer=null;
+      S.roomCode = genCode();
+      showOverlay('Code taken — trying a new one…');
+      setTimeout(doCreate, 300);
+    } else if(err.type==='network' || err.type==='server-error' || err.type==='socket-error'){
+      showLobby();
+      toast('Network error. Check your connection and try again.');
     } else {
-      toast('Connection error: ' + err.type);
+      showLobby();
+      toast('Error: ' + err.type + '. Please try again.');
     }
   });
 
@@ -549,17 +566,42 @@ async function doJoin(){
     catch { toast('Camera/mic access denied.'); S.localStream = null; }
   }
 
-  S.peer = new Peer(); // random ID for joiners
-  S.peer.on('error', err=>{ toast('Error: '+err.type); showLobby(); });
+  S.peer = new Peer({ debug: 0 }); // random ID for joiners
+
+  // Bail out if we can't connect to signaling server
+  const peerOpenTimer = setTimeout(()=>{
+    if(S.peer){ S.peer.destroy(); S.peer=null; }
+    showLobby();
+    toast('Could not reach the signaling server. Check your internet connection and try again.');
+  }, 15000);
+
+  S.peer.on('error', err=>{
+    clearTimeout(peerOpenTimer);
+    if(err.type==='peer-unavailable'){
+      showLobby();
+      toast('Room not found. Check the code and try again.');
+    } else if(err.type==='network'||err.type==='server-error'||err.type==='socket-error'){
+      showLobby();
+      toast('Network error. Check your connection and try again.');
+    } else {
+      showLobby();
+      toast('Error: ' + err.type + '. Please try again.');
+    }
+  });
 
   S.peer.on('open', myPid=>{
+    clearTimeout(peerOpenTimer);
     // Connect to host via data channel
     const hostConn = S.peer.connect(hostPid(code), { metadata: { name: myName }, reliable: true });
 
+    // Timeout if host doesn't respond to data connection
+    const hostConnTimer = setTimeout(()=>{ toast('Room not found or host is offline.'); showLobby(); }, 12000);
+
     hostConn.on('open',()=>{
-      // Timeout if host doesn't respond
-      const t = setTimeout(()=>{ toast('Room not found or host is offline.'); showLobby(); }, 8000);
+      // Timeout if host doesn't send welcome message
+      const t = setTimeout(()=>{ toast('Host did not respond. Room may be closed.'); showLobby(); }, 8000);
       hostConn.on('data', msg=>{
+        clearTimeout(hostConnTimer);
         clearTimeout(t);
         if(msg.type==='welcome'){
           S.roomName = msg.roomName;
@@ -590,7 +632,7 @@ async function doJoin(){
         }
       });
     });
-    hostConn.on('error',()=>{ toast('Could not reach room host.'); showLobby(); });
+    hostConn.on('error',()=>{ clearTimeout(hostConnTimer); toast('Could not reach room host.'); showLobby(); });
     hostConn.on('close',()=>{ toast('Host ended the meeting.'); leaveRoom(); });
   });
 
