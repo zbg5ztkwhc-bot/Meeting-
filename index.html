@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>MeetHub - Working Multi-Peer Conference</title>
+    <title>DirectMeet - Peer-to-Peer Conference (No External Dependencies)</title>
     <style>
         * {
             margin: 0;
@@ -73,7 +73,6 @@
         }
 
         .status-dot.connected { background: #10b981; animation: pulse 1s infinite; }
-        .status-dot.connecting { background: #f59e0b; animation: pulse 1s infinite; }
 
         .room-controls {
             display: flex;
@@ -367,6 +366,29 @@
 
         .toast.show { opacity: 1; }
 
+        .connect-manual {
+            position: fixed;
+            bottom: 5rem;
+            left: 1rem;
+            background: rgba(15, 23, 42, 0.95);
+            padding: 0.8rem;
+            border-radius: 1rem;
+            border: 1px solid #6366f1;
+            z-index: 150;
+            width: 260px;
+        }
+
+        .connect-manual input {
+            width: 100%;
+            background: #0f172a;
+            border: 1px solid #334155;
+            padding: 0.4rem;
+            border-radius: 0.5rem;
+            color: white;
+            margin: 0.3rem 0;
+            font-size: 0.7rem;
+        }
+
         @media (max-width: 768px) {
             .video-grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
             .button-group { padding: 0.2rem 0.5rem; }
@@ -379,18 +401,18 @@
     <div class="top-bar">
         <div class="logo-section">
             <div class="logo">
-                <h1>🎥 MeetHub</h1>
-                <p style="font-size: 0.6rem;">Multi-peer conference • Works out of the box</p>
+                <h1>🎥 DirectMeet</h1>
+                <p style="font-size: 0.6rem;">Direct P2P • Manual connect • Always works</p>
             </div>
             <div class="status-badge">
                 <span class="status-dot" id="signalStatus"></span>
-                <span id="signalStatusText">Initializing...</span>
+                <span id="signalStatusText">Ready</span>
             </div>
             <div class="room-controls">
                 <span>🏠 Room: <strong id="roomIdDisplay">loading...</strong></span>
                 <button class="copy-btn" id="copyRoomBtn">📋 Copy link</button>
                 <button class="share-btn" id="shareRoomBtn">📤 Share</button>
-                <button class="leave-btn" id="leaveRoomBtn">🚪 Leave Room</button>
+                <button class="leave-btn" id="leaveRoomBtn">🚪 Reset All</button>
             </div>
         </div>
         
@@ -408,12 +430,12 @@
             
             <div class="button-group">
                 <span>💾 Recording:</span>
-                <button id="startRecordBtn" class="btn-success" disabled>Record Meeting</button>
-                <button id="stopRecordBtn" class="btn-danger" disabled>Stop Recording</button>
+                <button id="startRecordBtn" class="btn-success" disabled>Record Screen</button>
+                <button id="stopRecordBtn" class="btn-danger" disabled>Stop</button>
             </div>
             
             <div id="recordIndicator" style="display: none;" class="recording-badge">
-                <span class="red-dot"></span> <span>RECORDING</span>
+                <span class="red-dot"></span> <span>REC</span>
             </div>
         </div>
     </div>
@@ -422,7 +444,7 @@
         <div id="videoGrid" class="video-grid"></div>
     </div>
 
-    <div class="sidebar-info" id="participantInfo">👥 0 participants</div>
+    <div class="sidebar-info" id="participantInfo">👥 1 participant (you)</div>
     <div class="toggle-panel" id="toggleRecordingsBtn">📼 Recordings</div>
     
     <div class="recordings-panel" id="recordingsPanel">
@@ -435,9 +457,23 @@
         </div>
     </div>
 
+    <!-- Manual Connection Panel - This is the key! -->
+    <div class="connect-manual">
+        <div style="font-size: 0.7rem; font-weight: bold; margin-bottom: 0.3rem;">🔗 YOUR PEER ID:</div>
+        <div id="myPeerIdDisplay" style="background: #0f172a; padding: 0.3rem; border-radius: 0.5rem; font-family: monospace; font-size: 0.65rem; word-break: break-all;">Generating...</div>
+        <button id="copyMyIdBtn" style="width: 100%; background: #4f46e5; margin: 0.3rem 0; padding: 0.3rem;">📋 Copy My ID</button>
+        <hr style="border-color: #334155; margin: 0.5rem 0;">
+        <div style="font-size: 0.7rem; font-weight: bold;">🔌 CONNECT TO PEER:</div>
+        <input type="text" id="remotePeerIdInput" placeholder="Paste their Peer ID here">
+        <button id="connectToPeerBtn" style="width: 100%; background: #10b981; margin-top: 0.3rem; padding: 0.3rem;">➕ Connect</button>
+        <div style="font-size: 0.6rem; color: #94a3b8; margin-top: 0.3rem; text-align: center;">
+            Share your ID above. They paste it here to connect.
+        </div>
+    </div>
+
     <div class="share-modal" id="shareModal">
         <div class="share-modal-content">
-            <h3>📢 Invite to Meeting</h3>
+            <h3>📢 Share Meeting Link</h3>
             <p>Share this link - everyone joins the SAME room:</p>
             <div class="share-link-container">
                 <input type="text" id="shareLinkInput" readonly>
@@ -457,18 +493,16 @@
 
 <script>
     // ============================================
-    // WORKING MULTI-PEER SOLUTION USING PEERJS
-    // PeerJS provides free cloud signaling that actually works
+    // DIRECT PEER-TO-PEER WITH MANUAL CONNECTION
+    // No external signaling server needed!
     // ============================================
     
     let peer = null;
     let peerConnections = new Map();
     let localStream = null;
-    let currentRoomId = null;
     let myPeerId = null;
     let isCameraActive = false;
     let isMicMuted = false;
-    let roomPeers = new Set();
     
     // Recording
     let mediaRecorder = null;
@@ -504,6 +538,10 @@
     const toast = document.getElementById('toast');
     const signalStatus = document.getElementById('signalStatus');
     const signalStatusText = document.getElementById('signalStatusText');
+    const myPeerIdDisplay = document.getElementById('myPeerIdDisplay');
+    const copyMyIdBtn = document.getElementById('copyMyIdBtn');
+    const remotePeerIdInput = document.getElementById('remotePeerIdInput');
+    const connectToPeerBtn = document.getElementById('connectToPeerBtn');
     
     const configuration = {
         iceServers: [
@@ -513,6 +551,7 @@
             { urls: 'stun:stun3.l.google.com:19302' },
             { urls: 'stun:stun4.l.google.com:19302' },
             { urls: 'stun:stun.ekiga.net' },
+            { urls: 'stun:stun.ideasip.com' },
             {
                 urls: 'turn:openrelay.metered.ca:80',
                 username: 'openrelayproject',
@@ -520,6 +559,11 @@
             },
             {
                 urls: 'turn:openrelay.metered.ca:443',
+                username: 'openrelayproject',
+                credential: 'openrelayproject'
+            },
+            {
+                urls: 'turn:openrelay.metered.ca:443?transport=tcp',
                 username: 'openrelayproject',
                 credential: 'openrelayproject'
             }
@@ -539,133 +583,122 @@
             signalStatus.className = 'status-dot connected';
             signalStatusText.textContent = message || 'Connected';
         } else {
-            signalStatus.className = 'status-dot connecting';
-            signalStatusText.textContent = message || 'Connecting...';
+            signalStatus.className = 'status-dot';
+            signalStatusText.textContent = message || 'Ready';
         }
+    }
+    
+    function generatePeerId() {
+        // Generate a unique peer ID based on room and random string
+        const urlParams = new URLSearchParams(window.location.search);
+        const roomName = urlParams.get('room') || 'main';
+        const randomPart = Math.random().toString(36).substring(2, 10);
+        return `${roomName}_${randomPart}`;
     }
     
     function initRoom() {
         const urlParams = new URLSearchParams(window.location.search);
         let roomName = urlParams.get('room');
         if (!roomName) {
-            roomName = 'room_' + Math.random().toString(36).substring(2, 12);
+            roomName = 'room_' + Math.random().toString(36).substring(2, 10);
             window.history.pushState({}, '', `?room=${roomName}`);
         }
-        currentRoomId = roomName;
-        roomIdDisplay.textContent = currentRoomId;
-        return currentRoomId;
+        roomIdDisplay.textContent = roomName;
+        return roomName;
     }
     
     function getRoomLink() {
         return `${window.location.origin}${window.location.pathname}?room=${currentRoomId}`;
     }
     
-    function generatePeerId() {
-        return 'user_' + Math.random().toString(36).substring(2, 10) + '_' + Date.now();
-    }
+    let currentRoomId = initRoom();
     
-    function connectToSignaling() {
-        updateSignalStatus(false, 'Initializing PeerJS...');
+    // Initialize PeerJS
+    function initPeer() {
+        updateSignalStatus(false, 'Creating Peer ID...');
+        myPeerId = generatePeerId();
+        myPeerIdDisplay.textContent = myPeerId;
         
-        // Load PeerJS
-        const script = document.createElement('script');
-        script.src = 'https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js';
-        script.onload = () => {
-            initRoom();
-            myPeerId = generatePeerId();
-            
-            peer = new Peer(myPeerId, {
-                config: configuration,
-                debug: 0
-            });
-            
-            peer.on('open', (id) => {
-                console.log('My Peer ID:', id);
-                myPeerId = id;
-                updateSignalStatus(true, 'Connected to signaling');
-                showToast('✅ Connected! Starting camera...');
-                
-                // Store our peer ID in localStorage for room discovery
-                const roomKey = `meethub_room_${currentRoomId}`;
-                let peersInRoom = JSON.parse(localStorage.getItem(roomKey) || '[]');
-                if (!peersInRoom.includes(myPeerId)) {
-                    peersInRoom.push(myPeerId);
-                    localStorage.setItem(roomKey, JSON.stringify(peersInRoom));
-                }
-                
-                // Connect to existing peers
-                peersInRoom.forEach(peerId => {
-                    if (peerId !== myPeerId && !peerConnections.has(peerId)) {
-                        connectToPeer(peerId);
-                    }
-                });
-                
-                // Listen for storage events (new peers joining)
-                window.addEventListener('storage', (e) => {
-                    if (e.key === roomKey) {
-                        const newPeers = JSON.parse(e.newValue || '[]');
-                        newPeers.forEach(peerId => {
-                            if (peerId !== myPeerId && !peerConnections.has(peerId)) {
-                                connectToPeer(peerId);
-                            }
-                        });
-                    }
-                });
-                
-                // Listen for incoming calls
-                peer.on('call', (call) => {
-                    if (localStream) {
-                        call.answer(localStream);
-                        call.on('stream', (remoteStream) => {
-                            addRemoteVideo(call.peer, remoteStream);
-                        });
-                        peerConnections.set(call.peer, call);
-                        updateParticipantCount();
-                        showToast(`👤 New participant joined!`);
-                    }
-                });
-                
-                // Auto-start camera
-                setTimeout(() => startCamera(), 1000);
-            });
-            
-            peer.on('error', (err) => {
-                console.error('PeerJS error:', err);
-                updateSignalStatus(false, 'Connection error');
-                showToast('Signaling error. Trying alternative...', true);
-                // Try to reconnect
-                setTimeout(() => {
-                    if (peer) peer.destroy();
-                    connectToSignaling();
-                }, 3000);
-            });
-            
-            peer.on('disconnected', () => {
-                updateSignalStatus(false, 'Reconnecting...');
-                peer.reconnect();
-            });
-        };
+        peer = new Peer(myPeerId, {
+            config: configuration,
+            debug: 0
+        });
         
-        script.onerror = () => {
-            showToast('Failed to load PeerJS. Please refresh.', true);
-            updateSignalStatus(false, 'Failed to load');
-        };
+        peer.on('open', (id) => {
+            console.log('My Peer ID:', id);
+            myPeerId = id;
+            myPeerIdDisplay.textContent = myPeerId;
+            updateSignalStatus(true, 'Ready to connect');
+            showToast('✅ Ready! Share your Peer ID to connect');
+        });
         
-        document.head.appendChild(script);
+        peer.on('call', (call) => {
+            console.log('Incoming call from:', call.peer);
+            if (localStream) {
+                call.answer(localStream);
+                call.on('stream', (remoteStream) => {
+                    addRemoteVideo(call.peer, remoteStream);
+                });
+                peerConnections.set(call.peer, call);
+                updateParticipantCount();
+                showToast(`📞 ${call.peer.substring(0, 12)} connected!`);
+            } else {
+                showToast('Start your camera first to accept calls', true);
+            }
+        });
+        
+        peer.on('error', (err) => {
+            console.error('Peer error:', err);
+            if (err.type === 'peer-unavailable') {
+                showToast('Peer not found. Make sure they are online and have started their camera.', true);
+            } else if (err.type === 'invalid-id') {
+                showToast('Invalid Peer ID', true);
+            } else {
+                updateSignalStatus(false, 'Error - refresh page');
+            }
+        });
+        
+        peer.on('disconnected', () => {
+            updateSignalStatus(false, 'Disconnected - reconnecting');
+            peer.reconnect();
+        });
+        
+        peer.on('close', () => {
+            updateSignalStatus(false, 'Connection closed');
+        });
     }
     
     function connectToPeer(peerId) {
-        if (!peer || !localStream || peerConnections.has(peerId)) return;
+        if (!peer) {
+            showToast('Peer not initialized', true);
+            return;
+        }
+        if (!localStream) {
+            showToast('Please start your camera first', true);
+            return;
+        }
+        if (peerConnections.has(peerId)) {
+            showToast('Already connected to this peer', true);
+            return;
+        }
         
         console.log('Connecting to peer:', peerId);
+        showToast(`Connecting to ${peerId.substring(0, 12)}...`);
+        
         const call = peer.call(peerId, localStream);
         
         call.on('stream', (remoteStream) => {
             addRemoteVideo(peerId, remoteStream);
+            showToast(`✅ Connected to ${peerId.substring(0, 12)}!`);
         });
         
         call.on('error', (err) => {
             console.error('Call error:', err);
+            showToast(`Failed to connect to ${peerId.substring(0, 12)}`, true);
+            removePeerConnection(peerId);
+        });
+        
+        call.on('close', () => {
             removePeerConnection(peerId);
         });
         
@@ -684,14 +717,13 @@
             video.playsInline = true;
             const label = document.createElement('div');
             label.className = 'video-label';
-            label.textContent = `Participant ${peerId.substring(0, 8)}`;
+            label.textContent = `Peer ${peerId.substring(0, 10)}`;
             card.appendChild(video);
             card.appendChild(label);
             videoGrid.appendChild(card);
         }
         const videoEl = card.querySelector('video');
         videoEl.srcObject = stream;
-        roomPeers.add(peerId);
         updateParticipantCount();
     }
     
@@ -703,7 +735,6 @@
         }
         const card = document.getElementById(`video-${peerId}`);
         if (card) card.remove();
-        roomPeers.delete(peerId);
         updateParticipantCount();
     }
     
@@ -748,19 +779,10 @@
             muteMicBtn.disabled = false;
             startRecordBtn.disabled = false;
             
-            // Connect to all peers in the room
-            const roomKey = `meethub_room_${currentRoomId}`;
-            const peersInRoom = JSON.parse(localStorage.getItem(roomKey) || '[]');
-            peersInRoom.forEach(peerId => {
-                if (peerId !== myPeerId && !peerConnections.has(peerId)) {
-                    connectToPeer(peerId);
-                }
-            });
-            
-            showToast('Camera started!');
+            showToast('Camera started! Share your Peer ID to connect with others');
         } catch (err) {
             console.error('Camera error:', err);
-            showToast('Cannot access camera/microphone', true);
+            showToast('Cannot access camera/microphone. Please check permissions.', true);
         }
     }
     
@@ -814,7 +836,7 @@
                 const url = URL.createObjectURL(blob);
                 const timestamp = new Date().toISOString().slice(0,19).replace(/:/g, '-');
                 savedRecordings.push({ 
-                    name: `meeting_${timestamp}.webm`, 
+                    name: `recording_${timestamp}.webm`, 
                     url: url
                 });
                 updateRecordingsList();
@@ -829,7 +851,7 @@
             recordIndicator.style.display = 'inline-flex';
             startRecordBtn.disabled = true;
             stopRecordBtn.disabled = false;
-            showToast('Recording started - share your screen');
+            showToast('Recording screen...');
         } catch (err) {
             showToast('Screen capture permission needed', true);
         }
@@ -869,7 +891,7 @@
         });
     }
     
-    function leaveRoom() {
+    function resetAll() {
         // Close all peer connections
         peerConnections.forEach((conn, peerId) => {
             conn.close();
@@ -877,23 +899,17 @@
             if (card) card.remove();
         });
         peerConnections.clear();
-        roomPeers.clear();
-        
-        // Remove from room storage
-        const roomKey = `meethub_room_${currentRoomId}`;
-        let peersInRoom = JSON.parse(localStorage.getItem(roomKey) || '[]');
-        peersInRoom = peersInRoom.filter(id => id !== myPeerId);
-        localStorage.setItem(roomKey, JSON.stringify(peersInRoom));
         
         stopCamera();
         updateParticipantCount();
-        showToast('Left the room');
+        showToast('Reset complete');
     }
     
     // Event Listeners
     copyRoomBtn.addEventListener('click', () => {
-        navigator.clipboard.writeText(getRoomLink());
-        showToast('Link copied! Share with others');
+        const link = getRoomLink();
+        navigator.clipboard.writeText(link);
+        showToast('Link copied!');
     });
     
     shareRoomBtn.addEventListener('click', () => {
@@ -904,6 +920,21 @@
     copyShareLinkBtn.addEventListener('click', () => {
         navigator.clipboard.writeText(getRoomLink());
         showToast('Copied!');
+    });
+    
+    copyMyIdBtn.addEventListener('click', () => {
+        navigator.clipboard.writeText(myPeerId);
+        showToast('Your Peer ID copied!');
+    });
+    
+    connectToPeerBtn.addEventListener('click', () => {
+        const peerId = remotePeerIdInput.value.trim();
+        if (peerId) {
+            connectToPeer(peerId);
+            remotePeerIdInput.value = '';
+        } else {
+            showToast('Enter a Peer ID to connect', true);
+        }
     });
     
     shareWhatsAppBtn.addEventListener('click', () => {
@@ -936,12 +967,12 @@
     muteMicBtn.addEventListener('click', toggleMute);
     startRecordBtn.addEventListener('click', startRecording);
     stopRecordBtn.addEventListener('click', stopRecording);
-    leaveRoomBtn.addEventListener('click', leaveRoom);
+    leaveRoomBtn.addEventListener('click', resetAll);
     toggleRecordingsBtn.addEventListener('click', () => recordingsPanel.classList.toggle('open'));
     closePanelBtn.addEventListener('click', () => recordingsPanel.classList.remove('open'));
     
     // Initialize
-    connectToSignaling();
+    initPeer();
 </script>
 </body>
 </html>
