@@ -38,7 +38,6 @@
   .btn-secondary { background: var(--bg3); color: var(--text); border: 1px solid var(--border); }
   .btn-secondary:hover:not(:disabled) { background: var(--border); }
 
-  /* ── Modal ── */
   .modal-backdrop {
     position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);
     display: flex; align-items: center; justify-content: center; z-index: 100; padding: 16px;
@@ -54,9 +53,7 @@
   .field { display: flex; flex-direction: column; gap: 6px; }
   .form-group { display: flex; flex-direction: column; gap: 14px; }
 
-  /* ── Lobby ── */
   #view-lobby { display: flex; flex-direction: column; min-height: 100vh; }
-
   .lobby-header {
     border-bottom: 1px solid var(--border); background: var(--bg2);
     padding: 14px 28px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10;
@@ -67,13 +64,10 @@
   .logo-name { font-size: 15px; font-weight: 700; }
   .logo-sub { font-size: 11px; color: var(--text2); }
   .lobby-actions { display: flex; gap: 8px; }
-
   .lobby-main { flex: 1; max-width: 760px; margin: 0 auto; width: 100%; padding: 48px 24px; display: flex; flex-direction: column; gap: 32px; }
-
   .hero { text-align: center; display: flex; flex-direction: column; gap: 10px; }
   .hero h1 { font-size: 32px; font-weight: 800; letter-spacing: -0.5px; }
   .hero p { font-size: 15px; color: var(--text2); }
-
   .action-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
   .action-card {
     background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-lg);
@@ -89,7 +83,6 @@
   .action-card-icon.green svg { stroke: var(--success); }
   .action-card h3 { font-size: 15px; font-weight: 700; }
   .action-card p { font-size: 13px; color: var(--text2); line-height: 1.5; }
-
   .how-it-works { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 24px; }
   .how-title { font-size: 13px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 16px; }
   .steps { display: flex; flex-direction: column; gap: 12px; }
@@ -97,7 +90,6 @@
   .step-num { width: 24px; height: 24px; border-radius: 50%; background: var(--primary-dim); color: var(--primary); font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
   .step-text { font-size: 13px; color: var(--text2); line-height: 1.5; }
   .step-text strong { color: var(--text); }
-
   .github-note {
     background: rgba(34,197,94,0.06); border: 1px solid rgba(34,197,94,0.2);
     border-radius: var(--radius-lg); padding: 16px 20px;
@@ -107,9 +99,7 @@
   .github-note svg { width: 18px; height: 18px; stroke: var(--success); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; margin-top: 1px; }
   .github-note strong { color: var(--text); }
 
-  /* ── Room ── */
   #view-room { display: none; flex-direction: column; height: 100vh; background: #0a0c12; }
-
   .room-header {
     display: flex; align-items: center; justify-content: space-between;
     padding: 10px 20px; border-bottom: 1px solid rgba(255,255,255,0.06); background: rgba(15,17,23,0.95);
@@ -125,7 +115,6 @@
   }
   .room-code-pill:hover { background: rgba(59,130,246,0.25); }
   .room-header-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-
   .rec-badge {
     display: flex; align-items: center; gap: 5px; padding: 4px 10px;
     background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3);
@@ -133,7 +122,6 @@
   }
   .rec-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--danger); animation: pulse 1.2s infinite; }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
-
   .participants-btn {
     display: flex; align-items: center; gap: 5px; padding: 5px 10px;
     background: rgba(255,255,255,0.06); border: none; border-radius: 8px;
@@ -141,7 +129,6 @@
   }
   .participants-btn:hover { background: rgba(255,255,255,0.12); color: var(--text); }
   .participants-btn svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-
   .room-body { flex: 1; display: flex; min-height: 0; }
   .video-area { flex: 1; overflow-y: auto; padding: 10px; }
   .video-grid { display: grid; gap: 8px; }
@@ -151,7 +138,6 @@
   .g9  { grid-template-columns: repeat(3,1fr); }
   .g16 { grid-template-columns: repeat(4,1fr); }
   .g25 { grid-template-columns: repeat(5,1fr); }
-
   .vtile {
     position: relative; background: #111520; border-radius: 10px; overflow: hidden;
     aspect-ratio: 16/9; display: flex; align-items: center; justify-content: center;
@@ -178,8 +164,6 @@
     display: flex; align-items: center; justify-content: center;
   }
   .vtile-muted svg { width: 12px; height: 12px; stroke: #fff; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-
-  /* Panel */
   .panel {
     width: 240px; border-left: 1px solid rgba(255,255,255,0.06);
     background: rgba(15,17,23,0.9); display: flex; flex-direction: column; flex-shrink: 0;
@@ -194,8 +178,6 @@
   .panel-avatar.me { background: var(--primary-dim); color: var(--primary); }
   .panel-name { font-size: 12px; color: var(--text); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .panel-tag { font-size: 10px; color: var(--text2); white-space: nowrap; }
-
-  /* Controls */
   .ctrl-bar {
     border-top: 1px solid rgba(255,255,255,0.06); background: rgba(10,12,18,0.98);
     padding: 14px 20px; display: flex; align-items: center; justify-content: center;
@@ -218,8 +200,6 @@
   .cb-leave { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--danger); border: none; transition: background 0.15s; }
   .cb-leave:hover { background: var(--danger-hover); }
   .cb-leave svg { width: 18px; height: 18px; stroke: #fff; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-
-  /* Status / Toast */
   .toast {
     position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
     background: var(--bg2); border: 1px solid var(--border); padding: 10px 18px;
@@ -227,8 +207,6 @@
     animation: ti 0.2s ease; pointer-events: none;
   }
   @keyframes ti { from{opacity:0;transform:translateX(-50%) translateY(8px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
-
-  /* Connecting overlay */
   .overlay {
     position: fixed; inset: 0; background: rgba(10,12,18,0.92); backdrop-filter: blur(6px);
     display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 50; gap: 16px;
@@ -236,10 +214,8 @@
   .spinner { width: 36px; height: 36px; border: 3px solid rgba(59,130,246,0.2); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
   .overlay p { font-size: 14px; color: var(--text2); }
-
   ::-webkit-scrollbar { width: 5px; }
   ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 3px; }
-
   @media (max-width: 600px) {
     .action-cards { grid-template-columns: 1fr; }
     .panel { display: none; }
@@ -250,7 +226,6 @@
 </head>
 <body>
 
-<!-- LOBBY VIEW -->
 <div id="view-lobby">
   <header class="lobby-header">
     <div class="lobby-logo">
@@ -262,32 +237,23 @@
       <button class="btn btn-primary" onclick="openCreate()">+ New meeting</button>
     </div>
   </header>
-
   <main class="lobby-main">
     <div class="hero">
       <h1>Video meetings, instantly</h1>
       <p>Create a room, share the code, and everyone joins — no account, no install, no server.</p>
     </div>
-
     <div class="action-cards">
       <div class="action-card">
         <div class="action-card-icon blue"><svg viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></div>
-        <div>
-          <h3>Start a meeting</h3>
-          <p>Create a room instantly. Share the code with up to 20+ people.</p>
-        </div>
+        <div><h3>Start a meeting</h3><p>Create a room instantly. Share the code with up to 20+ people.</p></div>
         <button class="btn btn-primary" onclick="openCreate()">+ New meeting</button>
       </div>
       <div class="action-card">
         <div class="action-card-icon green"><svg viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg></div>
-        <div>
-          <h3>Join a meeting</h3>
-          <p>Have a room code? Enter it to jump straight into the call.</p>
-        </div>
+        <div><h3>Join a meeting</h3><p>Have a room code? Enter it to jump straight into the call.</p></div>
         <button class="btn btn-secondary" onclick="openJoin()">Enter room code</button>
       </div>
     </div>
-
     <div class="how-it-works">
       <div class="how-title">How it works</div>
       <div class="steps">
@@ -297,15 +263,13 @@
         <div class="step"><div class="step-num">4</div><div class="step-text"><strong>Record if needed</strong> — hit the Record button to capture the meeting and download it as a .webm file.</div></div>
       </div>
     </div>
-
     <div class="github-note">
       <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-      <div><strong>Fully standalone</strong> — this entire app is a single HTML file. Works on any modern browser with WebRTC support.</div>
+      <div><strong>Fully standalone</strong> — Works on any modern browser with WebRTC support.</div>
     </div>
   </main>
 </div>
 
-<!-- ROOM VIEW -->
 <div id="view-room">
   <header class="room-header">
     <div class="room-header-left">
@@ -315,117 +279,89 @@
     </div>
     <div class="room-header-right">
       <div id="rec-badge" class="rec-badge hidden"><div class="rec-dot"></div>Recording</div>
-      <button class="participants-btn" onclick="togglePanel()">
-        <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-        <span id="p-count">1</span>
-      </button>
+      <button class="participants-btn" onclick="togglePanel()"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span id="p-count">1</span></button>
     </div>
   </header>
-
   <div class="room-body">
-    <div class="video-area">
-      <div class="video-grid g1" id="video-grid"></div>
-    </div>
+    <div class="video-area"><div class="video-grid g1" id="video-grid"></div></div>
     <div class="panel hidden" id="panel">
-      <div class="panel-hd">
-        <div class="panel-hd-title">
-          <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-          Participants
-        </div>
-        <span class="panel-count" id="panel-count">1</span>
-      </div>
+      <div class="panel-hd"><div class="panel-hd-title"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Participants</div><span class="panel-count" id="panel-count">1</span></div>
       <div class="panel-list" id="panel-list"></div>
     </div>
   </div>
-
   <div class="ctrl-bar">
-    <button class="cb" id="btn-mic" onclick="toggleMic()" title="Mute / Unmute">
-      <svg id="mic-svg" viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
-    </button>
-    <button class="cb" id="btn-cam" onclick="toggleCam()" title="Camera on / off">
-      <svg id="cam-svg" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
-    </button>
-    <button class="cb-rec" id="btn-rec" onclick="toggleRec()">
-      <svg id="rec-svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" style="fill:var(--danger)"/></svg>
-      <span id="rec-lbl">Record</span>
-    </button>
+    <button class="cb" id="btn-mic" onclick="toggleMic()" title="Mute / Unmute"><svg id="mic-svg" viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></button>
+    <button class="cb" id="btn-cam" onclick="toggleCam()" title="Camera on / off"><svg id="cam-svg" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></button>
+    <button class="cb-rec" id="btn-rec" onclick="toggleRec()"><svg id="rec-svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" style="fill:var(--danger)"/></svg><span id="rec-lbl">Record</span></button>
     <div class="cb-divider"></div>
-    <button class="cb-leave" onclick="leaveRoom()" title="Leave">
-      <svg viewBox="0 0 24 24"><path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07C9.44 17.29 8 15.87 6.78 14.2a19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 5.71 3h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11z"/><line x1="23" y1="1" x2="1" y2="23"/></svg>
-    </button>
+    <button class="cb-leave" onclick="leaveRoom()" title="Leave"><svg viewBox="0 0 24 24"><path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07C9.44 17.29 8 15.87 6.78 14.2a19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 5.71 3h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11z"/><line x1="23" y1="1" x2="1" y2="23"/></svg></button>
   </div>
 </div>
 
-<!-- MODALS -->
 <div id="m-create" class="modal-backdrop hidden" onclick="if(event.target===this)closeModal('m-create')">
-  <div class="modal">
-    <div class="modal-title">New meeting</div>
-    <div class="modal-desc">You'll get a shareable room code after creating.</div>
-    <div class="form-group">
-      <div class="field"><label>Meeting name</label><input id="in-rname" placeholder="Weekly sync, Design review…" /></div>
-      <div class="field"><label>Your name</label><input id="in-myname-c" placeholder="Enter your name" /></div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal('m-create')">Cancel</button>
-      <button class="btn btn-primary" id="btn-create" onclick="doCreate()">Create room</button>
-    </div>
+  <div class="modal"><div class="modal-title">New meeting</div><div class="modal-desc">You'll get a shareable room code after creating.</div>
+    <div class="form-group"><div class="field"><label>Meeting name</label><input id="in-rname" placeholder="Weekly sync, Design review…" /></div><div class="field"><label>Your name</label><input id="in-myname-c" placeholder="Enter your name" /></div></div>
+    <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('m-create')">Cancel</button><button class="btn btn-primary" onclick="doCreate()">Create room</button></div>
   </div>
 </div>
 
 <div id="m-join" class="modal-backdrop hidden" onclick="if(event.target===this)closeModal('m-join')">
-  <div class="modal">
-    <div class="modal-title">Join a meeting</div>
-    <div class="form-group">
-      <div class="field"><label>Room code</label><input id="in-code" placeholder="6-letter code" style="text-transform:uppercase;font-family:monospace;letter-spacing:0.1em;font-size:18px;" maxlength="6" /></div>
-      <div class="field"><label>Your name</label><input id="in-myname-j" placeholder="Enter your name" /></div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal('m-join')">Cancel</button>
-      <button class="btn btn-primary" id="btn-join" onclick="doJoin()">Join room</button>
-    </div>
+  <div class="modal"><div class="modal-title">Join a meeting</div>
+    <div class="form-group"><div class="field"><label>Room code</label><input id="in-code" placeholder="6-letter code" style="text-transform:uppercase;font-family:monospace;letter-spacing:0.1em;font-size:18px;" maxlength="6" /></div><div class="field"><label>Your name</label><input id="in-myname-j" placeholder="Enter your name" /></div></div>
+    <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('m-join')">Cancel</button><button class="btn btn-primary" onclick="doJoin()">Join room</button></div>
   </div>
 </div>
 
-<div id="overlay" class="overlay hidden">
-  <div class="spinner"></div>
-  <p id="overlay-msg">Connecting…</p>
-</div>
+<div id="overlay" class="overlay hidden"><div class="spinner"></div><p id="overlay-msg">Connecting…</p></div>
 
 <script>
-// ========== CONFIGURATION WITH IMPROVED ICE SERVERS ==========
-// This resolves the "network error" when multiple users try to connect
-const PEER_CONFIG = {
-  debug: 2,
-  config: {
-    iceServers: [
-      { urls: 'stun:stun.l.google.com:19302' },
-      { urls: 'stun:stun1.l.google.com:19302' },
-      { urls: 'stun:stun2.l.google.com:19302' },
-      { urls: 'stun:stun3.l.google.com:19302' },
-      { urls: 'stun:stun4.l.google.com:19302' },
-      { urls: 'stun:stun.stunprotocol.org:3478' },
-      // Public TURN servers for when direct connection fails (NAT traversal)
-      {
-        urls: 'turn:openrelay.metered.ca:80',
-        username: 'openrelayproject',
-        credential: 'openrelayproject'
-      },
-      {
-        urls: 'turn:openrelay.metered.ca:443',
-        username: 'openrelayproject',
-        credential: 'openrelayproject'
-      },
-      {
-        urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-        username: 'openrelayproject',
-        credential: 'openrelayproject'
-      }
-    ],
-    iceCandidatePoolSize: 10,
-    bundlePolicy: 'max-bundle',
-    rtcpMuxPolicy: 'require'
+// ========== RELIABLE PEERJS CONFIGURATION WITH MULTIPLE SERVER FALLBACKS ==========
+const PEER_SERVERS = [
+  {
+    host: '0.peerjs.com',
+    port: 443,
+    path: '/',
+    secure: true,
+    debug: 0,
+    config: {
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:stun2.l.google.com:19302' },
+        { urls: 'stun:stun3.l.google.com:19302' },
+        { urls: 'stun:stun4.l.google.com:19302' },
+        { urls: 'stun:stun.stunprotocol.org:3478' }
+      ],
+      iceCandidatePoolSize: 10
+    }
+  },
+  {
+    host: 'peerjs-server.cyclic.app',
+    port: 443,
+    path: '/',
+    secure: true,
+    debug: 0,
+    config: {
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' }
+      ],
+      iceCandidatePoolSize: 10
+    }
   }
-};
+];
+
+let currentServerIndex = 0;
+
+function getPeerConfig() {
+  return PEER_SERVERS[currentServerIndex % PEER_SERVERS.length];
+}
+
+function switchToNextServer() {
+  currentServerIndex++;
+  console.log('Switching to peer server #' + (currentServerIndex + 1));
+  return currentServerIndex < PEER_SERVERS.length;
+}
 
 // ========== STATE ==========
 const S = {
@@ -443,7 +379,7 @@ const S = {
   isRec: false,
   recorder: null,
   recChunks: [],
-  connectionAttempts: 0
+  reconnectAttempts: 0
 };
 
 function initials(n){ return (n||'?').split(' ').map(x=>x[0]).join('').toUpperCase().slice(0,2); }
@@ -451,23 +387,6 @@ function escH(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').re
 function genCode(){ return Math.random().toString(36).slice(2,8).toUpperCase(); }
 function hostPid(code){ return 'ms-' + code.toLowerCase(); }
 
-// ========== MODALS ==========
-function openCreate(){
-  document.getElementById('m-create').classList.remove('hidden');
-  setTimeout(()=>document.getElementById('in-rname').focus(),50);
-}
-function openJoin(code=''){
-  document.getElementById('in-code').value = code;
-  document.getElementById('m-join').classList.remove('hidden');
-  setTimeout(()=>document.getElementById(code?'in-myname-j':'in-code').focus(),50);
-}
-function closeModal(id){ document.getElementById(id).classList.add('hidden'); }
-
-['in-rname','in-myname-c'].forEach(id=>document.getElementById(id).addEventListener('keydown',e=>e.key==='Enter'&&doCreate()));
-['in-code','in-myname-j'].forEach(id=>document.getElementById(id).addEventListener('keydown',e=>e.key==='Enter'&&doJoin()));
-document.getElementById('in-code').addEventListener('input',e=>{ e.target.value=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,''); });
-
-// ========== VIEWS ==========
 function showLobby(){
   document.getElementById('view-lobby').style.display='flex';
   document.getElementById('view-room').style.display='none';
@@ -478,65 +397,85 @@ function showRoom(){
   document.getElementById('view-room').style.display='flex';
   hideOverlay();
 }
-function showOverlay(msg){
-  document.getElementById('overlay-msg').textContent=msg;
-  document.getElementById('overlay').classList.remove('hidden');
-}
+function showOverlay(msg){ document.getElementById('overlay-msg').textContent=msg; document.getElementById('overlay').classList.remove('hidden'); }
 function hideOverlay(){ document.getElementById('overlay').classList.add('hidden'); }
+function openCreate(){ document.getElementById('m-create').classList.remove('hidden'); setTimeout(()=>document.getElementById('in-rname').focus(),50); }
+function openJoin(code=''){ document.getElementById('in-code').value = code; document.getElementById('m-join').classList.remove('hidden'); setTimeout(()=>document.getElementById(code?'in-myname-j':'in-code').focus(),50); }
+function closeModal(id){ document.getElementById(id).classList.add('hidden'); }
 
-// ========== CREATE ROOM (HOST) ==========
+document.getElementById('in-code').addEventListener('input',e=>{ e.target.value=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,''); });
+
+// ========== CREATE ROOM ==========
 async function doCreate(){
   const roomName = document.getElementById('in-rname').value.trim();
-  const myName   = document.getElementById('in-myname-c').value.trim();
+  const myName = document.getElementById('in-myname-c').value.trim();
   if(!roomName||!myName){ toast('Please fill in both fields.'); return; }
-
   closeModal('m-create');
   showOverlay('Setting up your room…');
-
-  S.isHost    = true;
-  S.roomCode  = genCode();
-  S.myName    = myName;
-  S.roomName  = roomName;
-
+  
+  S.isHost = true;
+  S.roomCode = genCode();
+  S.myName = myName;
+  S.roomName = roomName;
+  S.reconnectAttempts = 0;
+  currentServerIndex = 0;
+  
   try {
     S.localStream = await navigator.mediaDevices.getUserMedia({video:true,audio:true});
   } catch {
     try { S.localStream = await navigator.mediaDevices.getUserMedia({audio:true,video:false}); }
-    catch { toast('Camera/mic access denied — others won\'t see/hear you.'); S.localStream = null; }
+    catch { toast('Camera/mic access denied'); S.localStream = null; }
   }
+  
+  createHostPeer();
+}
 
+function createHostPeer(){
   const pid = hostPid(S.roomCode);
-  S.peer = new Peer(pid, PEER_CONFIG);
-
-  const openTimer = setTimeout(()=>{
+  const config = getPeerConfig();
+  
+  S.peer = new Peer(pid, config);
+  
+  const timeout = setTimeout(()=>{
     if(S.peer){ S.peer.destroy(); S.peer=null; }
-    showLobby();
-    toast('Could not reach the signaling server. Check your internet connection and try again.');
-  }, 15000);
-
+    if(switchToNextServer()){
+      toast('Trying alternative server...');
+      createHostPeer();
+    } else {
+      showLobby();
+      toast('Unable to connect. Please check your network.');
+    }
+  }, 10000);
+  
   S.peer.on('open', ()=>{
-    clearTimeout(openTimer);
-    document.getElementById('hdr-name').textContent = roomName;
+    clearTimeout(timeout);
+    document.getElementById('hdr-name').textContent = S.roomName;
     document.getElementById('hdr-code').textContent = S.roomCode;
     renderGrid();
     showRoom();
-    toast('Room created — share the code: ' + S.roomCode);
+    toast('Room created! Share code: ' + S.roomCode);
   });
-
+  
   S.peer.on('error', err=>{
-    clearTimeout(openTimer);
-    if(err.type==='unavailable-id'){
-      S.peer.destroy(); S.peer=null;
+    clearTimeout(timeout);
+    if(err.type === 'unavailable-id'){
+      S.peer.destroy();
       S.roomCode = genCode();
-      showOverlay('Code taken — trying a new one…');
-      setTimeout(doCreate, 300);
+      createHostPeer();
+    } else if(err.type === 'server-error' || err.type === 'network'){
+      if(switchToNextServer()){
+        S.peer.destroy();
+        createHostPeer();
+      } else {
+        showLobby();
+        toast('Server error. Please try again later.');
+      }
     } else {
       showLobby();
-      toast('Error: ' + (err.type || 'connection failed') + '. Please try again.');
+      toast('Error: ' + err.type);
     }
   });
-
-  // Handle incoming data connections
+  
   S.peer.on('connection', conn=>{
     const joinerPid = conn.peer;
     conn.on('open',()=>{
@@ -544,19 +483,15 @@ async function doCreate(){
       S.participants.forEach((v,k)=>users.push({peerId:k,name:v.name}));
       users.push({peerId:pid, name:S.myName});
       conn.send({type:'welcome', users, roomName:S.roomName, roomCode:S.roomCode});
-
       S.dataConns.forEach((c,k)=>{ if(k!==joinerPid && c.open) c.send({type:'user-joined', peerId:joinerPid, name:conn.metadata?.name||'Guest'}); });
-
       S.dataConns.set(joinerPid, conn);
       S.participants.set(joinerPid, {name: conn.metadata?.name||'Guest'});
       addTile(joinerPid, conn.metadata?.name||'Guest', null);
       updateCounts();
     });
     conn.on('close',()=>handleLeft(joinerPid));
-    conn.on('error', ()=>handleLeft(joinerPid));
   });
-
-  // Handle incoming video calls
+  
   S.peer.on('call', call=>{
     call.answer(S.localStream || new MediaStream());
     attachStream(call);
@@ -565,62 +500,83 @@ async function doCreate(){
 
 // ========== JOIN ROOM ==========
 async function doJoin(){
-  const code   = document.getElementById('in-code').value.trim().toUpperCase();
+  const code = document.getElementById('in-code').value.trim().toUpperCase();
   const myName = document.getElementById('in-myname-j').value.trim();
   if(!code||!myName){ toast('Please enter a room code and your name.'); return; }
   if(code.length!==6){ toast('Room code must be 6 characters.'); return; }
-
   closeModal('m-join');
   showOverlay('Connecting to room ' + code + '…');
-
-  S.isHost   = false;
+  
+  S.isHost = false;
   S.roomCode = code;
-  S.myName   = myName;
-
+  S.myName = myName;
+  S.reconnectAttempts = 0;
+  currentServerIndex = 0;
+  
   try {
     S.localStream = await navigator.mediaDevices.getUserMedia({video:true,audio:true});
   } catch {
     try { S.localStream = await navigator.mediaDevices.getUserMedia({audio:true,video:false}); }
-    catch { toast('Camera/mic access denied.'); S.localStream = null; }
+    catch { toast('Camera/mic access denied'); S.localStream = null; }
   }
+  
+  createJoinerPeer();
+}
 
-  S.peer = new Peer(PEER_CONFIG);
-
-  const peerOpenTimer = setTimeout(()=>{
+function createJoinerPeer(){
+  const config = getPeerConfig();
+  S.peer = new Peer(config);
+  
+  const timeout = setTimeout(()=>{
     if(S.peer){ S.peer.destroy(); S.peer=null; }
-    showLobby();
-    toast('Could not connect to signaling server. Please check your network.');
-  }, 15000);
-
-  S.peer.on('error', err=>{
-    clearTimeout(peerOpenTimer);
-    if(err.type==='peer-unavailable'){
-      showLobby();
-      toast('Room not found. Check the code and try again.');
+    if(switchToNextServer()){
+      toast('Trying alternative server...');
+      createJoinerPeer();
     } else {
       showLobby();
-      toast('Connection error: ' + (err.type || 'unknown') + '. Please try again.');
+      toast('Unable to connect. Please check your network.');
+    }
+  }, 10000);
+  
+  S.peer.on('error', err=>{
+    clearTimeout(timeout);
+    if(err.type === 'server-error' || err.type === 'network'){
+      if(switchToNextServer()){
+        S.peer.destroy();
+        createJoinerPeer();
+      } else {
+        showLobby();
+        toast('Server error. Please try again.');
+      }
+    } else if(err.type === 'peer-unavailable'){
+      showLobby();
+      toast('Room not found. Check the code.');
+    } else {
+      showLobby();
+      toast('Error: ' + err.type);
     }
   });
-
+  
   S.peer.on('open', myPid=>{
-    clearTimeout(peerOpenTimer);
-    const hostConn = S.peer.connect(hostPid(code), { metadata: { name: myName }, reliable: true });
-
-    const hostConnTimer = setTimeout(()=>{ toast('Room not found or host is offline.'); showLobby(); }, 12000);
-
+    clearTimeout(timeout);
+    const hostConn = S.peer.connect(hostPid(S.roomCode), { metadata: { name: S.myName }, reliable: true });
+    
+    const connTimeout = setTimeout(()=>{
+      toast('Host not responding. Room may be closed.');
+      showLobby();
+    }, 10000);
+    
     hostConn.on('open',()=>{
       const welcomeTimeout = setTimeout(()=>{ toast('Host did not respond.'); showLobby(); }, 8000);
       hostConn.on('data', msg=>{
-        clearTimeout(hostConnTimer);
+        clearTimeout(connTimeout);
         clearTimeout(welcomeTimeout);
-        if(msg.type==='welcome'){
+        if(msg.type === 'welcome'){
           S.roomName = msg.roomName;
           document.getElementById('hdr-name').textContent = msg.roomName;
           document.getElementById('hdr-code').textContent = msg.roomCode;
           renderGrid();
           showRoom();
-
           msg.users.forEach(u=>{
             if(u.peerId === myPid) return;
             S.participants.set(u.peerId, {name:u.name});
@@ -630,39 +586,37 @@ async function doJoin(){
             attachStream(call);
           });
           updateCounts();
-        } else if(msg.type==='user-joined'){
-          if(msg.peerId===myPid) return;
+        } else if(msg.type === 'user-joined'){
+          if(msg.peerId === myPid) return;
           S.participants.set(msg.peerId, {name:msg.name});
           addTile(msg.peerId, msg.name, null);
           updateCounts();
-          toast(msg.name+' joined');
-        } else if(msg.type==='user-left'){
+          toast(msg.name + ' joined');
+        } else if(msg.type === 'user-left'){
           handleLeft(msg.peerId);
         }
       });
     });
-    hostConn.on('error',()=>{ clearTimeout(hostConnTimer); toast('Could not reach room host.'); showLobby(); });
-    hostConn.on('close',()=>{ toast('Host ended the meeting.'); leaveRoom(); });
+    hostConn.on('error',()=>{ clearTimeout(connTimeout); toast('Cannot reach host.'); showLobby(); });
+    hostConn.on('close',()=>{ toast('Host left.'); leaveRoom(); });
   });
-
+  
   S.peer.on('call', call=>{
     call.answer(S.localStream||new MediaStream());
     attachStream(call);
   });
 }
 
-// ========== WEBRTC HELPERS ==========
 function attachStream(call){
   const pid = call.peer;
   S.calls.set(pid, call);
   call.on('stream', stream=>{
     S.participants.set(pid, S.participants.get(pid)||{name:'Guest'});
     const vid = document.getElementById('vid-'+pid);
-    const ph  = document.getElementById('ph-'+pid);
+    const ph = document.getElementById('ph-'+pid);
     if(vid){ vid.srcObject=stream; vid.play().catch(()=>{}); if(ph) ph.style.display='none'; vid.style.display='block'; }
   });
   call.on('close',()=>handleLeft(pid));
-  call.on('error',()=>handleLeft(pid));
 }
 
 function handleLeft(pid){
@@ -680,7 +634,6 @@ function handleLeft(pid){
   }
 }
 
-// ========== GRID RENDERING ==========
 function renderGrid(){
   const g = document.getElementById('video-grid');
   g.innerHTML = '';
@@ -693,26 +646,20 @@ function renderGrid(){
 function mkTile(id, name, stream, isLocal){
   const wrap = document.createElement('div');
   wrap.className='vtile'; wrap.id='tile-'+id;
-
   const ph = document.createElement('div');
   ph.className='ph'; ph.id='ph-'+id;
   ph.innerHTML=`<div class="vtile-avatar">${initials(name)}</div>`;
   const hasVideo = stream && stream.getVideoTracks().length > 0 && !S.isCamOff;
   ph.style.display = hasVideo ? 'none' : 'flex';
-
   const vid = document.createElement('video');
   vid.id='vid-'+id; vid.autoplay=true; vid.playsInline=true; vid.muted=isLocal;
   if(stream){ vid.srcObject=stream; vid.play().catch(()=>{}); vid.style.display=hasVideo?'block':'none'; }
-  else { vid.style.display='none'; }
-
   const bar = document.createElement('div');
   bar.className='vtile-bar';
   bar.innerHTML=`<div class="vtile-name">${escH(name)}${isLocal?' (you)':''}</div>`;
-
   if(isLocal && S.isMuted){
     bar.innerHTML+=`<div class="vtile-muted"><svg viewBox="0 0 24 24"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></div>`;
   }
-
   wrap.appendChild(ph); wrap.appendChild(vid); wrap.appendChild(bar);
   return wrap;
 }
@@ -723,44 +670,19 @@ function addTile(pid, name, stream){
   setGridClass(); renderPanel();
 }
 
-function removeTile(pid){
-  const t=document.getElementById('tile-'+pid); if(t) t.remove();
-  setGridClass(); renderPanel();
-}
+function removeTile(pid){ const t=document.getElementById('tile-'+pid); if(t) t.remove(); setGridClass(); renderPanel(); }
+function setGridClass(){ const g=document.getElementById('video-grid'); const n=g.children.length; g.className='video-grid '+(n>=17?'g25':n>=11?'g16':n>=6?'g9':n>=3?'g4':n>=2?'g2':'g1'); }
+function renderPanel(){ let html=`<div class="panel-item"><div class="panel-avatar me">${initials(S.myName)}</div><div class="panel-name">${escH(S.myName)}</div><div class="panel-tag">you</div></div>`; S.participants.forEach(p=>{ html+=`<div class="panel-item"><div class="panel-avatar">${initials(p.name)}</div><div class="panel-name">${escH(p.name)}</div></div>`; }); document.getElementById('panel-list').innerHTML=html; }
+function updateCounts(){ const n=S.participants.size+1; document.getElementById('p-count').textContent=n; document.getElementById('panel-count').textContent=n; renderPanel(); }
 
-function setGridClass(){
-  const g=document.getElementById('video-grid');
-  const n=g.children.length;
-  g.className='video-grid '+(n>=17?'g25':n>=11?'g16':n>=6?'g9':n>=3?'g4':n>=2?'g2':'g1');
-}
-
-function renderPanel(){
-  let html=`<div class="panel-item"><div class="panel-avatar me">${initials(S.myName)}</div><div class="panel-name">${escH(S.myName)}</div><div class="panel-tag">you</div></div>`;
-  S.participants.forEach(p=>{ html+=`<div class="panel-item"><div class="panel-avatar">${initials(p.name)}</div><div class="panel-name">${escH(p.name)}</div></div>`; });
-  document.getElementById('panel-list').innerHTML=html;
-}
-
-function updateCounts(){
-  const n=S.participants.size+1;
-  document.getElementById('p-count').textContent=n;
-  document.getElementById('panel-count').textContent=n;
-  renderPanel();
-}
-
-// ========== CONTROLS ==========
 function toggleMic(){
   if(!S.localStream) return;
   S.isMuted=!S.isMuted;
   S.localStream.getAudioTracks().forEach(t=>t.enabled=!S.isMuted);
   document.getElementById('btn-mic').classList.toggle('off', S.isMuted);
-  document.getElementById('mic-svg').innerHTML = S.isMuted
-    ? '<line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>'
-    : '<path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>';
+  document.getElementById('mic-svg').innerHTML = S.isMuted ? '<line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>' : '<path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>';
   const localBar = document.querySelector('#tile-local .vtile-bar');
-  if(localBar){
-    const existing=localBar.querySelector('.vtile-muted'); if(existing) existing.remove();
-    if(S.isMuted) localBar.innerHTML+=`<div class="vtile-muted"><svg viewBox="0 0 24 24"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></div>`;
-  }
+  if(localBar){ const existing=localBar.querySelector('.vtile-muted'); if(existing) existing.remove(); if(S.isMuted) localBar.innerHTML+=`<div class="vtile-muted"><svg viewBox="0 0 24 24"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></div>`; }
 }
 
 function toggleCam(){
@@ -768,82 +690,47 @@ function toggleCam(){
   S.isCamOff=!S.isCamOff;
   S.localStream.getVideoTracks().forEach(t=>t.enabled=!S.isCamOff);
   document.getElementById('btn-cam').classList.toggle('off', S.isCamOff);
-  document.getElementById('cam-svg').innerHTML = S.isCamOff
-    ? '<line x1="1" y1="1" x2="23" y2="23"/><path d="M21 21H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3m3-3h6l2 3h4a2 2 0 0 1 2 2v9.34m-7.72-2.06a4 4 0 1 1-5.56-5.56"/>'
-    : '<polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/>';
+  document.getElementById('cam-svg').innerHTML = S.isCamOff ? '<line x1="1" y1="1" x2="23" y2="23"/><path d="M21 21H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3m3-3h6l2 3h4a2 2 0 0 1 2 2v9.34m-7.72-2.06a4 4 0 1 1-5.56-5.56"/>' : '<polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/>';
   const vid=document.getElementById('vid-local'), ph=document.getElementById('ph-local');
   if(vid) vid.style.display=S.isCamOff?'none':'block';
-  if(ph)  ph.style.display=S.isCamOff?'flex':'none';
+  if(ph) ph.style.display=S.isCamOff?'flex':'none';
 }
 
+let recorder=null, recChunks=[], isRecording=false;
 function toggleRec(){
-  if(S.isRec){ stopRec(); } else { startRec(); }
+  if(isRecording){ stopRec(); } else { startRec(); }
 }
-
 function startRec(){
   if(!S.localStream){ toast('No stream to record.'); return; }
-  S.recChunks=[];
-  const opts=MediaRecorder.isTypeSupported('video/webm;codecs=vp9')?{mimeType:'video/webm;codecs=vp9'}:MediaRecorder.isTypeSupported('video/webm')?{mimeType:'video/webm'}:{};
+  recChunks=[];
+  const opts=MediaRecorder.isTypeSupported('video/webm;codecs=vp9')?{mimeType:'video/webm;codecs=vp9'}:{mimeType:'video/webm'};
   const rec=new MediaRecorder(S.localStream,opts);
-  rec.ondataavailable=e=>{ if(e.data&&e.data.size>0) S.recChunks.push(e.data); };
-  rec.onstop=()=>{
-    const blob=new Blob(S.recChunks,{type:'video/webm'});
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement('a');
-    a.href=url; a.download='meeting-'+S.roomCode+'-'+new Date().toISOString().slice(0,10)+'.webm';
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    toast('Recording saved.');
-  };
+  rec.ondataavailable=e=>{ if(e.data&&e.data.size>0) recChunks.push(e.data); };
+  rec.onstop=()=>{ const blob=new Blob(recChunks,{type:'video/webm'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='meeting-'+S.roomCode+'.webm'; a.click(); URL.revokeObjectURL(url); toast('Recording saved.'); };
   rec.start(1000);
-  S.recorder=rec; S.isRec=true;
-  document.getElementById('btn-rec').classList.add('on');
-  document.getElementById('rec-lbl').textContent='Stop';
-  document.getElementById('rec-svg').innerHTML='<rect x="4" y="4" width="16" height="16" rx="2"/>';
-  document.getElementById('rec-badge').classList.remove('hidden');
+  recorder=rec; isRecording=true;
+  document.getElementById('btn-rec').classList.add('on'); document.getElementById('rec-lbl').textContent='Stop'; document.getElementById('rec-svg').innerHTML='<rect x="4" y="4" width="16" height="16" rx="2"/>'; document.getElementById('rec-badge').classList.remove('hidden');
 }
+function stopRec(){ if(recorder){ recorder.stop(); recorder=null; } isRecording=false; document.getElementById('btn-rec').classList.remove('on'); document.getElementById('rec-lbl').textContent='Record'; document.getElementById('rec-svg').innerHTML='<circle cx="12" cy="12" r="7" style="fill:var(--danger)"/>'; document.getElementById('rec-badge').classList.add('hidden'); }
+function togglePanel(){ document.getElementById('panel').classList.toggle('hidden'); }
+function copyCode(){ navigator.clipboard.writeText(S.roomCode).then(()=>toast('Copied!')).catch(()=>toast('Code: '+S.roomCode)); }
 
-function stopRec(){
-  if(S.recorder){ S.recorder.stop(); S.recorder=null; }
-  S.isRec=false;
-  document.getElementById('btn-rec').classList.remove('on');
-  document.getElementById('rec-lbl').textContent='Record';
-  document.getElementById('rec-svg').innerHTML='<circle cx="12" cy="12" r="7" style="fill:var(--danger)"/>';
-  document.getElementById('rec-badge').classList.add('hidden');
-}
-
-function togglePanel(){
-  document.getElementById('panel').classList.toggle('hidden');
-}
-
-function copyCode(){
-  navigator.clipboard.writeText(S.roomCode).then(()=>toast('Room code copied: '+S.roomCode)).catch(()=>toast('Code: '+S.roomCode));
-}
-
-// ========== LEAVE ==========
 function leaveRoom(){
-  if(S.isRec) stopRec();
+  if(isRecording) stopRec();
   S.calls.forEach(c=>c.close()); S.calls.clear();
   S.dataConns.forEach(c=>c.close()); S.dataConns.clear();
   if(S.peer){ S.peer.destroy(); S.peer=null; }
   if(S.localStream){ S.localStream.getTracks().forEach(t=>t.stop()); S.localStream=null; }
   S.participants.clear();
   S.isMuted=false; S.isCamOff=false;
-  document.getElementById('btn-mic').classList.remove('off');
-  document.getElementById('btn-cam').classList.remove('off');
+  document.getElementById('btn-mic').classList.remove('off'); document.getElementById('btn-cam').classList.remove('off');
   document.getElementById('mic-svg').innerHTML='<path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>';
   document.getElementById('cam-svg').innerHTML='<polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/>';
   showLobby();
 }
 
-// ========== TOAST ==========
-let _tt=null;
-function toast(msg){
-  let t=document.querySelector('.toast'); if(t) t.remove();
-  t=document.createElement('div'); t.className='toast'; t.textContent=msg;
-  document.body.appendChild(t);
-  clearTimeout(_tt); _tt=setTimeout(()=>t.remove(),3500);
-}
+let toastTimer=null;
+function toast(msg){ let t=document.querySelector('.toast'); if(t) t.remove(); t=document.createElement('div'); t.className='toast'; t.textContent=msg; document.body.appendChild(t); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.remove(),3500); }
 </script>
 </body>
 </html>
