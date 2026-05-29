@@ -230,7 +230,7 @@
   <header class="lobby-header">
     <div class="lobby-logo">
       <div class="logo-icon"><svg viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></div>
-      <div><div class="logo-name">MeetSpace</div><div class="logo-sub">No sign-up · No backend · Just share the code</div></div>
+      <div><div class="logo-name">HamoudaSpace</div><div class="logo-sub">No sign-up · No backend · Just share the code</div></div>
     </div>
     <div class="lobby-actions">
       <button class="btn btn-secondary" onclick="openJoin()">Join by code</button>
@@ -265,7 +265,7 @@
     </div>
     <div class="github-note">
       <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-      <div><strong>Fully standalone</strong> — Works on any modern browser with WebRTC support.</div>
+      <div><strong>Fully standalone</strong> — Works on any modern browser with WebRTC support. Powered by HamoudaSpace.</div>
     </div>
   </main>
 </div>
@@ -315,7 +315,7 @@
 <div id="overlay" class="overlay hidden"><div class="spinner"></div><p id="overlay-msg">Connecting…</p></div>
 
 <script>
-// ========== RELIABLE PEERJS CONFIGURATION WITH MULTIPLE SERVER FALLBACKS ==========
+// ========== HAMOUDASPACE PEERJS CONFIGURATION ==========
 const PEER_SERVERS = [
   {
     host: '0.peerjs.com',
@@ -359,7 +359,6 @@ function getPeerConfig() {
 
 function switchToNextServer() {
   currentServerIndex++;
-  console.log('Switching to peer server #' + (currentServerIndex + 1));
   return currentServerIndex < PEER_SERVERS.length;
 }
 
@@ -385,7 +384,7 @@ const S = {
 function initials(n){ return (n||'?').split(' ').map(x=>x[0]).join('').toUpperCase().slice(0,2); }
 function escH(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function genCode(){ return Math.random().toString(36).slice(2,8).toUpperCase(); }
-function hostPid(code){ return 'ms-' + code.toLowerCase(); }
+function hostPid(code){ return 'hs-' + code.toLowerCase(); }
 
 function showLobby(){
   document.getElementById('view-lobby').style.display='flex';
@@ -405,7 +404,6 @@ function closeModal(id){ document.getElementById(id).classList.add('hidden'); }
 
 document.getElementById('in-code').addEventListener('input',e=>{ e.target.value=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,''); });
 
-// ========== CREATE ROOM ==========
 async function doCreate(){
   const roomName = document.getElementById('in-rname').value.trim();
   const myName = document.getElementById('in-myname-c').value.trim();
@@ -498,7 +496,6 @@ function createHostPeer(){
   });
 }
 
-// ========== JOIN ROOM ==========
 async function doJoin(){
   const code = document.getElementById('in-code').value.trim().toUpperCase();
   const myName = document.getElementById('in-myname-j').value.trim();
@@ -706,7 +703,7 @@ function startRec(){
   const opts=MediaRecorder.isTypeSupported('video/webm;codecs=vp9')?{mimeType:'video/webm;codecs=vp9'}:{mimeType:'video/webm'};
   const rec=new MediaRecorder(S.localStream,opts);
   rec.ondataavailable=e=>{ if(e.data&&e.data.size>0) recChunks.push(e.data); };
-  rec.onstop=()=>{ const blob=new Blob(recChunks,{type:'video/webm'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='meeting-'+S.roomCode+'.webm'; a.click(); URL.revokeObjectURL(url); toast('Recording saved.'); };
+  rec.onstop=()=>{ const blob=new Blob(recChunks,{type:'video/webm'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='hamoudaspace-'+S.roomCode+'.webm'; a.click(); URL.revokeObjectURL(url); toast('Recording saved.'); };
   rec.start(1000);
   recorder=rec; isRecording=true;
   document.getElementById('btn-rec').classList.add('on'); document.getElementById('rec-lbl').textContent='Stop'; document.getElementById('rec-svg').innerHTML='<rect x="4" y="4" width="16" height="16" rx="2"/>'; document.getElementById('rec-badge').classList.remove('hidden');
@@ -731,6 +728,9 @@ function leaveRoom(){
 
 let toastTimer=null;
 function toast(msg){ let t=document.querySelector('.toast'); if(t) t.remove(); t=document.createElement('div'); t.className='toast'; t.textContent=msg; document.body.appendChild(t); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.remove(),3500); }
+
+['in-rname','in-myname-c'].forEach(id=>document.getElementById(id).addEventListener('keydown',e=>e.key==='Enter'&&doCreate()));
+['in-code','in-myname-j'].forEach(id=>document.getElementById(id).addEventListener('keydown',e=>e.key==='Enter'&&doJoin()));
 </script>
 </body>
 </html>
