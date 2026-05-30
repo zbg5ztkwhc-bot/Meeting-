@@ -125,6 +125,13 @@
   }
   .room-code-pill:hover { background: rgba(59,130,246,0.25); }
   .room-header-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .share-btn {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 14px; border-radius: 8px; border: none; cursor: pointer; font-size: 13px; font-weight: 600;
+    background: rgba(59,130,246,0.18); color: var(--primary); transition: background 0.15s;
+  }
+  .share-btn:hover { background: rgba(59,130,246,0.30); }
+  .share-btn svg { width: 15px; height: 15px; flex-shrink: 0; }
 
   .rec-badge {
     display: flex; align-items: center; gap: 5px; padding: 4px 10px;
@@ -315,6 +322,10 @@
     </div>
     <div class="room-header-right">
       <div id="rec-badge" class="rec-badge hidden"><div class="rec-dot"></div>Recording</div>
+      <button class="share-btn" onclick="shareRoom()" title="Share meeting link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+        Share
+      </button>
       <button class="participants-btn" onclick="togglePanel()">
         <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         <span id="p-count">1</span>
@@ -485,7 +496,16 @@ async function doCreate(){
   S.roomName  = roomName;
 
   try {
-    S.localStream = await navigator.mediaDevices.getUserMedia({video:true,audio:true});
+    S.localStream = await navigator.mediaDevices.getUserMedia({
+      audio: true,
+      video: {
+        facingMode: { ideal: 'user' },
+        aspectRatio: { ideal: 9/16 },
+        width:  { ideal: 720,  max: 1080 },
+        height: { ideal: 1280, max: 1920 },
+        zoom:   { ideal: 1.0 }
+      }
+    });
   } catch {
     try { S.localStream = await navigator.mediaDevices.getUserMedia({audio:true,video:false}); }
     catch { toast('Camera/mic access denied — others won\'t see/hear you.'); S.localStream = null; }
@@ -586,7 +606,16 @@ async function doJoin(){
   S.myName   = myName;
 
   try {
-    S.localStream = await navigator.mediaDevices.getUserMedia({video:true,audio:true});
+    S.localStream = await navigator.mediaDevices.getUserMedia({
+      audio: true,
+      video: {
+        facingMode: { ideal: 'user' },
+        aspectRatio: { ideal: 9/16 },
+        width:  { ideal: 720,  max: 1080 },
+        height: { ideal: 1280, max: 1920 },
+        zoom:   { ideal: 1.0 }
+      }
+    });
   } catch {
     try { S.localStream = await navigator.mediaDevices.getUserMedia({audio:true,video:false}); }
     catch { toast('Camera/mic access denied.'); S.localStream = null; }
@@ -856,6 +885,22 @@ function copyCode(){
   navigator.clipboard.writeText(S.roomCode).then(()=>toast('Room code copied: '+S.roomCode)).catch(()=>toast('Code: '+S.roomCode));
 }
 
+function shareRoom(){
+  const code = S.roomCode;
+  // Build a join URL pointing at this page with the code pre-filled
+  const url = location.origin + location.pathname + '?join=' + code;
+  const text = `Join my HamoudaSpace-VideoMeeting — Room code: ${code}\n${url}`;
+
+  if(navigator.share){
+    navigator.share({ title: 'HamoudaSpace-VideoMeeting', text, url })
+      .catch(()=>{}); // user dismissed share sheet — silent
+  } else {
+    navigator.clipboard.writeText(text)
+      .then(()=>toast('Meeting link copied to clipboard!'))
+      .catch(()=>toast('Share code: ' + code));
+  }
+}
+
 // ════════════════════════════════════════════════
 //  Leave
 // ════════════════════════════════════════════════
@@ -885,6 +930,13 @@ function toast(msg, duration=3500){
   clearTimeout(_tt); _tt=setTimeout(()=>t.remove(), duration);
 }
 function toastError(msg){ toast(msg, 7000); }
+
+// Auto-open join modal when ?join=CODE is in the URL
+(function(){
+  const params = new URLSearchParams(location.search);
+  const code = params.get('join');
+  if(code) setTimeout(()=>openJoin(code.toUpperCase()), 300);
+})();
 </script>
 </body>
 </html>
