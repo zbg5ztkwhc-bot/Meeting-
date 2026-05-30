@@ -344,13 +344,150 @@
 <div id="overlay" class="overlay hidden"><div class="spinner"></div><p id="overlay-msg">Connecting…</p></div>
 
 <script>
-// ========== CHECK BROWSER SUPPORT FOR SCREEN SHARE ==========
-function isScreenShareSupported() {
-  return !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia);
+// ========== CHECK IF PAGE IS SECURE (HTTPS) ==========
+function isSecureContext() {
+  return window.isSecureContext === true;
 }
 
-function showScreenShareNotSupported() {
-  toast('Screen sharing is not supported in this browser. Please use Chrome, Edge, or Firefox on HTTPS.');
+function showSecurityWarning() {
+  toast('⚠️ Screen sharing requires HTTPS. Please use https:// or localhost for screen share to work.');
+}
+
+// ========== SCREEN SHARE WITH PROPER SUPPORT CHECK ==========
+function isScreenShareSupported() {
+  return !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia && window.isSecureContext);
+}
+
+async function toggleScreenShare() {
+  // Check if page is secure
+  if (!window.isSecureContext) {
+    showSecurityWarning();
+    toast('Screen sharing requires HTTPS. Current connection is not secure.');
+    return;
+  }
+  
+  // Check if screen share is supported
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+    toast('Screen sharing is not supported in this browser. Please use Chrome, Edge, or Firefox.');
+    return;
+  }
+  
+  if (S.isScreenSharing) {
+    stopScreenShare();
+  } else {
+    await startScreenShare();
+  }
+}
+
+async function startScreenShare() {
+  if (!window.isSecureContext) {
+    showSecurityWarning();
+    return;
+  }
+  
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+    toast('Screen sharing not supported in this browser');
+    return;
+  }
+  
+  try {
+    showOverlay('Select a screen or window to share...');
+    
+    // Request screen share with displaySurface hint for better compatibility
+    const screenStream = await navigator.mediaDevices.getDisplayMedia({ 
+      video: {
+        cursor: "always"
+      },
+      audio: false,
+      preferCurrentTab: true  // This helps share current tab on Chrome
+    });
+    
+    hideOverlay();
+    
+    // Check if user actually selected a screen/window
+    const videoTrack = screenStream.getVideoTracks()[0];
+    if (!videoTrack) {
+      toast('No screen source selected');
+      return;
+    }
+    
+    S.screenStream = screenStream;
+    S.isScreenSharing = true;
+    
+    // Replace video track in all peer connections
+    for (let [peerId, peer] of S.peers) {
+      if (peer.pc) {
+        const sender = peer.pc.getSenders().find(s => s.track && s.track.kind === 'video');
+        if (sender && videoTrack) {
+          try {
+            await sender.replaceTrack(videoTrack);
+          } catch (e) {
+            console.log('Replace track error:', e);
+          }
+        }
+      }
+    }
+    
+    // Update UI
+    document.getElementById('btn-screen').classList.add('on');
+    document.getElementById('screen-lbl').textContent = 'Stop';
+    document.getElementById('screen-badge').style.display = 'flex';
+    toast('Screen sharing started');
+    
+    // Handle when user stops sharing via browser UI
+    videoTrack.onended = () => {
+      if (S.isScreenSharing) {
+        stopScreenShare();
+        toast('Screen sharing stopped');
+      }
+    };
+    
+  } catch (err) {
+    hideOverlay();
+    console.error('Screen share error:', err);
+    
+    // Handle different error types
+    if (err.name === 'NotAllowedError') {
+      toast('Screen share permission denied. Please allow access to share your screen.');
+    } else if (err.name === 'NotFoundError') {
+      toast('No screen sharing source found');
+    } else if (err.name === 'AbortError') {
+      toast('Screen share selection was cancelled');
+    } else {
+      toast('Screen share failed: ' + (err.message || 'Unknown error'));
+    }
+  }
+}
+
+function stopScreenShare() {
+  if (S.screenStream) {
+    S.screenStream.getTracks().forEach(track => {
+      track.stop();
+    });
+    S.screenStream = null;
+  }
+  
+  S.isScreenSharing = false;
+  
+  // Restore camera video track if available
+  if (S.localStream) {
+    const cameraVideoTrack = S.localStream.getVideoTracks()[0];
+    if (cameraVideoTrack) {
+      for (let [peerId, peer] of S.peers) {
+        if (peer.pc) {
+          const sender = peer.pc.getSenders().find(s => s.track && s.track.kind === 'video');
+          if (sender) {
+            sender.replaceTrack(cameraVideoTrack).catch(e => console.log('Replace track error:', e));
+          }
+        }
+      }
+    }
+  }
+  
+  // Update UI
+  document.getElementById('btn-screen').classList.remove('on');
+  document.getElementById('screen-lbl').textContent = 'Share';
+  document.getElementById('screen-badge').style.display = 'none';
 }
 
 // ========== MAXIMUM WIDE ANGLE FRONT CAMERA SETUP ==========
@@ -436,7 +573,14 @@ function showOverlay(msg) { document.getElementById('overlay-msg').textContent =
 function hideOverlay() { document.getElementById('overlay').classList.add('hidden'); }
 function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
 
-function getRoomLink() { return window.location.href.split('?')[0] + '?room=' + S.roomCode; }
+function getRoomLink() { 
+  let url = window.location.href.split('?')[0];
+  // Ensure URL is HTTPS for screen share
+  if (url.startsWith('http://') && !url.includes('localhost')) {
+    url = url.replace('http://', 'https://');
+  }
+  return url + '?room=' + S.roomCode;
+}
 function openShareModal() { document.getElementById('share-link-input').value = getRoomLink(); document.getElementById('m-share').classList.remove('hidden'); }
 function copyShareLink() { const input = document.getElementById('share-link-input'); input.select(); navigator.clipboard.writeText(input.value).then(() => toast('Link copied!')); }
 function shareWhatsApp() { window.open('https://wa.me/?text=' + encodeURIComponent('Join my HamoudaSpace meeting: ' + getRoomLink()), '_blank'); }
@@ -448,126 +592,6 @@ if (window.location.search) {
   if (roomParam && roomParam.length === 6) {
     setTimeout(() => { openJoin(); document.getElementById('in-code').value = roomParam.toUpperCase(); }, 500);
   }
-}
-
-// ========== SCREEN SHARE WITH PROPER SUPPORT CHECK ==========
-async function toggleScreenShare() {
-  // Check if screen share is supported
-  if (!isScreenShareSupported()) {
-    showScreenShareNotSupported();
-    return;
-  }
-  
-  if (S.isScreenSharing) {
-    stopScreenShare();
-  } else {
-    await startScreenShare();
-  }
-}
-
-async function startScreenShare() {
-  if (!isScreenShareSupported()) {
-    showScreenShareNotSupported();
-    return;
-  }
-  
-  try {
-    showOverlay('Opening screen share selector...');
-    
-    // Request screen share
-    const screenStream = await navigator.mediaDevices.getDisplayMedia({ 
-      video: true,
-      audio: false
-    });
-    
-    hideOverlay();
-    
-    // Check if user actually selected a screen/window
-    const videoTrack = screenStream.getVideoTracks()[0];
-    if (!videoTrack) {
-      toast('No screen source selected');
-      return;
-    }
-    
-    S.screenStream = screenStream;
-    S.isScreenSharing = true;
-    
-    // Replace video track in all peer connections
-    for (let [peerId, peer] of S.peers) {
-      if (peer.pc) {
-        const sender = peer.pc.getSenders().find(s => s.track && s.track.kind === 'video');
-        if (sender && videoTrack) {
-          try {
-            await sender.replaceTrack(videoTrack);
-          } catch (e) {
-            console.log('Replace track error:', e);
-          }
-        }
-      }
-    }
-    
-    // Update UI
-    document.getElementById('btn-screen').classList.add('on');
-    document.getElementById('screen-lbl').textContent = 'Stop';
-    document.getElementById('screen-badge').style.display = 'flex';
-    toast('Screen sharing started');
-    
-    // Handle when user stops sharing via browser UI
-    videoTrack.onended = () => {
-      if (S.isScreenSharing) {
-        stopScreenShare();
-        toast('Screen sharing stopped by user');
-      }
-    };
-    
-  } catch (err) {
-    hideOverlay();
-    console.error('Screen share error:', err);
-    
-    // Handle different error types with user-friendly messages
-    if (err.name === 'NotAllowedError') {
-      toast('Screen share permission denied. Please allow access to share your screen.');
-    } else if (err.name === 'NotFoundError') {
-      toast('No screen sharing source found');
-    } else if (err.name === 'AbortError') {
-      toast('Screen share selection was cancelled');
-    } else if (err.name === 'NotSupportedError') {
-      showScreenShareNotSupported();
-    } else {
-      toast('Screen share failed: ' + (err.message || 'Unknown error'));
-    }
-  }
-}
-
-function stopScreenShare() {
-  if (S.screenStream) {
-    S.screenStream.getTracks().forEach(track => {
-      track.stop();
-    });
-    S.screenStream = null;
-  }
-  
-  S.isScreenSharing = false;
-  
-  // Restore camera video track if available
-  if (S.localStream) {
-    const cameraVideoTrack = S.localStream.getVideoTracks()[0];
-    if (cameraVideoTrack) {
-      for (let [peerId, peer] of S.peers) {
-        if (peer.pc) {
-          const sender = peer.pc.getSenders().find(s => s.track && s.track.kind === 'video');
-          if (sender) {
-            sender.replaceTrack(cameraVideoTrack).catch(e => console.log('Replace track error:', e));
-          }
-        }
-      }
-    }
-  }
-  
-  // Update UI
-  document.getElementById('btn-screen').classList.remove('on');
-  document.getElementById('screen-lbl').textContent = 'Share';
-  document.getElementById('screen-badge').style.display = 'none';
 }
 
 // ========== PERMISSIONS ==========
