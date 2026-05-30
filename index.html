@@ -436,14 +436,17 @@ function escH(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').re
 function genCode(){ return Math.random().toString(36).slice(2,8).toUpperCase(); }
 function hostPid(code){ return 'ms-' + code.toLowerCase(); }
 
-// PeerJS config — explicit STUN servers so ICE and signaling are more reliable
+// PeerJS config — STUN (Google, free) + TURN (Open Relay Project, free, no sign-up)
 const PEER_CONFIG = {
   debug: 0,
   config: {
     iceServers: [
       { urls: 'stun:stun.l.google.com:19302' },
       { urls: 'stun:stun1.l.google.com:19302' },
-      { urls: 'stun:stun2.l.google.com:19302' },
+      // Open Relay Project — free TURN, no account needed
+      { urls: 'turn:openrelay.metered.ca:80',  username: 'openrelayproject', credential: 'openrelayproject' },
+      { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+      { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
     ]
   }
 };
