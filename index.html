@@ -194,19 +194,42 @@
 
   /* Panel */
   .panel {
-    width: 240px; border-left: 1px solid rgba(255,255,255,0.06);
+    width: 260px; border-left: 1px solid rgba(255,255,255,0.06);
     background: rgba(15,17,23,0.9); display: flex; flex-direction: column; flex-shrink: 0;
   }
-  .panel-hd { padding: 14px 16px; border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; align-items: center; justify-content: space-between; }
-  .panel-hd-title { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; color: var(--text2); }
-  .panel-hd-title svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-  .panel-count { font-size: 11px; font-weight: 600; background: rgba(255,255,255,0.08); padding: 2px 7px; border-radius: 12px; color: var(--text2); }
+  /* Panel tabs */
+  .panel-tabs { display: flex; border-bottom: 1px solid rgba(255,255,255,0.06); flex-shrink: 0; }
+  .panel-tab {
+    flex: 1; padding: 11px 6px; font-size: 12px; font-weight: 600; color: var(--text2);
+    background: none; border: none; border-bottom: 2px solid transparent;
+    cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .panel-tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+  .panel-tab:hover:not(.active) { color: var(--text); }
+  .panel-count { font-size: 10px; font-weight: 700; background: rgba(255,255,255,0.08); padding: 1px 6px; border-radius: 10px; color: var(--text2); }
+  .chat-unread { background: var(--danger); color: #fff; font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 10px; min-width: 16px; text-align: center; }
+  .panel-section { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
   .panel-list { flex: 1; overflow-y: auto; padding: 10px 12px; display: flex; flex-direction: column; gap: 3px; }
   .panel-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 8px; }
   .panel-avatar { width: 28px; height: 28px; border-radius: 50%; background: rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: var(--text2); flex-shrink: 0; }
   .panel-avatar.me { background: var(--primary-dim); color: var(--primary); }
   .panel-name { font-size: 12px; color: var(--text); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .panel-tag { font-size: 10px; color: var(--text2); white-space: nowrap; }
+
+  /* Chat */
+  .chat-msgs { flex: 1; overflow-y: auto; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+  .chat-msg { display: flex; flex-direction: column; gap: 2px; }
+  .chat-msg.me { align-items: flex-end; }
+  .chat-bubble { max-width: 86%; padding: 7px 11px; border-radius: 14px; font-size: 12px; line-height: 1.45; word-break: break-word; }
+  .chat-msg:not(.me) .chat-bubble { background: var(--bg3); color: var(--text); border-bottom-left-radius: 3px; }
+  .chat-msg.me .chat-bubble { background: var(--primary); color: #fff; border-bottom-right-radius: 3px; }
+  .chat-meta { font-size: 10px; color: var(--text2); padding: 0 4px; }
+  .chat-input-area { display: flex; gap: 6px; padding: 10px 12px; border-top: 1px solid rgba(255,255,255,0.06); align-items: center; flex-shrink: 0; }
+  .chat-input-area input { flex: 1; padding: 7px 10px; font-size: 12px; border-radius: 8px; }
+  .chat-send { width: 32px; height: 32px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; flex-shrink: 0; border: none; cursor: pointer; transition: background 0.15s; }
+  .chat-send:hover { background: var(--primary-hover); }
+  .chat-send svg { width: 14px; height: 14px; }
 
   /* Controls */
   .ctrl-bar {
@@ -345,14 +368,31 @@
       <div class="video-grid g1" id="video-grid"></div>
     </div>
     <div class="panel hidden" id="panel">
-      <div class="panel-hd">
-        <div class="panel-hd-title">
-          <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-          Participants
-        </div>
-        <span class="panel-count" id="panel-count">1</span>
+      <!-- Tabs -->
+      <div class="panel-tabs">
+        <button class="panel-tab active" id="tab-people" onclick="switchTab('people')">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          People <span class="panel-count" id="panel-count">1</span>
+        </button>
+        <button class="panel-tab" id="tab-chat" onclick="switchTab('chat')">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Chat <span class="chat-unread hidden" id="chat-unread">0</span>
+        </button>
       </div>
-      <div class="panel-list" id="panel-list"></div>
+      <!-- People section -->
+      <div id="panel-people" class="panel-section">
+        <div class="panel-list" id="panel-list"></div>
+      </div>
+      <!-- Chat section -->
+      <div id="panel-chat" class="panel-section hidden">
+        <div class="chat-msgs" id="chat-msgs"></div>
+        <div class="chat-input-area">
+          <input id="chat-input" placeholder="Send a message…" onkeydown="if(event.key==='Enter')sendChat()" maxlength="500" autocomplete="off"/>
+          <button class="chat-send" onclick="sendChat()" title="Send">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2" fill="#fff" stroke="none"/></svg>
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -363,11 +403,14 @@
     <button class="cb" id="btn-cam" onclick="toggleCam()" title="Camera on / off">
       <svg id="cam-svg" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
     </button>
-    <button class="cb-rec" id="btn-rec" onclick="toggleRec()">
+    <button class="cb-rec" id="btn-rec" onclick="toggleRec()" title="Record yourself (video + audio)">
       <svg id="rec-svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" style="fill:var(--danger)"/></svg>
       <span id="rec-lbl">Record</span>
     </button>
     <div class="cb-divider"></div>
+    <button class="cb" id="btn-chat" onclick="openChat()" title="Chat">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    </button>
     <button class="cb-leave" onclick="leaveRoom()" title="Leave">
       <svg viewBox="0 0 24 24"><path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07C9.44 17.29 8 15.87 6.78 14.2a19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 5.71 3h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11z"/><line x1="23" y1="1" x2="1" y2="23"/></svg>
     </button>
@@ -429,6 +472,11 @@ const S = {
   isRec: false,
   recorder: null,
   recChunks: [],
+  // Chat
+  hostConn: null,      // joiner stores reference to host data conn
+  chatMsgs: [],
+  chatUnread: 0,
+  panelTab: 'people',
 };
 
 function initials(n){ return (n||'?').split(' ').map(x=>x[0]).join('').toUpperCase().slice(0,2); }
@@ -526,7 +574,7 @@ async function doCreate(){
         aspectRatio: { ideal: 9/16 },
         width:  { ideal: 720,  max: 1080 },
         height: { ideal: 1280, max: 1920 },
-        zoom:   { ideal: 1.0 }
+        zoom:   { ideal: 0.5 }  // wide angle — zoomed out
       }
     });
   } catch {
@@ -611,6 +659,15 @@ function _hostConnect(attempt){
       S.participants.set(joinerPid, {name: conn.metadata?.name||'Guest'});
       addTile(joinerPid, conn.metadata?.name||'Guest', null);
       updateCounts();
+
+      // Relay chat messages from this joiner to everyone else
+      conn.on('data', msg=>{
+        if(msg.type==='chat'){
+          receiveChat(msg);
+          // Broadcast to all other participants
+          S.dataConns.forEach((c,k)=>{ if(k!==joinerPid && c.open) c.send(msg); });
+        }
+      });
     });
     conn.on('close',()=>handleLeft(joinerPid));
     conn.on('error', ()=>handleLeft(joinerPid));
@@ -653,7 +710,7 @@ async function doJoin(){
         aspectRatio: { ideal: 9/16 },
         width:  { ideal: 720,  max: 1080 },
         height: { ideal: 1280, max: 1920 },
-        zoom:   { ideal: 1.0 }
+        zoom:   { ideal: 0.5 }  // wide angle — zoomed out
       }
     });
   } catch {
@@ -710,6 +767,7 @@ function _joinConnect(attempt){
     });
 
     const hostConn = S.peer.connect(hostPid(code), { metadata: { name: myName }, reliable: true });
+    S.hostConn = hostConn;
     const hostConnTimer = setTimeout(()=>{ toastError('Room not found or host is offline.'); showLobby(); }, 12000);
 
     hostConn.on('open',()=>{
@@ -743,6 +801,8 @@ function _joinConnect(attempt){
           toast(msg.name+' joined');
         } else if(msg.type==='user-left'){
           handleLeft(msg.peerId);
+        } else if(msg.type==='chat'){
+          receiveChat(msg);
         }
       });
     });
@@ -940,10 +1000,99 @@ function toggleRec(){
 }
 
 function startRec(){
-  if(!S.localStream){ toast('No stream to record.'); return; }
   S.recChunks=[];
-  const opts=MediaRecorder.isTypeSupported('video/webm;codecs=vp9')?{mimeType:'video/webm;codecs=vp9'}:MediaRecorder.isTypeSupported('video/webm')?{mimeType:'video/webm'}:{};
-  const rec=new MediaRecorder(S.localStream,opts);
+
+  // ── 1. Canvas to composite all video tiles ──────────────────
+  const COLS = 2, TILE_W = 640, TILE_H = 360;
+  const allPids = ['local', ...Array.from(S.participants.keys())];
+  const rows = Math.max(1, Math.ceil(allPids.length / COLS));
+  const canvas = document.createElement('canvas');
+  canvas.width  = TILE_W * Math.min(allPids.length, COLS);
+  canvas.height = TILE_H * rows;
+  const ctx = canvas.getContext('2d');
+
+  function drawFrame(){
+    if(!S.isRec) return;
+    ctx.fillStyle = '#0a0c12';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    allPids.forEach((pid, i)=>{
+      const col = i % COLS, row = Math.floor(i / COLS);
+      const x = col * TILE_W, y = row * TILE_H;
+      const vid = document.getElementById('vid-' + pid);
+      if(vid && vid.srcObject && vid.readyState >= 2){
+        try { ctx.drawImage(vid, x, y, TILE_W, TILE_H); } catch(_){}
+      } else {
+        // Draw avatar placeholder
+        ctx.fillStyle = '#1e2333';
+        ctx.fillRect(x, y, TILE_W, TILE_H);
+        const name = pid === 'local' ? S.myName : (S.participants.get(pid)||{name:'?'}).name;
+        ctx.fillStyle = 'rgba(59,130,246,0.3)';
+        ctx.beginPath(); ctx.arc(x + TILE_W/2, y + TILE_H/2, 48, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = '#3b82f6'; ctx.font = 'bold 36px sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(initials(name), x + TILE_W/2, y + TILE_H/2);
+      }
+      // Name label
+      ctx.fillStyle = 'rgba(0,0,0,0.55)';
+      ctx.fillRect(x + 8, y + TILE_H - 30, Math.min(180, TILE_W - 16), 22);
+      ctx.fillStyle = '#ffffff'; ctx.font = '13px sans-serif';
+      ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+      const label = pid === 'local' ? S.myName + ' (you)' : (S.participants.get(pid)||{name:'Guest'}).name;
+      ctx.fillText(label, x + 14, y + TILE_H - 26);
+    });
+    requestAnimationFrame(drawFrame);
+  }
+  drawFrame();
+
+  // ── 2. Mix all audio streams ────────────────────────────────
+  let audioStream = null;
+  try {
+    const audioCtx = new AudioContext();
+    const dest = audioCtx.createMediaStreamDestination();
+    // Local audio
+    if(S.localStream){
+      const localAudioTracks = S.localStream.getAudioTracks();
+      if(localAudioTracks.length > 0){
+        const localSrc = audioCtx.createMediaStreamSource(new MediaStream(localAudioTracks));
+        localSrc.connect(dest);
+      }
+    }
+    // Remote participants audio — read directly from their video elements
+    S.participants.forEach((p, pid)=>{
+      const vid = document.getElementById('vid-' + pid);
+      if(vid && vid.srcObject){
+        const tracks = vid.srcObject.getAudioTracks();
+        if(tracks.length > 0){
+          try {
+            const src = audioCtx.createMediaStreamSource(new MediaStream(tracks));
+            src.connect(dest);
+          } catch(_){}
+        }
+      }
+    });
+    audioStream = dest.stream;
+    S._recAudioCtx = audioCtx; // keep ref so we can close it on stop
+  } catch(e){
+    console.warn('Audio mixing failed, falling back to local only:', e);
+    audioStream = S.localStream;
+    S._recAudioCtx = null;
+  }
+
+  // ── 3. Combine canvas video + mixed audio ───────────────────
+  const videoStream = canvas.captureStream(25);
+  const combinedTracks = [
+    ...videoStream.getVideoTracks(),
+    ...(audioStream ? audioStream.getAudioTracks() : [])
+  ];
+  const combined = new MediaStream(combinedTracks);
+  S._recCanvas = canvas;
+
+  const opts = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
+    ? {mimeType:'video/webm;codecs=vp9,opus'}
+    : MediaRecorder.isTypeSupported('video/webm')
+    ? {mimeType:'video/webm'}
+    : {};
+  const rec = new MediaRecorder(combined, opts);
   rec.ondataavailable=e=>{ if(e.data&&e.data.size>0) S.recChunks.push(e.data); };
   rec.onstop=()=>{
     const blob=new Blob(S.recChunks,{type:'video/webm'});
@@ -960,10 +1109,13 @@ function startRec(){
   document.getElementById('rec-lbl').textContent='Stop';
   document.getElementById('rec-svg').innerHTML='<rect x="4" y="4" width="16" height="16" rx="2"/>';
   document.getElementById('rec-badge').classList.remove('hidden');
+  toast('Recording all participants…');
 }
 
 function stopRec(){
   if(S.recorder){ S.recorder.stop(); S.recorder=null; }
+  if(S._recAudioCtx){ try{ S._recAudioCtx.close(); }catch(_){} S._recAudioCtx=null; }
+  S._recCanvas = null;
   S.isRec=false;
   document.getElementById('btn-rec').classList.remove('on');
   document.getElementById('rec-lbl').textContent='Record';
@@ -972,7 +1124,78 @@ function stopRec(){
 }
 
 function togglePanel(){
-  document.getElementById('panel').classList.toggle('hidden');
+  const p = document.getElementById('panel');
+  const wasHidden = p.classList.contains('hidden');
+  p.classList.toggle('hidden');
+  if(wasHidden && S.panelTab === 'chat'){
+    // Clear unread when opening to chat tab
+    S.chatUnread = 0;
+    document.getElementById('chat-unread').textContent = '0';
+    document.getElementById('chat-unread').classList.add('hidden');
+    scrollChat();
+  }
+}
+
+function openChat(){
+  const p = document.getElementById('panel');
+  p.classList.remove('hidden');
+  switchTab('chat');
+}
+
+function switchTab(tab){
+  S.panelTab = tab;
+  document.getElementById('panel-people').classList.toggle('hidden', tab !== 'people');
+  document.getElementById('panel-chat').classList.toggle('hidden', tab !== 'chat');
+  document.getElementById('tab-people').classList.toggle('active', tab === 'people');
+  document.getElementById('tab-chat').classList.toggle('active', tab === 'chat');
+  if(tab === 'chat'){
+    S.chatUnread = 0;
+    document.getElementById('chat-unread').textContent = '0';
+    document.getElementById('chat-unread').classList.add('hidden');
+    scrollChat();
+    document.getElementById('chat-input').focus();
+  }
+}
+
+function scrollChat(){
+  const el = document.getElementById('chat-msgs');
+  if(el) el.scrollTop = el.scrollHeight;
+}
+
+function sendChat(){
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  if(!text) return;
+  input.value = '';
+  const msg = { type:'chat', name: S.myName, text, ts: Date.now() };
+  // Display locally
+  receiveChat(msg, true);
+  // Send: host broadcasts to all; joiner sends to host (host will relay back to others)
+  if(S.isHost){
+    S.dataConns.forEach(c=>{ if(c.open) c.send(msg); });
+  } else if(S.hostConn && S.hostConn.open){
+    S.hostConn.send(msg);
+  }
+}
+
+function receiveChat(msg, isSelf=false){
+  S.chatMsgs.push({...msg, isSelf});
+  const el = document.getElementById('chat-msgs');
+  if(!el) return;
+  const div = document.createElement('div');
+  div.className = 'chat-msg' + (isSelf ? ' me' : '');
+  const time = new Date(msg.ts).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+  div.innerHTML = `<div class="chat-meta">${isSelf ? 'You' : escH(msg.name)} · ${time}</div><div class="chat-bubble">${escH(msg.text)}</div>`;
+  el.appendChild(div);
+  scrollChat();
+  // Show unread badge when chat panel isn't the active visible tab
+  const panel = document.getElementById('panel');
+  if(!isSelf && (panel.classList.contains('hidden') || S.panelTab !== 'chat')){
+    S.chatUnread++;
+    const badge = document.getElementById('chat-unread');
+    badge.textContent = S.chatUnread > 9 ? '9+' : S.chatUnread;
+    badge.classList.remove('hidden');
+  }
 }
 
 function copyCode(){
@@ -1002,10 +1225,16 @@ function leaveRoom(){
   if(S.isRec) stopRec();
   S.calls.forEach(c=>c.close()); S.calls.clear();
   S.dataConns.forEach(c=>c.close()); S.dataConns.clear();
+  if(S.hostConn){ S.hostConn.close(); S.hostConn=null; }
   if(S.peer){ S.peer.destroy(); S.peer=null; }
   if(S.localStream){ S.localStream.getTracks().forEach(t=>t.stop()); S.localStream=null; }
   S.participants.clear();
   S.isMuted=false; S.isCamOff=false;
+  // Reset chat state
+  S.chatMsgs=[]; S.chatUnread=0; S.panelTab='people';
+  const chatMsgsEl = document.getElementById('chat-msgs');
+  if(chatMsgsEl) chatMsgsEl.innerHTML='';
+  switchTab('people');
   document.getElementById('btn-mic').classList.remove('off');
   document.getElementById('btn-cam').classList.remove('off');
   document.getElementById('mic-svg').innerHTML='<path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>';
