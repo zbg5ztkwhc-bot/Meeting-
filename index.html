@@ -490,10 +490,10 @@ async function doCreate(){
   closeModal('m-create');
   showOverlay('Setting up your room…');
 
-  S.isHost    = true;
-  S.roomCode  = genCode();
-  S.myName    = myName;
-  S.roomName  = roomName;
+  S.isHost   = true;
+  S.roomCode = genCode();
+  S.myName   = myName;
+  S.roomName = roomName;
 
   try {
     S.localStream = await navigator.mediaDevices.getUserMedia({
@@ -511,16 +511,19 @@ async function doCreate(){
     catch { toast('Camera/mic access denied — others won\'t see/hear you.'); S.localStream = null; }
   }
 
-  const pid = hostPid(S.roomCode);
-  let createAttempt = (typeof arguments[0] === 'number') ? arguments[0] : 1;
-  const MAX_ATTEMPTS = 3;
+  _hostConnect(1);
+}
 
-  showOverlay(createAttempt > 1 ? `Setting up your room… (attempt ${createAttempt}/${MAX_ATTEMPTS})` : 'Setting up your room…');
+// Separated so retries don't re-read form fields or re-acquire the camera
+function _hostConnect(attempt){
+  const MAX_ATTEMPTS = 3;
+  const pid = hostPid(S.roomCode);
+
+  showOverlay(attempt > 1 ? `Setting up your room… (attempt ${attempt}/${MAX_ATTEMPTS})` : 'Setting up your room…');
 
   if(S.peer){ S.peer.destroy(); S.peer=null; }
   S.peer = new Peer(pid, PEER_CONFIG);
 
-  // Bail out if PeerJS server never responds
   const openTimer = setTimeout(()=>{
     if(S.peer){ S.peer.destroy(); S.peer=null; }
     showLobby();
@@ -529,27 +532,33 @@ async function doCreate(){
 
   S.peer.on('open', ()=>{
     clearTimeout(openTimer);
-    document.getElementById('hdr-name').textContent = roomName;
+    document.getElementById('hdr-name').textContent = S.roomName;
     document.getElementById('hdr-code').textContent = S.roomCode;
     renderGrid();
     showRoom();
     toast('Room created — share the code: ' + S.roomCode);
+
+    // KEY FIX: PeerJS public server drops idle connections after ~60 s.
+    // Reconnect automatically so joiners can always find the host.
+    S.peer.on('disconnected', ()=>{
+      if(S.peer && !S.peer.destroyed){
+        S.peer.reconnect();
+      }
+    });
   });
 
   S.peer.on('error', err=>{
     clearTimeout(openTimer);
     if(err.type==='unavailable-id'){
-      // Retry with a fresh code automatically
       S.peer.destroy(); S.peer=null;
       S.roomCode = genCode();
       showOverlay('Code taken — trying a new one…');
-      setTimeout(()=>doCreate.call(null, createAttempt), 400);
+      setTimeout(()=>_hostConnect(attempt), 400);
     } else if(NET_ERRORS.has(err.type)){
-      if(createAttempt < MAX_ATTEMPTS){
-        // Transient error — wait and retry
-        const delay = createAttempt * 2000;
+      if(attempt < MAX_ATTEMPTS){
+        const delay = attempt * 2000;
         showOverlay(`Connection hiccup — retrying in ${delay/1000}s…`);
-        setTimeout(()=>doCreate.call(null, createAttempt+1), delay);
+        setTimeout(()=>_hostConnect(attempt + 1), delay);
       } else {
         showLobby();
         toastError('Could not connect to the signaling server after 3 attempts. Try a different network or browser.');
@@ -564,15 +573,11 @@ async function doCreate(){
   S.peer.on('connection', conn=>{
     const joinerPid = conn.peer;
     conn.on('open',()=>{
-      // Send existing participants list to the new joiner
       const users = [];
       S.participants.forEach((v,k)=>users.push({peerId:k,name:v.name}));
-      users.push({peerId:pid, name:S.myName}); // include host
+      users.push({peerId:pid, name:S.myName});
       conn.send({type:'welcome', users, roomName:S.roomName, roomCode:S.roomCode});
-
-      // Broadcast new joiner to everyone else
       S.dataConns.forEach((c,k)=>{ if(k!==joinerPid && c.open) c.send({type:'user-joined', peerId:joinerPid, name:conn.metadata?.name||'Guest'}); });
-
       S.dataConns.set(joinerPid, conn);
       S.participants.set(joinerPid, {name: conn.metadata?.name||'Guest'});
       addTile(joinerPid, conn.metadata?.name||'Guest', null);
@@ -582,7 +587,6 @@ async function doCreate(){
     conn.on('error', ()=>handleLeft(joinerPid));
   });
 
-  // Incoming video calls from joiners
   S.peer.on('call', call=>{
     call.answer(S.localStream || new MediaStream());
     attachStream(call);
@@ -658,6 +662,12 @@ async function doJoin(){
 
   S.peer.on('open', myPid=>{
     clearTimeout(peerOpenTimer);
+
+    // KEY FIX: Stay registered on the signaling server so the host can reach us back
+    S.peer.on('disconnected', ()=>{
+      if(S.peer && !S.peer.destroyed) S.peer.reconnect();
+    });
+
     // Connect to host via data channel
     const hostConn = S.peer.connect(hostPid(code), { metadata: { name: myName }, reliable: true });
 
