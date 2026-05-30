@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<title>HamoudaSpace – Video Meetings (Wide Angle Front Camera)</title>
+<title>HamoudaSpace – Video Meetings (Wide Angle + Screen Share)</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -344,35 +344,24 @@
 
 <script>
 // ========== MAXIMUM WIDE ANGLE FRONT CAMERA SETUP ==========
-// This function requests the widest possible angle from the front camera
 async function getWideAngleFrontCamera() {
   try {
-    // First, enumerate all devices to find the front camera
     const devices = await navigator.mediaDevices.enumerateDevices();
     const videoDevices = devices.filter(device => device.kind === 'videoinput');
-    
-    // Find front-facing camera (usually 'user' facing or contains 'front' in label)
     let frontCamera = videoDevices.find(device => 
       device.label.toLowerCase().includes('front') || 
-      device.label.toLowerCase().includes('user') ||
-      device.facing === 'user'
+      device.label.toLowerCase().includes('user')
     );
-    
-    // If no front camera found, use the first camera
     const cameraDeviceId = frontCamera ? frontCamera.deviceId : videoDevices[0]?.deviceId;
     
-    // Request the widest angle possible with advanced constraints
-    // Using ideal constraints for maximum field of view
     const constraints = {
       video: {
         deviceId: cameraDeviceId ? { exact: cameraDeviceId } : undefined,
         width: { ideal: 1920 },
         height: { ideal: 1080 },
         aspectRatio: { ideal: 16/9 },
-        // Request wide angle via facingMode and advanced settings
         facingMode: { exact: 'user' },
-        zoom: { ideal: 1.0 }, // Minimum zoom = widest angle
-        // These help get the widest possible field of view
+        zoom: { ideal: 1.0 },
         advanced: [
           { zoom: 1.0 },
           { width: { min: 640, ideal: 1920, max: 3840 } },
@@ -383,22 +372,16 @@ async function getWideAngleFrontCamera() {
     };
     
     const stream = await navigator.mediaDevices.getUserMedia(constraints);
-    
-    // Try to apply additional wide angle settings if supported
     const videoTrack = stream.getVideoTracks()[0];
     const capabilities = videoTrack.getCapabilities();
     
     if (capabilities.zoom) {
-      // Set zoom to minimum (widest angle)
       await videoTrack.applyConstraints({
         advanced: [{ zoom: capabilities.zoom.min || 1.0 }]
       });
     }
-    
     return stream;
   } catch (err) {
-    console.log('Wide angle camera error, falling back:', err);
-    // Fallback to standard front camera
     try {
       return await navigator.mediaDevices.getUserMedia({
         video: { facingMode: { exact: 'user' } },
@@ -457,31 +440,114 @@ if (window.location.search) {
   }
 }
 
-// ========== SCREEN SHARE ==========
-async function toggleScreenShare() { S.isScreenSharing ? stopScreenShare() : await startScreenShare(); }
+// ========== IMPROVED SCREEN SHARE ==========
+async function toggleScreenShare() {
+  if (S.isScreenSharing) {
+    stopScreenShare();
+  } else {
+    await startScreenShare();
+  }
+}
+
 async function startScreenShare() {
+  // Check if screen share is supported
+  if (!navigator.mediaDevices.getDisplayMedia) {
+    toast('Screen sharing is not supported in this browser');
+    return;
+  }
+  
   try {
-    const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+    showOverlay('Opening screen share selector...');
+    
+    // Request screen share with audio option (if supported)
+    const screenStream = await navigator.mediaDevices.getDisplayMedia({ 
+      video: true,
+      audio: false  // Audio sharing is optional and often requires additional permissions
+    });
+    
+    hideOverlay();
+    
+    // Check if user actually selected a screen/window
+    const videoTrack = screenStream.getVideoTracks()[0];
+    if (!videoTrack) {
+      toast('No screen source selected');
+      return;
+    }
+    
     S.screenStream = screenStream;
     S.isScreenSharing = true;
-    const screenVideoTrack = screenStream.getVideoTracks()[0];
-    S.peers.forEach(peer => { const sender = peer.pc.getSenders().find(s => s.track && s.track.kind === 'video'); if (sender) sender.replaceTrack(screenVideoTrack); });
-    document.getElementById('btn-screen').classList.add('on'); document.getElementById('screen-lbl').textContent = 'Stop';
+    
+    // Replace video track in all peer connections
+    for (let [peerId, peer] of S.peers) {
+      if (peer.pc) {
+        const sender = peer.pc.getSenders().find(s => s.track && s.track.kind === 'video');
+        if (sender && videoTrack) {
+          await sender.replaceTrack(videoTrack);
+        }
+      }
+    }
+    
+    // Update UI
+    document.getElementById('btn-screen').classList.add('on');
+    document.getElementById('screen-lbl').textContent = 'Stop';
     document.getElementById('screen-badge').style.display = 'flex';
     toast('Screen sharing started');
-    screenStream.oninactive = () => stopScreenShare();
-  } catch (err) { toast('Screen share cancelled'); }
+    
+    // Handle when user stops sharing via browser UI
+    videoTrack.onended = () => {
+      if (S.isScreenSharing) {
+        stopScreenShare();
+        toast('Screen sharing stopped');
+      }
+    };
+    
+  } catch (err) {
+    hideOverlay();
+    console.error('Screen share error:', err);
+    
+    // Handle different error types
+    if (err.name === 'NotAllowedError') {
+      toast('Screen share permission denied. Please allow access to share your screen.');
+    } else if (err.name === 'NotFoundError') {
+      toast('No screen sharing source found');
+    } else if (err.name === 'AbortError') {
+      toast('Screen share was cancelled');
+    } else {
+      toast('Screen share failed: ' + (err.message || 'Unknown error'));
+    }
+  }
 }
+
 function stopScreenShare() {
-  if (S.screenStream) { S.screenStream.getTracks().forEach(t => t.stop()); S.screenStream = null; }
+  if (S.screenStream) {
+    // Stop all tracks
+    S.screenStream.getTracks().forEach(track => {
+      track.stop();
+    });
+    S.screenStream = null;
+  }
+  
   S.isScreenSharing = false;
+  
+  // Restore camera video track if available
   if (S.localStream) {
     const cameraVideoTrack = S.localStream.getVideoTracks()[0];
-    S.peers.forEach(peer => { const sender = peer.pc.getSenders().find(s => s.track && s.track.kind === 'video'); if (sender && cameraVideoTrack) sender.replaceTrack(cameraVideoTrack); });
+    if (cameraVideoTrack) {
+      for (let [peerId, peer] of S.peers) {
+        if (peer.pc) {
+          const sender = peer.pc.getSenders().find(s => s.track && s.track.kind === 'video');
+          if (sender) {
+            sender.replaceTrack(cameraVideoTrack).catch(e => console.log('Replace track error:', e));
+          }
+        }
+      }
+    }
   }
-  document.getElementById('btn-screen').classList.remove('on'); document.getElementById('screen-lbl').textContent = 'Share';
+  
+  // Update UI
+  document.getElementById('btn-screen').classList.remove('on');
+  document.getElementById('screen-lbl').textContent = 'Share';
   document.getElementById('screen-badge').style.display = 'none';
-  toast('Screen sharing stopped');
 }
 
 // ========== PERMISSIONS ==========
@@ -528,7 +594,7 @@ async function doCreateRoom(roomName, myName) {
     } else if (data.type === 'leave') handlePeerLeave(data.peerId);
   };
   document.getElementById('hdr-name').textContent = roomName; document.getElementById('hdr-code').textContent = S.roomCode;
-  renderGrid(); showRoom(); toast('Room created with wide angle camera! Share code: ' + S.roomCode); hideOverlay();
+  renderGrid(); showRoom(); toast('Room created! Share code: ' + S.roomCode); hideOverlay();
 }
 async function handleJoinRequest(peerId, peerName) {
   if (S.peers.has(peerId)) return;
@@ -553,7 +619,7 @@ async function doJoinRoom(code, myName) {
   const pc = new RTCPeerConnection(ICE_CONFIG);
   if (S.localStream) S.localStream.getTracks().forEach(track => pc.addTrack(track, S.localStream));
   pc.onicecandidate = (event) => { if (event.candidate) S.signalingChannel.postMessage({ type: 'signal', peerId: S.myPeerId, signal: event.candidate }); };
-  pc.ontrack = (event) => { if (!S.participants.has('host')) { S.participants.set('host', { name: 'Host' }); addTile('host', 'Host'); updateCounts(); } const vid = document.getElementById('vid-host'); if (vid) { vid.srcObject = event.streams[0]; vid.play().catch(()=>{}); const ph = document.getElementById('ph-host'); if(ph) ph.style.display='none'; vid.style.display='block'; } hostFound = true; document.getElementById('hdr-name').textContent = 'Meeting'; document.getElementById('hdr-code').textContent = S.roomCode; renderGrid(); showRoom(); hideOverlay(); toast('Connected to meeting with wide angle!'); };
+  pc.ontrack = (event) => { if (!S.participants.has('host')) { S.participants.set('host', { name: 'Host' }); addTile('host', 'Host'); updateCounts(); } const vid = document.getElementById('vid-host'); if (vid) { vid.srcObject = event.streams[0]; vid.play().catch(()=>{}); const ph = document.getElementById('ph-host'); if(ph) ph.style.display='none'; vid.style.display='block'; } hostFound = true; document.getElementById('hdr-name').textContent = 'Meeting'; document.getElementById('hdr-code').textContent = S.roomCode; renderGrid(); showRoom(); hideOverlay(); toast('Connected to meeting!'); };
   pc.onconnectionstatechange = () => { if (pc.connectionState === 'failed' && !hostFound) { toast('Could not connect to host.'); showLobby(); } };
   S.peers.set('host', { pc: pc, name: 'Host' });
   const offer = await pc.createOffer(); await pc.setLocalDescription(offer); S.signalingChannel.postMessage({ type: 'join-request', peerId: S.myPeerId, name: S.myName, signal: offer });
