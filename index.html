@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-<title>HamoudaSpace · Presentation + Chat Toggle</title>
+<title>HamoudaSpace · Video Meeting + Presentation</title>
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -16,7 +16,7 @@
     --radius: 10px; --radius-lg: 14px; --shadow: 0 4px 24px rgba(0,0,0,0.4);
   }
 
-  body { height: 100%; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); overflow: hidden; }
+  body { height: 100vh; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); overflow: hidden; }
   .hidden { display: none !important; }
   input, button { font-family: inherit; }
   input {
@@ -29,36 +29,60 @@
   .btn-primary { background: var(--primary); color: #fff; }
   .btn-primary:hover { background: var(--primary-hover); }
   .btn-secondary { background: var(--bg3); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { background: var(--border); }
   
+  /* Modal styles */
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(6px);
+    display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px;
+  }
+  .modal {
+    background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-lg);
+    padding: 28px; width: 100%; max-width: 400px; box-shadow: var(--shadow);
+  }
+  .modal-title { font-size: 20px; font-weight: 700; margin-bottom: 20px; }
+  .modal-desc { font-size: 13px; color: var(--text2); margin-bottom: 20px; }
+  .form-group { display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px; }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label { font-size: 13px; font-weight: 500; color: var(--text2); }
+  .modal-footer { display: flex; gap: 10px; justify-content: flex-end; }
+
   /* Lobby */
   #view-lobby { display: flex; flex-direction: column; height: 100vh; overflow-y: auto; }
   .lobby-header {
     border-bottom: 1px solid var(--border); background: var(--bg2);
     padding: 14px 28px; display: flex; justify-content: space-between; align-items: center;
+    flex-wrap: wrap; gap: 12px;
   }
   .lobby-logo { display: flex; gap: 10px; align-items: center; }
   .logo-icon { width: 36px; height: 36px; background: var(--primary); border-radius: 10px; display: flex; align-items: center; justify-content: center; }
   .logo-icon svg { width: 20px; stroke: #fff; stroke-width: 2; fill: none; }
+  .logo-name { font-weight: 700; }
+  .logo-sub { font-size: 11px; color: var(--text2); }
+  .lobby-actions { display: flex; gap: 10px; }
   .lobby-main { max-width: 760px; margin: 0 auto; padding: 48px 24px; width: 100%; }
   .hero { text-align: center; margin-bottom: 32px; }
   .hero h1 { font-size: 32px; margin-bottom: 8px; }
+  .hero p { color: var(--text2); }
   .action-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 32px; }
   .action-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 24px; }
-  .action-card button { margin-top: 16px; width: 100%; }
+  .action-card h3 { margin-bottom: 8px; }
+  .action-card p { font-size: 13px; color: var(--text2); margin-bottom: 16px; }
+  .action-card button { width: 100%; }
 
   /* Room layout */
   #view-room { display: none; flex-direction: column; height: 100vh; background: #0a0c12; }
   .room-header {
     display: flex; justify-content: space-between; align-items: center;
     padding: 10px 20px; background: rgba(15,17,23,0.95); border-bottom: 1px solid rgba(255,255,255,0.06);
-    flex-shrink: 0;
+    flex-shrink: 0; flex-wrap: wrap; gap: 10px;
   }
+  .room-header-left { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .room-title { font-size: 14px; font-weight: 600; }
   .room-code-pill {
     font-family: monospace; font-size: 12px; font-weight: 700;
     background: rgba(59,130,246,0.15); border: 1px solid rgba(59,130,246,0.3);
     color: var(--primary); padding: 3px 10px; border-radius: 20px; cursor: pointer;
-    margin-left: 8px;
   }
   .header-buttons { display: flex; gap: 8px; }
   .icon-btn {
@@ -68,7 +92,6 @@
   }
   .icon-btn:hover { background: rgba(255,255,255,0.12); color: var(--text); }
   
-  /* Main content: video grid + togglable panels */
   .room-body { flex: 1; display: flex; min-height: 0; position: relative; }
   .video-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
   .video-grid {
@@ -85,26 +108,24 @@
   .vtile-bar { position: absolute; bottom: 8px; left: 8px; right: 8px; display: flex; justify-content: space-between; }
   .vtile-name { font-size: 11px; background: rgba(0,0,0,0.6); padding: 3px 8px; border-radius: 6px; }
 
-  /* Slide-out panels (right side, stackable) */
+  /* Floating panels */
   .floating-panel {
     position: relative; width: 340px; background: rgba(18,20,28,0.96); backdrop-filter: blur(12px);
     border-left: 1px solid var(--border); display: flex; flex-direction: column;
-    transition: transform 0.25s ease, width 0.2s; flex-shrink: 0;
+    transition: transform 0.25s ease; flex-shrink: 0;
   }
   .floating-panel.collapsed {
     transform: translateX(100%); position: absolute; right: 0; top: 0; bottom: 0;
-    width: 340px; border-left: none; pointer-events: none;
+    width: 340px; pointer-events: none;
   }
   .floating-panel.collapsed * { pointer-events: none; }
   .panel-header {
     padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.08);
     font-weight: 600; display: flex; justify-content: space-between; align-items: center;
-    background: rgba(0,0,0,0.3);
   }
   .close-panel { background: none; border: none; color: var(--text2); font-size: 18px; cursor: pointer; padding: 0 6px; }
   .close-panel:hover { color: var(--danger); }
 
-  /* Presentation viewer */
   .pres-viewer {
     flex: 1; background: #000000aa; display: flex; align-items: center; justify-content: center;
     overflow: hidden; min-height: 200px;
@@ -125,7 +146,6 @@
   .upload-btn { background: var(--primary); color: white; padding: 6px 14px; border-radius: 20px; font-size: 12px; }
   .pres-empty { text-align: center; color: var(--text2); padding: 40px; }
 
-  /* Chat panel */
   .chat-msgs { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
   .chat-msg { display: flex; flex-direction: column; }
   .chat-msg.me { align-items: flex-end; }
@@ -136,7 +156,6 @@
   .chat-input-area input { flex: 1; padding: 8px; font-size: 12px; border-radius: 20px; }
   .chat-send { width: 34px; height: 34px; border-radius: 50%; background: var(--primary); color: white; }
 
-  /* Bottom bar */
   .ctrl-bar {
     border-top: 1px solid rgba(255,255,255,0.06); background: rgba(10,12,18,0.98);
     padding: 10px 20px; display: flex; gap: 12px; justify-content: center; flex-shrink: 0;
@@ -145,7 +164,7 @@
   .cb.off { background: var(--danger); }
   .cb-leave { background: var(--danger); border-radius: 50%; width: 42px; height: 42px; }
   .toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); background: var(--bg2); padding: 8px 18px; border-radius: 30px; z-index: 200; font-size: 13px; }
-  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 150; }
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 150; flex-direction: column; gap: 16px; }
   .spinner { width: 36px; height: 36px; border: 3px solid rgba(59,130,246,0.2); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
   .badge { background: var(--danger); border-radius: 12px; padding: 0 5px; font-size: 10px; margin-left: 4px; }
@@ -153,19 +172,34 @@
 </head>
 <body>
 
+<!-- LOBBY VIEW -->
 <div id="view-lobby">
   <header class="lobby-header">
-    <div class="lobby-logo"><div class="logo-icon"><svg viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></div><div><strong>HamoudaSpace</strong><div style="font-size:11px;color:var(--text2)">Presentation + Chat Toggle</div></div></div>
-    <div><button class="btn btn-secondary" onclick="openJoin()">Join by code</button> <button class="btn btn-primary" onclick="openCreate()">+ New meeting</button></div>
+    <div class="lobby-logo">
+      <div class="logo-icon"><svg viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></div>
+      <div><div class="logo-name">HamoudaSpace</div><div class="logo-sub">Video Meeting + Presentations</div></div>
+    </div>
+    <div class="lobby-actions">
+      <button class="btn btn-secondary" id="lobby-join-btn">Join by code</button>
+      <button class="btn btn-primary" id="lobby-create-btn">+ New meeting</button>
+    </div>
   </header>
-  <main class="lobby-main"><div class="hero"><h1>Video calls & shared slides</h1><p>Upload PDF/Images — Everyone follows along. Toggle presentation panel on/off.</p></div>
-  <div class="action-cards"><div class="action-card"><h3>Start meeting</h3><p>Host a room, share presentation, control slides.</p><button class="btn btn-primary" onclick="openCreate()">Create room</button></div>
-  <div class="action-card"><h3>Join meeting</h3><p>Enter code, see shared content, chat.</p><button class="btn btn-secondary" onclick="openJoin()">Enter code</button></div></div></main>
+  <main class="lobby-main">
+    <div class="hero"><h1>Video calls & shared slides</h1><p>Upload PDF/Images — Everyone follows along. Toggle presentation panel on/off.</p></div>
+    <div class="action-cards">
+      <div class="action-card"><h3>Start a meeting</h3><p>Host a room, share presentation, control slides.</p><button class="btn btn-primary" id="create-card-btn">+ New meeting</button></div>
+      <div class="action-card"><h3>Join a meeting</h3><p>Enter code, see shared content, chat.</p><button class="btn btn-secondary" id="join-card-btn">Enter room code</button></div>
+    </div>
+  </main>
 </div>
 
+<!-- ROOM VIEW -->
 <div id="view-room">
   <header class="room-header">
-    <div><span class="room-title" id="hdr-name">Meeting</span><span class="room-code-pill" id="hdr-code" onclick="copyCode()">XXXXXX</span></div>
+    <div class="room-header-left">
+      <span class="room-title" id="hdr-name">Meeting</span>
+      <span class="room-code-pill" id="hdr-code" onclick="copyCode()">XXXXXX</span>
+    </div>
     <div class="header-buttons">
       <button class="icon-btn" id="toggle-chat-btn">💬 Chat <span id="chat-badge" class="badge" style="display:none;">0</span></button>
       <button class="icon-btn" id="toggle-pres-btn">📽️ Slides</button>
@@ -175,7 +209,7 @@
   <div class="room-body">
     <div class="video-area"><div class="video-grid" id="video-grid"></div></div>
 
-    <!-- Presentation Panel (toggle) -->
+    <!-- Presentation Panel -->
     <div id="pres-panel" class="floating-panel collapsed">
       <div class="panel-header"><span>📽️ Shared Presentation <span id="pres-owner-badge" style="font-size:10px;"></span></span><button class="close-panel" id="close-pres-panel">✕</button></div>
       <div class="pres-viewer" id="pres-viewer"><div class="pres-empty">No presentation yet.<br>Host uploads PDF / image.</div></div>
@@ -189,7 +223,7 @@
       </div>
     </div>
 
-    <!-- Chat Panel (toggle) -->
+    <!-- Chat Panel -->
     <div id="chat-panel" class="floating-panel collapsed">
       <div class="panel-header"><span>💬 Meeting Chat</span><button class="close-panel" id="close-chat-panel">✕</button></div>
       <div class="chat-msgs" id="chat-msgs"></div>
@@ -205,13 +239,41 @@
   </div>
 </div>
 
-<!-- Modals -->
-<div id="m-create" class="modal-backdrop hidden" onclick="if(event.target===this)closeModal('m-create')"><div class="modal"><div class="modal-title">New meeting</div><div class="field"><label>Meeting name</label><input id="in-rname" placeholder="e.g., Design review"></div><div class="field"><label>Your name</label><input id="in-myname-c"></div><div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('m-create')">Cancel</button><button class="btn btn-primary" onclick="doCreate()">Create</button></div></div></div>
-<div id="m-join" class="modal-backdrop hidden" onclick="if(event.target===this)closeModal('m-join')"><div class="modal"><div class="modal-title">Join meeting</div><div class="field"><label>Room code</label><input id="in-code" maxlength="6" style="text-transform:uppercase"></div><div class="field"><label>Your name</label><input id="in-myname-j"></div><div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('m-join')">Cancel</button><button class="btn btn-primary" onclick="doJoin()">Join</button></div></div></div>
+<!-- CREATE MEETING MODAL -->
+<div id="m-create" class="modal-backdrop hidden">
+  <div class="modal">
+    <div class="modal-title">New meeting</div>
+    <div class="modal-desc">You'll get a shareable room code after creating.</div>
+    <div class="form-group">
+      <div class="field"><label>Meeting name</label><input id="in-rname" placeholder="e.g., Design review" autocomplete="off"></div>
+      <div class="field"><label>Your name</label><input id="in-myname-c" placeholder="Enter your name" autocomplete="off"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="cancel-create">Cancel</button>
+      <button class="btn btn-primary" id="confirm-create">Create room</button>
+    </div>
+  </div>
+</div>
+
+<!-- JOIN MEETING MODAL -->
+<div id="m-join" class="modal-backdrop hidden">
+  <div class="modal">
+    <div class="modal-title">Join a meeting</div>
+    <div class="form-group">
+      <div class="field"><label>Room code</label><input id="in-code" maxlength="6" placeholder="6-letter code" style="text-transform:uppercase" autocomplete="off"></div>
+      <div class="field"><label>Your name</label><input id="in-myname-j" placeholder="Enter your name" autocomplete="off"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="cancel-join">Cancel</button>
+      <button class="btn btn-primary" id="confirm-join">Join room</button>
+    </div>
+  </div>
+</div>
+
 <div id="overlay" class="overlay hidden"><div class="spinner"></div><p>Connecting...</p></div>
 
 <script>
-// ---------- GLOBAL STATE ----------
+// ========== GLOBAL STATE ==========
 const S = {
   peer: null, localStream: null, calls: new Map(), dataConns: new Map(), participants: new Map(),
   isHost: false, roomCode: '', myName: '', roomName: '', isMuted: false, isCamOff: false,
@@ -227,11 +289,30 @@ function showOverlay(msg){ document.getElementById('overlay').classList.remove('
 function hideOverlay(){ document.getElementById('overlay').classList.add('hidden'); }
 function showLobby(){ document.getElementById('view-lobby').style.display='flex'; document.getElementById('view-room').style.display='none'; hideOverlay(); }
 function showRoom(){ document.getElementById('view-lobby').style.display='none'; document.getElementById('view-room').style.display='flex'; hideOverlay(); }
-function closeModal(id){ document.getElementById(id).classList.add('hidden'); }
-function openCreate(){ document.getElementById('m-create').classList.remove('hidden'); }
-function openJoin(){ document.getElementById('m-join').classList.remove('hidden'); }
+function closeModals(){ document.getElementById('m-create').classList.add('hidden'); document.getElementById('m-join').classList.add('hidden'); }
 
-// ---------- Panel Toggle (Presentation & Chat) ----------
+// ========== MODAL HANDLERS ==========
+// Create modal
+document.getElementById('lobby-create-btn')?.addEventListener('click', ()=>{ document.getElementById('m-create').classList.remove('hidden'); document.getElementById('in-rname').focus(); });
+document.getElementById('create-card-btn')?.addEventListener('click', ()=>{ document.getElementById('m-create').classList.remove('hidden'); document.getElementById('in-rname').focus(); });
+document.getElementById('cancel-create')?.addEventListener('click', ()=>{ closeModals(); });
+document.getElementById('confirm-create')?.addEventListener('click', ()=>{ doCreate(); });
+// Join modal
+document.getElementById('lobby-join-btn')?.addEventListener('click', ()=>{ document.getElementById('m-join').classList.remove('hidden'); document.getElementById('in-code').focus(); });
+document.getElementById('join-card-btn')?.addEventListener('click', ()=>{ document.getElementById('m-join').classList.remove('hidden'); document.getElementById('in-code').focus(); });
+document.getElementById('cancel-join')?.addEventListener('click', ()=>{ closeModals(); });
+document.getElementById('confirm-join')?.addEventListener('click', ()=>{ doJoin(); });
+// Close modals on backdrop click
+document.getElementById('m-create')?.addEventListener('click', (e)=>{ if(e.target === document.getElementById('m-create')) closeModals(); });
+document.getElementById('m-join')?.addEventListener('click', (e)=>{ if(e.target === document.getElementById('m-join')) closeModals(); });
+// Enter key in modals
+document.getElementById('in-rname')?.addEventListener('keydown', e=>{ if(e.key==='Enter') doCreate(); });
+document.getElementById('in-myname-c')?.addEventListener('keydown', e=>{ if(e.key==='Enter') doCreate(); });
+document.getElementById('in-code')?.addEventListener('keydown', e=>{ if(e.key==='Enter') doJoin(); });
+document.getElementById('in-myname-j')?.addEventListener('keydown', e=>{ if(e.key==='Enter') doJoin(); });
+document.getElementById('in-code')?.addEventListener('input', e=>{ e.target.value=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,''); });
+
+// ========== PANEL TOGGLE ==========
 function togglePresPanel(open){
   const panel = document.getElementById('pres-panel');
   if(open === undefined) panel.classList.toggle('collapsed');
@@ -245,19 +326,18 @@ function toggleChatPanel(open){
   else panel.classList.add('collapsed');
   if(!panel.classList.contains('collapsed')){ S.chatUnread=0; document.getElementById('chat-badge').style.display='none'; document.getElementById('chat-input').focus(); }
 }
-// close buttons
 document.getElementById('close-pres-panel')?.addEventListener('click',()=>togglePresPanel(false));
 document.getElementById('close-chat-panel')?.addEventListener('click',()=>toggleChatPanel(false));
 document.getElementById('toggle-pres-btn')?.addEventListener('click',()=>togglePresPanel());
 document.getElementById('toggle-chat-btn')?.addEventListener('click',()=>toggleChatPanel());
 
-// ---------- WebRTC Helpers ----------
+// ========== WebRTC Helpers ==========
 const PEER_CONFIG = { debug:0, config:{ iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'turn:openrelay.metered.ca:80',username:'openrelayproject',credential:'openrelayproject'}] } };
-async function getStream(){ try{ return await navigator.mediaDevices.getUserMedia({audio:true,video:{width:{ideal:640},height:{ideal:720}}}); }catch(e){ return null; } }
+async function getStream(){ try{ return await navigator.mediaDevices.getUserMedia({audio:true,video:{width:{ideal:640},height:{ideal:720}}}); }catch(e){ toast('Camera/mic access denied'); return null; } }
 
 function attachStream(call){
   const pid=call.peer; S.calls.set(pid,call);
-  call.on('stream',stream=>{ S.participants.set(pid,S.participants.get(pid)||{name:'Guest'}); const v=document.getElementById('vid-'+pid); if(v){ v.srcObject=stream; v.play().catch(()=>{}); document.getElementById('ph-'+pid).style.display='none'; v.style.display='block'; } });
+  call.on('stream',stream=>{ S.participants.set(pid,S.participants.get(pid)||{name:'Guest'}); const v=document.getElementById('vid-'+pid); if(v){ v.srcObject=stream; v.play().catch(()=>{}); const ph=document.getElementById('ph-'+pid); if(ph) ph.style.display='none'; v.style.display='block'; } });
   call.on('close',()=>handleLeft(pid));
 }
 function handleLeft(pid){
@@ -286,7 +366,7 @@ function addTile(pid,name,stream){ if(document.getElementById('tile-'+pid)) retu
 function removeTile(pid){ document.getElementById('tile-'+pid)?.remove(); }
 function updateCounts(){ const badge=document.getElementById('chat-badge'); if(S.chatUnread>0){ badge.innerText=S.chatUnread>9?'9+':S.chatUnread; badge.style.display='inline'; } else badge.style.display='none'; }
 
-// ---------- Presentation Logic (PDF/Images) ----------
+// ========== Presentation Logic ==========
 async function loadPresentation(file){
   const fileType=file.type; let pages=[];
   if(fileType.startsWith('image/')){
@@ -340,13 +420,13 @@ function setupPresentationControls(){
       broadcastPresentationState();
       document.getElementById('pres-owner-badge').innerText='(Host)';
       toast(`Loaded ${result.pages.length} slides`);
-      togglePresPanel(true); // open panel automatically after upload
+      togglePresPanel(true);
     } else toast('Failed to load');
     e.target.value='';
   };
 }
 
-// ---------- Chat ----------
+// ========== Chat ==========
 function sendChat(){
   const input=document.getElementById('chat-input'); const text=input.value.trim(); if(!text) return;
   input.value=''; const msg={type:'chat',name:S.myName,text,ts:Date.now()};
@@ -363,21 +443,23 @@ function receiveChat(msg,self=false){
   if(!self && document.getElementById('chat-panel').classList.contains('collapsed')){ S.chatUnread++; updateCounts(); }
 }
 
-// ---------- Host / Join ----------
+// ========== Create Room (Host) ==========
 async function doCreate(){
-  const roomName=document.getElementById('in-rname').value.trim(), myName=document.getElementById('in-myname-c').value.trim();
-  if(!roomName||!myName){ toast('Fill all fields'); return; }
-  closeModal('m-create'); showOverlay('Creating room...');
+  const roomName=document.getElementById('in-rname').value.trim();
+  const myName=document.getElementById('in-myname-c').value.trim();
+  if(!roomName||!myName){ toast('Please fill in both fields'); return; }
+  closeModals();
+  showOverlay('Creating room...');
   S.isHost=true; S.roomCode=genCode(); S.myName=myName; S.roomName=roomName;
   S.localStream=await getStream();
   if(S.peer) S.peer.destroy();
   S.peer=new Peer(hostPid(S.roomCode),PEER_CONFIG);
-  const timer=setTimeout(()=>{ showLobby(); toast('Server timeout'); },12000);
+  const timer=setTimeout(()=>{ showLobby(); toast('Server timeout. Please retry.'); },15000);
   S.peer.on('open',()=>{
     clearTimeout(timer);
     document.getElementById('hdr-name').innerText=S.roomName;
     document.getElementById('hdr-code').innerText=S.roomCode;
-    renderGrid(); showRoom(); setupPresentationControls(); toast('Room ready');
+    renderGrid(); showRoom(); setupPresentationControls(); toast('Room created! Share the code: '+S.roomCode);
     S.peer.on('disconnected',()=>{ if(S.peer&&!S.peer.destroyed) S.peer.reconnect(); });
   });
   S.peer.on('error',err=>{ clearTimeout(timer); showLobby(); toast('Error: '+err.type); });
@@ -400,21 +482,26 @@ async function doCreate(){
   });
   S.peer.on('call',call=>{ call.answer(S.localStream||new MediaStream()); attachStream(call); });
 }
+
+// ========== Join Room ==========
 async function doJoin(){
-  const code=document.getElementById('in-code').value.trim().toUpperCase(), myName=document.getElementById('in-myname-j').value.trim();
-  if(!code||!myName||code.length!==6){ toast('Valid code and name'); return; }
-  closeModal('m-join'); showOverlay('Joining...');
-  if(S.peer) S.peer.destroy(); if(S.localStream) S.localStream.getTracks().forEach(t=>t.stop());
+  const code=document.getElementById('in-code').value.trim().toUpperCase();
+  const myName=document.getElementById('in-myname-j').value.trim();
+  if(!code||!myName||code.length!==6){ toast('Valid 6-character code and name required'); return; }
+  closeModals();
+  showOverlay('Joining room...');
+  if(S.peer) S.peer.destroy();
+  if(S.localStream) S.localStream.getTracks().forEach(t=>t.stop());
   S.calls.clear(); S.dataConns.clear(); S.participants.clear();
   S.isHost=false; S.roomCode=code; S.myName=myName; S.localStream=await getStream();
   S.peer=new Peer(PEER_CONFIG);
-  const timer=setTimeout(()=>{ showLobby(); toast('Server timeout'); },12000);
-  S.peer.on('error',err=>{ clearTimeout(timer); showLobby(); toast('Join error'); });
+  const timer=setTimeout(()=>{ showLobby(); toast('Server timeout'); },15000);
+  S.peer.on('error',err=>{ clearTimeout(timer); showLobby(); toast('Join error: '+err.type); });
   S.peer.on('open',myPid=>{
     clearTimeout(timer);
     const hostConn=S.peer.connect(hostPid(S.roomCode),{metadata:{name:S.myName},reliable:true});
     S.hostConn=hostConn;
-    const connTimer=setTimeout(()=>{ showLobby(); toast('Host offline'); },12000);
+    const connTimer=setTimeout(()=>{ showLobby(); toast('Host offline or room not found'); },12000);
     hostConn.on('open',()=>{
       clearTimeout(connTimer);
       hostConn.on('data',msg=>{
@@ -423,7 +510,7 @@ async function doJoin(){
           renderGrid(); showRoom(); setupPresentationControls();
           msg.users.forEach(u=>{ if(u.peerId===myPid) return; S.participants.set(u.peerId,{name:u.name}); addTile(u.peerId,u.name,null); const call=S.peer.call(u.peerId,S.localStream||new MediaStream()); S.calls.set(u.peerId,call); attachStream(call); });
           if(msg.presentation && msg.presentation.pages){ S.presentation=msg.presentation; renderPresentationPage(S.presentation.currentPage); document.getElementById('pres-owner-badge').innerText=msg.presentation.ownerId===hostPid(S.roomCode)?'(Host)':''; }
-          updateCounts();
+          updateCounts(); toast('Joined successfully');
         } else if(msg.type==='user-joined'){ if(msg.peerId===myPid) return; S.participants.set(msg.peerId,{name:msg.name}); addTile(msg.peerId,msg.name,null); const call=S.peer.call(msg.peerId,S.localStream||new MediaStream()); S.calls.set(msg.peerId,call); attachStream(call); updateCounts(); toast(msg.name+' joined'); }
         else if(msg.type==='user-left'){ handleLeft(msg.peerId); }
         else if(msg.type==='chat'){ receiveChat(msg); }
@@ -435,23 +522,18 @@ async function doJoin(){
   S.peer.on('call',call=>{ call.answer(S.localStream||new MediaStream()); attachStream(call); });
 }
 
-// ---------- Media & leave ----------
+// ========== Media Controls ==========
 function toggleMic(){ if(S.localStream){ S.isMuted=!S.isMuted; S.localStream.getAudioTracks().forEach(t=>t.enabled=!S.isMuted); document.getElementById('btn-mic').classList.toggle('off',S.isMuted); } }
-function toggleCam(){ if(S.localStream){ S.isCamOff=!S.isCamOff; S.localStream.getVideoTracks().forEach(t=>t.enabled=!S.isCamOff); document.getElementById('btn-cam').classList.toggle('off',S.isCamOff); const v=document.getElementById('vid-local'); if(v) v.style.display=S.isCamOff?'none':'block'; document.getElementById('ph-local').style.display=S.isCamOff?'flex':'none'; } }
-function toggleRec(){ if(S.isRec){ S.recorder?.stop(); S.isRec=false; } else { S.recChunks=[]; const rec=new MediaRecorder(S.localStream,{mimeType:'video/webm'}); rec.ondataavailable=e=>{ if(e.data.size) S.recChunks.push(e.data); }; rec.onstop=()=>{ const blob=new Blob(S.recChunks,{type:'video/webm'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='meeting.webm'; a.click(); }; rec.start(1000); S.recorder=rec; S.isRec=true; toast('Recording...'); } }
-function copyCode(){ navigator.clipboard.writeText(S.roomCode); toast('Code copied'); }
-function shareRoom(){ const url=location.origin+location.pathname+'?join='+S.roomCode; navigator.clipboard.writeText(url); toast('Invite link copied'); }
+function toggleCam(){ if(S.localStream){ S.isCamOff=!S.isCamOff; S.localStream.getVideoTracks().forEach(t=>t.enabled=!S.isCamOff); document.getElementById('btn-cam').classList.toggle('off',S.isCamOff); const v=document.getElementById('vid-local'); if(v) v.style.display=S.isCamOff?'none':'block'; const ph=document.getElementById('ph-local'); if(ph) ph.style.display=S.isCamOff?'flex':'none'; } }
+function toggleRec(){ if(S.isRec){ S.recorder?.stop(); S.isRec=false; toast('Recording stopped'); } else { S.recChunks=[]; const rec=new MediaRecorder(S.localStream,{mimeType:'video/webm'}); rec.ondataavailable=e=>{ if(e.data.size) S.recChunks.push(e.data); }; rec.onstop=()=>{ const blob=new Blob(S.recChunks,{type:'video/webm'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='meeting-'+S.roomCode+'.webm'; a.click(); URL.revokeObjectURL(a.href); toast('Recording saved'); }; rec.start(1000); S.recorder=rec; S.isRec=true; toast('Recording...'); } }
+function copyCode(){ navigator.clipboard.writeText(S.roomCode); toast('Code copied: '+S.roomCode); }
+function shareRoom(){ const url=window.location.origin+window.location.pathname+'?join='+S.roomCode; navigator.clipboard.writeText(url); toast('Invite link copied'); }
 function leaveRoom(){ if(S.recorder)S.recorder.stop(); S.calls.forEach(c=>c.close()); S.dataConns.forEach(c=>c.close()); if(S.hostConn)S.hostConn.close(); if(S.peer)S.peer.destroy(); if(S.localStream)S.localStream.getTracks().forEach(t=>t.stop()); S.participants.clear(); showLobby(); }
 
 // Load PDF.js
 const pdfScript=document.createElement('script'); pdfScript.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js'; document.head.appendChild(pdfScript);
-// Event listeners for modals
-document.getElementById('in-code')?.addEventListener('input',e=>e.target.value=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,''));
-document.getElementById('in-rname')?.addEventListener('keydown',e=>e.key==='Enter'&&doCreate());
-document.getElementById('in-myname-c')?.addEventListener('keydown',e=>e.key==='Enter'&&doCreate());
-document.getElementById('in-code')?.addEventListener('keydown',e=>e.key==='Enter'&&doJoin());
-document.getElementById('in-myname-j')?.addEventListener('keydown',e=>e.key==='Enter'&&doJoin());
-(function(){ const p=new URLSearchParams(location.search), code=p.get('join'); if(code) setTimeout(()=>openJoin(code.toUpperCase()),300); })();
+// Auto-open join from URL
+(function(){ const p=new URLSearchParams(location.search), code=p.get('join'); if(code) setTimeout(()=>{ document.getElementById('in-code').value=code.toUpperCase(); doJoin(); },500); })();
 </script>
 </body>
 </html>
