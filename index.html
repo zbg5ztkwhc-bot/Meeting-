@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-<title>HamoudaSpace · Split View | Stable Video Meeting</title>
+<title>HamoudaSpace · Full Recording & Rejoin | Split View</title>
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <style>
   * {
@@ -312,6 +312,9 @@
   }
   .ctrl-btn.off { background: var(--danger); }
   .ctrl-btn.leave { background: var(--danger); }
+  .ctrl-btn.recording { background: var(--danger); animation: pulse 1s infinite; }
+
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
 
   .toast {
     position: fixed;
@@ -363,8 +366,8 @@
 
 <!-- LOBBY -->
 <div id="view-lobby">
-  <div class="lobby-header"><div class="logo-area"><div class="logo-icon">🎥</div><div><strong>HamoudaSpace</strong><div style="font-size:11px;">Stable connections · Split view</div></div></div><div class="lobby-actions"><button class="btn btn-secondary" id="showJoinBtn">🔗 Join</button><button class="btn btn-primary" id="showCreateBtn">✨ New Meeting</button></div></div>
-  <div class="lobby-main"><div class="hero"><h1>Video calls + Shared content</h1><p>Chat and presentations open in the upper area. Videos always visible below.</p></div><div class="action-cards"><div class="card"><h3>Host a meeting</h3><button class="btn btn-primary" id="createCardBtn">Create room</button></div><div class="card"><h3>Join with code</h3><button class="btn btn-secondary" id="joinCardBtn">Enter code</button></div></div></div>
+  <div class="lobby-header"><div class="logo-area"><div class="logo-icon">🎥</div><div><strong>HamoudaSpace</strong><div style="font-size:11px;">Full Recording · Rejoin · Split View</div></div></div><div class="lobby-actions"><button class="btn btn-secondary" id="showJoinBtn">🔗 Join</button><button class="btn btn-primary" id="showCreateBtn">✨ New Meeting</button></div></div>
+  <div class="lobby-main"><div class="hero"><h1>Video calls + Shared content</h1><p>Record all participants · Leave and rejoin anytime · Videos always visible below</p></div><div class="action-cards"><div class="card"><h3>Host a meeting</h3><button class="btn btn-primary" id="createCardBtn">Create room</button></div><div class="card"><h3>Join with code</h3><button class="btn btn-secondary" id="joinCardBtn">Enter code</button></div></div></div>
 </div>
 
 <!-- MEETING ROOM -->
@@ -398,7 +401,9 @@
   const state = {
     peer: null, localStream: null, calls: new Map(), dataConns: new Map(), participants: new Map(),
     isHost: false, roomCode: '', myName: '', roomName: '',
-    isMuted: false, isCamOff: false, isRecording: false, mediaRecorder: null, recordedChunks: [],
+    isMuted: false, isCamOff: false,
+    // Recording state for full meeting capture
+    isRecording: false, mediaRecorder: null, recordedChunks: [], recordingStream: null, recordingCanvas: null, recordingAnimationId: null,
     hostConn: null, keepAliveInterval: null,
     presentation: { pages: [], currentPage: 0, ownerId: null },
     chatUnread: 0, activeUpperPanel: null
@@ -409,7 +414,7 @@
   function toast(msg){ let t=document.querySelector('.toast'); if(t)t.remove(); t=document.createElement('div'); t.className='toast'; t.innerText=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),3000); }
   function showOverlay(msg){ let ov=document.getElementById('loadingOverlay'); ov.classList.remove('hidden'); ov.querySelector('p').innerText=msg; }
   function hideOverlay(){ document.getElementById('loadingOverlay').classList.add('hidden'); }
-  function showLobby(){ document.getElementById('view-lobby').style.display='flex'; document.getElementById('view-room').style.display='none'; hideOverlay(); closeAllModals(); if(state.localStream) state.localStream.getTracks().forEach(t=>t.stop()); state.participants.clear(); state.calls.clear(); if(state.keepAliveInterval) clearInterval(state.keepAliveInterval); }
+  function showLobby(){ document.getElementById('view-lobby').style.display='flex'; document.getElementById('view-room').style.display='none'; hideOverlay(); closeAllModals(); if(state.localStream) state.localStream.getTracks().forEach(t=>t.stop()); if(state.recordingStream) state.recordingStream.getTracks().forEach(t=>t.stop()); state.participants.clear(); state.calls.clear(); if(state.keepAliveInterval) clearInterval(state.keepAliveInterval); state.isRecording = false; }
   function showRoom(){ document.getElementById('view-lobby').style.display='none'; document.getElementById('view-room').style.display='flex'; hideOverlay(); }
   function closeAllModals(){ document.getElementById('createModal').classList.add('hidden'); document.getElementById('joinModal').classList.add('hidden'); }
   function escapeHtml(s){ return String(s).replace(/[&<>]/g, function(m){ if(m==='&') return '&amp;'; if(m==='<') return '&lt;'; if(m==='>') return '&gt;'; return m;}); }
@@ -543,6 +548,124 @@
   document.getElementById('presPrevBtn').onclick = () => { if(state.presentation.currentPage>0){ state.presentation.currentPage--; renderPresentationPage(state.presentation.currentPage); if(state.isHost) broadcastPresentation(); } };
   document.getElementById('presNextBtn').onclick = () => { if(state.presentation.currentPage<state.presentation.pages.length-1){ state.presentation.currentPage++; renderPresentationPage(state.presentation.currentPage); if(state.isHost) broadcastPresentation(); } };
   
+  // ========== FULL MEETING RECORDING (Canvas + Audio Mix) ==========
+  async function startFullRecording(){
+    if(state.isRecording) return;
+    
+    // Create canvas to composite all video tiles
+    const canvas = document.createElement('canvas');
+    canvas.width = 1280;
+    canvas.height = 720;
+    const ctx = canvas.getContext('2d');
+    state.recordingCanvas = canvas;
+    
+    function drawFrame(){
+      if(!state.isRecording) return;
+      ctx.fillStyle = '#05070c';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      const tiles = document.querySelectorAll('.vtile');
+      let x = 0, y = 0;
+      const cols = Math.min(Math.ceil(Math.sqrt(tiles.length)), 4);
+      const tileW = canvas.width / cols;
+      const tileH = canvas.height / Math.ceil(tiles.length / cols);
+      
+      tiles.forEach((tile, idx) => {
+        const col = idx % cols;
+        const row = Math.floor(idx / cols);
+        const video = tile.querySelector('video');
+        if(video && video.srcObject && video.readyState >= 2){
+          try {
+            ctx.drawImage(video, col * tileW, row * tileH, tileW, tileH);
+          } catch(e){}
+        } else {
+          ctx.fillStyle = '#1a1f2c';
+          ctx.fillRect(col * tileW, row * tileH, tileW, tileH);
+          const name = tile.querySelector('.vtile-name')?.innerText || 'Participant';
+          ctx.fillStyle = '#3b82f6';
+          ctx.font = 'bold 24px sans-serif';
+          ctx.fillText(name.charAt(0), col * tileW + tileW/2 - 12, row * tileH + tileH/2);
+        }
+      });
+      
+      state.recordingAnimationId = requestAnimationFrame(drawFrame);
+    }
+    drawFrame();
+    
+    const canvasStream = canvas.captureStream(30);
+    
+    // Collect all audio tracks from all participants
+    const audioContext = new AudioContext();
+    const destination = audioContext.createMediaStreamDestination();
+    const audioSources = [];
+    
+    if(state.localStream && state.localStream.getAudioTracks().length){
+      const source = audioContext.createMediaStreamSource(new MediaStream([state.localStream.getAudioTracks()[0]]));
+      source.connect(destination);
+      audioSources.push(source);
+    }
+    
+    for(let [pid, call] of state.calls){
+      if(call.peerConnection){
+        const receivers = call.peerConnection.getReceivers();
+        receivers.forEach(receiver => {
+          if(receiver.track && receiver.track.kind === 'audio'){
+            try {
+              const stream = new MediaStream([receiver.track]);
+              const source = audioContext.createMediaStreamSource(stream);
+              source.connect(destination);
+              audioSources.push(source);
+            } catch(e){}
+          }
+        });
+      }
+    }
+    
+    const combinedStream = new MediaStream([
+      ...canvasStream.getVideoTracks(),
+      ...destination.stream.getAudioTracks()
+    ]);
+    state.recordingStream = combinedStream;
+    
+    const recorder = new MediaRecorder(combinedStream, { mimeType: 'video/webm' });
+    state.recordedChunks = [];
+    recorder.ondataavailable = (e) => { if(e.data.size) state.recordedChunks.push(e.data); };
+    recorder.onstop = () => {
+      const blob = new Blob(state.recordedChunks, { type: 'video/webm' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `meeting-${state.roomName || state.roomCode}-${new Date().toISOString().slice(0,19)}.webm`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast('Recording saved!');
+      if(state.recordingAnimationId) cancelAnimationFrame(state.recordingAnimationId);
+      audioSources.forEach(s => { try{ s.disconnect(); } catch(e){} });
+      try{ audioContext.close(); } catch(e){}
+      state.recordingStream = null;
+      state.recordingCanvas = null;
+    };
+    recorder.start(1000);
+    state.mediaRecorder = recorder;
+    state.isRecording = true;
+    document.getElementById('recBtn').classList.add('recording');
+    toast('Recording all participants...');
+  }
+  
+  function stopFullRecording(){
+    if(!state.isRecording) return;
+    if(state.mediaRecorder && state.mediaRecorder.state !== 'inactive'){
+      state.mediaRecorder.stop();
+    }
+    state.isRecording = false;
+    document.getElementById('recBtn').classList.remove('recording');
+  }
+  
+  function toggleRecording(){
+    if(state.isRecording) stopFullRecording();
+    else startFullRecording();
+  }
+  
   // ========== VIDEO GRID & WEBRTC ==========
   const peerConfig = { 
     debug: 0, 
@@ -580,6 +703,7 @@
         v.style.display = 'block'; 
         if(ph) ph.style.display = 'none'; 
         v.play().catch(e => console.log('play error', e));
+        // If recording is active, audio tracks are already captured via peer connection
       }
     });
     call.on('close', () => handleLeft(pid));
@@ -641,12 +765,11 @@
     return tile;
   }
   
-  // ========== KEEP ALIVE FUNCTION ==========
+  // ========== KEEP ALIVE & REJOIN SUPPORT ==========
   function startKeepAlive(){
     if(state.keepAliveInterval) clearInterval(state.keepAliveInterval);
     state.keepAliveInterval = setInterval(() => {
       if(state.peer && !state.peer.destroyed){
-        // Send ping to all data connections to keep them alive
         state.dataConns.forEach(conn => {
           if(conn.open) {
             try { conn.send({ type: 'ping', ts: Date.now() }); } catch(e) {}
@@ -687,7 +810,6 @@
       toast(`Room created! Share code: ${state.roomCode}`);
       startKeepAlive();
       
-      // Auto-reconnect on disconnect
       state.peer.on('disconnected', () => {
         if(state.peer && !state.peer.destroyed) {
           state.peer.reconnect();
@@ -752,7 +874,7 @@
     });
   }
   
-  // ========== JOIN ROOM ==========
+  // ========== JOIN ROOM (with rejoin support) ==========
   async function joinRoom(){
     const code = document.getElementById('joinRoomCode').value.trim().toUpperCase();
     const userName = document.getElementById('joinUserName').value.trim();
@@ -760,11 +882,17 @@
     closeAllModals(); 
     showOverlay('Joining room...');
     
+    // Clean up previous session for clean rejoin
     if(state.peer) state.peer.destroy();
     if(state.localStream) state.localStream.getTracks().forEach(t=>t.stop());
+    if(state.recordingStream) state.recordingStream.getTracks().forEach(t=>t.stop());
+    if(state.mediaRecorder && state.mediaRecorder.state !== 'inactive') state.mediaRecorder.stop();
     state.calls.clear(); 
     state.dataConns.clear(); 
     state.participants.clear();
+    state.isRecording = false;
+    document.getElementById('recBtn').classList.remove('recording');
+    
     state.isHost = false; 
     state.roomCode = code; 
     state.myName = userName; 
@@ -878,32 +1006,10 @@
       renderGrid(); 
     } 
   };
-  document.getElementById('recBtn').onclick = () => { 
-    if(!state.isRecording){ 
-      state.recordedChunks=[]; 
-      const rec=new MediaRecorder(state.localStream,{mimeType:'video/webm'}); 
-      rec.ondataavailable=e=>{ if(e.data.size) state.recordedChunks.push(e.data); }; 
-      rec.onstop=()=>{ 
-        const blob=new Blob(state.recordedChunks,{type:'video/webm'}); 
-        const a=document.createElement('a'); 
-        a.href=URL.createObjectURL(blob); 
-        a.download=`meeting-${state.roomCode}.webm`; 
-        a.click(); 
-        toast('Saved'); 
-      }; 
-      rec.start(1000); 
-      state.mediaRecorder=rec; 
-      state.isRecording=true; 
-      toast('Recording started'); 
-    } else { 
-      state.mediaRecorder?.stop(); 
-      state.isRecording=false; 
-      toast('Recording stopped'); 
-    } 
-  };
+  document.getElementById('recBtn').onclick = toggleRecording;
   
   function leaveRoom(){ 
-    if(state.mediaRecorder) state.mediaRecorder.stop(); 
+    if(state.isRecording) stopFullRecording();
     if(state.keepAliveInterval) clearInterval(state.keepAliveInterval);
     state.calls.forEach(c=>c.close()); 
     state.dataConns.forEach(c=>c.close()); 
