@@ -132,6 +132,12 @@
   }
   .share-btn:hover { background: rgba(59,130,246,0.30); }
   .share-btn svg { width: 15px; height: 15px; flex-shrink: 0; }
+  .quality-badge {
+    display: flex; align-items: center; gap: 5px;
+    padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 700; letter-spacing: 0.03em;
+    border: 1px solid currentColor; opacity: 0.85; white-space: nowrap;
+  }
+  .quality-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 
   .rec-badge {
     display: flex; align-items: center; gap: 5px; padding: 4px 10px;
@@ -321,6 +327,7 @@
       <div class="room-code-pill" id="hdr-code" onclick="copyCode()" title="Click to copy">XXXXXX</div>
     </div>
     <div class="room-header-right">
+      <div id="quality-badge" class="quality-badge hidden" title="Video quality auto-adjusts as more people join"><div class="quality-dot"></div><span id="quality-label">HD</span></div>
       <div id="rec-badge" class="rec-badge hidden"><div class="rec-dot"></div>Recording</div>
       <button class="share-btn" onclick="shareRoom()" title="Share meeting link">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
@@ -441,6 +448,19 @@ const PEER_CONFIG = {
   }
 };
 const NET_ERRORS = new Set(['network','server-error','socket-error','socket-closed']);
+
+// Adaptive quality tiers — automatically degrade as more participants join
+// so total bandwidth stays under ~2 Mbps up/down per device
+const MAX_PARTICIPANTS = 20;
+const QUALITY_TIERS = [
+  { maxUsers:  4, label:'HD',      color:'#22c55e', w:640, h:360, fps:24, kbps:500  },
+  { maxUsers:  8, label:'Good',    color:'#84cc16', w:480, h:270, fps:20, kbps:300  },
+  { maxUsers: 14, label:'Low',     color:'#f59e0b', w:320, h:180, fps:15, kbps:150  },
+  { maxUsers: 20, label:'Minimal', color:'#ef4444', w:240, h:135, fps:10, kbps:80   },
+];
+function getQualityTier(count){
+  return QUALITY_TIERS.find(t => count <= t.maxUsers) || QUALITY_TIERS[QUALITY_TIERS.length-1];
+}
 
 // ════════════════════════════════════════════════
 //  Modals
@@ -573,6 +593,12 @@ function _hostConnect(attempt){
   S.peer.on('connection', conn=>{
     const joinerPid = conn.peer;
     conn.on('open',()=>{
+      // Hard cap — reject if room is full
+      if(S.participants.size + 1 >= MAX_PARTICIPANTS){
+        conn.send({type:'room-full', max: MAX_PARTICIPANTS});
+        setTimeout(()=>conn.close(), 500);
+        return;
+      }
       const users = [];
       S.participants.forEach((v,k)=>users.push({peerId:k,name:v.name}));
       users.push({peerId:pid, name:S.myName});
@@ -605,6 +631,13 @@ async function doJoin(){
   closeModal('m-join');
   showOverlay('Connecting to room ' + code + '…');
 
+  // Clean up any leftover state from a previous session (re-join scenario)
+  if(S.peer){ S.peer.destroy(); S.peer=null; }
+  if(S.localStream){ S.localStream.getTracks().forEach(t=>t.stop()); S.localStream=null; }
+  S.calls.forEach(c=>c.close()); S.calls.clear();
+  S.dataConns.forEach(c=>c.close()); S.dataConns.clear();
+  S.participants.clear();
+
   S.isHost   = false;
   S.roomCode = code;
   S.myName   = myName;
@@ -625,15 +658,20 @@ async function doJoin(){
     catch { toast('Camera/mic access denied.'); S.localStream = null; }
   }
 
-  let joinAttempt = (typeof arguments[0] === 'number') ? arguments[0] : 1;
-  const MAX_JOIN_ATTEMPTS = 3;
+  _joinConnect(1);
+}
 
-  showOverlay(joinAttempt > 1 ? `Connecting to room ${code}… (attempt ${joinAttempt}/${MAX_JOIN_ATTEMPTS})` : `Connecting to room ${code}…`);
+// Separated so retries don't re-read form fields or re-acquire the camera
+function _joinConnect(attempt){
+  const MAX_ATTEMPTS = 3;
+  const code   = S.roomCode;
+  const myName = S.myName;
+
+  showOverlay(attempt > 1 ? `Connecting to room ${code}… (attempt ${attempt}/${MAX_ATTEMPTS})` : `Connecting to room ${code}…`);
 
   if(S.peer){ S.peer.destroy(); S.peer=null; }
-  S.peer = new Peer(PEER_CONFIG); // random ID for joiners
+  S.peer = new Peer(PEER_CONFIG);
 
-  // Bail out if we can't connect to signaling server
   const peerOpenTimer = setTimeout(()=>{
     if(S.peer){ S.peer.destroy(); S.peer=null; }
     showLobby();
@@ -646,10 +684,10 @@ async function doJoin(){
       showLobby();
       toastError('Room "' + code + '" not found. Check the code and try again.');
     } else if(NET_ERRORS.has(err.type)){
-      if(joinAttempt < MAX_JOIN_ATTEMPTS){
-        const delay = joinAttempt * 2000;
+      if(attempt < MAX_ATTEMPTS){
+        const delay = attempt * 2000;
         showOverlay(`Connection hiccup — retrying in ${delay/1000}s…`);
-        setTimeout(()=>doJoin.call(null, joinAttempt+1), delay);
+        setTimeout(()=>_joinConnect(attempt + 1), delay);
       } else {
         showLobby();
         toastError('Could not connect to the signaling server after 3 attempts. Try a different network or browser.');
@@ -663,31 +701,28 @@ async function doJoin(){
   S.peer.on('open', myPid=>{
     clearTimeout(peerOpenTimer);
 
-    // KEY FIX: Stay registered on the signaling server so the host can reach us back
+    // Stay registered on the signaling server so the host can reach us back
     S.peer.on('disconnected', ()=>{
       if(S.peer && !S.peer.destroyed) S.peer.reconnect();
     });
 
-    // Connect to host via data channel
     const hostConn = S.peer.connect(hostPid(code), { metadata: { name: myName }, reliable: true });
-
-    // Timeout if host doesn't respond to data connection
     const hostConnTimer = setTimeout(()=>{ toastError('Room not found or host is offline.'); showLobby(); }, 12000);
 
     hostConn.on('open',()=>{
-      // Timeout if host doesn't send welcome message
       const t = setTimeout(()=>{ toastError('Host did not respond. Room may be closed.'); showLobby(); }, 8000);
       hostConn.on('data', msg=>{
         clearTimeout(hostConnTimer);
         clearTimeout(t);
-        if(msg.type==='welcome'){
+        if(msg.type==='room-full'){
+          showLobby();
+          toastError('This room is full (' + msg.max + ' participants maximum).');
+        } else if(msg.type==='welcome'){
           S.roomName = msg.roomName;
           document.getElementById('hdr-name').textContent = msg.roomName;
           document.getElementById('hdr-code').textContent = msg.roomCode;
           renderGrid();
           showRoom();
-
-          // Call every existing participant (including host)
           msg.users.forEach(u=>{
             if(u.peerId === myPid) return;
             S.participants.set(u.peerId, {name:u.name});
@@ -703,17 +738,15 @@ async function doJoin(){
           addTile(msg.peerId, msg.name, null);
           updateCounts();
           toast(msg.name+' joined');
-          // New joiner calls us — we just wait for their call (peer.on call)
         } else if(msg.type==='user-left'){
           handleLeft(msg.peerId);
         }
       });
     });
-    hostConn.on('error',()=>{ clearTimeout(hostConnTimer); toast('Could not reach room host.'); showLobby(); });
+    hostConn.on('error',()=>{ clearTimeout(hostConnTimer); toastError('Could not reach room host.'); showLobby(); });
     hostConn.on('close',()=>{ toast('Host ended the meeting.'); leaveRoom(); });
   });
 
-  // Answer incoming video calls from existing participants
   S.peer.on('call', call=>{
     call.answer(S.localStream||new MediaStream());
     attachStream(call);
@@ -726,6 +759,11 @@ async function doJoin(){
 function attachStream(call){
   const pid = call.peer;
   S.calls.set(pid, call);
+
+  // Apply current quality tier's bitrate cap to this new connection
+  const tier = getQualityTier(S.participants.size + 1);
+  applyBandwidthToCall(call, tier.kbps * 1000);
+
   call.on('stream', stream=>{
     S.participants.set(pid, S.participants.get(pid)||{name:'Guest'});
     const vid = document.getElementById('vid-'+pid);
@@ -818,6 +856,49 @@ function updateCounts(){
   document.getElementById('p-count').textContent=n;
   document.getElementById('panel-count').textContent=n;
   renderPanel();
+  applyAdaptiveQuality(n);
+}
+
+// ════════════════════════════════════════════════
+//  Adaptive quality
+// ════════════════════════════════════════════════
+function applyAdaptiveQuality(count){
+  const tier = getQualityTier(count);
+
+  // Update quality badge
+  const badge = document.getElementById('quality-badge');
+  const label = document.getElementById('quality-label');
+  badge.classList.remove('hidden');
+  badge.style.color = tier.color;
+  label.textContent = tier.label + ' · ' + count + '/' + MAX_PARTICIPANTS;
+
+  // Apply video constraints to local track
+  if(S.localStream){
+    const vt = S.localStream.getVideoTracks()[0];
+    if(vt) vt.applyConstraints({
+      width:       { ideal: tier.w },
+      height:      { ideal: tier.h },
+      frameRate:   { ideal: tier.fps }
+    }).catch(()=>{});
+  }
+
+  // Cap outgoing bitrate on every active call
+  const maxBps = tier.kbps * 1000;
+  S.calls.forEach(call => applyBandwidthToCall(call, maxBps));
+}
+
+function applyBandwidthToCall(call, maxBps){
+  try {
+    const pc = call.peerConnection;
+    if(!pc) return;
+    pc.getSenders().forEach(sender=>{
+      if(!sender.track || sender.track.kind !== 'video') return;
+      const params = sender.getParameters();
+      if(!params.encodings || params.encodings.length===0) params.encodings=[{}];
+      params.encodings[0].maxBitrate = maxBps;
+      sender.setParameters(params).catch(()=>{});
+    });
+  } catch(_){}
 }
 
 // ════════════════════════════════════════════════
