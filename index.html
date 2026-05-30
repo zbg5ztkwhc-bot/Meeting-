@@ -484,7 +484,73 @@ function escH(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').re
 function genCode(){ return Math.random().toString(36).slice(2,8).toUpperCase(); }
 function hostPid(code){ return 'ms-' + code.toLowerCase(); }
 
-// PeerJS config — STUN (Google, free) + TURN (Open Relay Project, free, no sign-up)
+// ════════════════════════════════════════════════
+//  Widest-angle camera acquisition
+//  Strategy:
+//  1. Enumerate all video input devices and pick the one whose label
+//     suggests an ultra-wide / wide lens (phones often expose several).
+//  2. Request zoom:1 (minimum = widest the browser will honour).
+//  3. After acquisition, use applyConstraints to push zoom to the
+//     hardware minimum reported by getCapabilities().
+//  4. Falls back gracefully to front-facing, then audio-only.
+// ════════════════════════════════════════════════
+async function getWidestCameraStream(){
+  const BASE_VIDEO = {
+    aspectRatio: { ideal: 9/16 },
+    width:  { ideal: 1080, max: 1920 },
+    height: { ideal: 1920, max: 2160 },
+    zoom: 1,           // 1 = minimum (widest) in the constraint API
+    focusMode: 'continuous',
+  };
+
+  // Try to find an ultra-wide camera by label
+  let wideDeviceId = null;
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const videoDevices = devices.filter(d => d.kind === 'videoinput');
+    const wideKeywords = /ultra.?wide|wide.?angle|ultrawide|0\.6|back.*wide/i;
+    const wideDevice = videoDevices.find(d => wideKeywords.test(d.label));
+    if(wideDevice) wideDeviceId = wideDevice.deviceId;
+  } catch(_){}
+
+  const tryGetStream = async (videoConstraints) => {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: true,
+      video: videoConstraints
+    });
+    // After acquiring, push zoom to hardware minimum if supported
+    const vt = stream.getVideoTracks()[0];
+    if(vt){
+      try {
+        const caps = vt.getCapabilities();
+        if(caps.zoom && caps.zoom.min !== undefined){
+          await vt.applyConstraints({ advanced: [{ zoom: caps.zoom.min }] });
+        }
+      } catch(_){}
+    }
+    return stream;
+  };
+
+  // Attempt order: explicit wide device → front-facing → any camera → audio only
+  const attempts = [];
+  if(wideDeviceId){
+    attempts.push({ deviceId: { exact: wideDeviceId }, ...BASE_VIDEO });
+  }
+  attempts.push({ facingMode: { ideal: 'user' }, ...BASE_VIDEO });
+  attempts.push({ ...BASE_VIDEO });
+
+  for(const constraints of attempts){
+    try { return await tryGetStream(constraints); } catch(_){}
+  }
+  // Audio only fallback
+  try { return await navigator.mediaDevices.getUserMedia({ audio: true, video: false }); }
+  catch {
+    toast('Camera/mic access denied.');
+    return null;
+  }
+}
+
+
 const PEER_CONFIG = {
   debug: 0,
   config: {
@@ -566,22 +632,7 @@ async function doCreate(){
   S.myName   = myName;
   S.roomName = roomName;
 
-  try {
-    S.localStream = await navigator.mediaDevices.getUserMedia({
-      audio: true,
-      video: {
-        facingMode: { ideal: 'user' },
-        aspectRatio: { ideal: 9/16 },
-        width:  { ideal: 1080, max: 1920 },
-        height: { ideal: 1920, max: 2160 },
-        zoom:   { ideal: 0.5 }  // wide angle — zoomed out
-      }
-    });
-  } catch {
-    try { S.localStream = await navigator.mediaDevices.getUserMedia({audio:true,video:false}); }
-    catch { toast('Camera/mic access denied — others won\'t see/hear you.'); S.localStream = null; }
-  }
-
+  S.localStream = await getWidestCameraStream();
   _hostConnect(1);
 }
 
@@ -702,22 +753,7 @@ async function doJoin(){
   S.roomCode = code;
   S.myName   = myName;
 
-  try {
-    S.localStream = await navigator.mediaDevices.getUserMedia({
-      audio: true,
-      video: {
-        facingMode: { ideal: 'user' },
-        aspectRatio: { ideal: 9/16 },
-        width:  { ideal: 1080, max: 1920 },
-        height: { ideal: 1920, max: 2160 },
-        zoom:   { ideal: 0.5 }  // wide angle — zoomed out
-      }
-    });
-  } catch {
-    try { S.localStream = await navigator.mediaDevices.getUserMedia({audio:true,video:false}); }
-    catch { toast('Camera/mic access denied.'); S.localStream = null; }
-  }
-
+  S.localStream = await getWidestCameraStream();
   _joinConnect(1);
 }
 
