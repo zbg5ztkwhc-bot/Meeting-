@@ -208,6 +208,7 @@
   .cb-rec:hover, .cb-screen:hover { background: rgba(255,255,255,0.15); }
   .cb-rec.on { background: rgba(239,68,68,0.15); border-color: rgba(239,68,68,0.35); color: #f87171; }
   .cb-screen.on { background: rgba(59,130,246,0.15); border-color: rgba(59,130,246,0.35); color: var(--primary); }
+  .cb-screen.disabled { opacity: 0.5; cursor: not-allowed; background: rgba(255,255,255,0.04); }
   .cb-rec svg, .cb-screen svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2; }
   .cb-rec.on svg { fill: currentColor; }
   .cb-leave { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--danger); border: none; transition: background 0.15s; }
@@ -343,6 +344,15 @@
 <div id="overlay" class="overlay hidden"><div class="spinner"></div><p id="overlay-msg">Connecting…</p></div>
 
 <script>
+// ========== CHECK BROWSER SUPPORT FOR SCREEN SHARE ==========
+function isScreenShareSupported() {
+  return !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia);
+}
+
+function showScreenShareNotSupported() {
+  toast('Screen sharing is not supported in this browser. Please use Chrome, Edge, or Firefox on HTTPS.');
+}
+
 // ========== MAXIMUM WIDE ANGLE FRONT CAMERA SETUP ==========
 async function getWideAngleFrontCamera() {
   try {
@@ -440,8 +450,14 @@ if (window.location.search) {
   }
 }
 
-// ========== IMPROVED SCREEN SHARE ==========
+// ========== SCREEN SHARE WITH PROPER SUPPORT CHECK ==========
 async function toggleScreenShare() {
+  // Check if screen share is supported
+  if (!isScreenShareSupported()) {
+    showScreenShareNotSupported();
+    return;
+  }
+  
   if (S.isScreenSharing) {
     stopScreenShare();
   } else {
@@ -450,19 +466,18 @@ async function toggleScreenShare() {
 }
 
 async function startScreenShare() {
-  // Check if screen share is supported
-  if (!navigator.mediaDevices.getDisplayMedia) {
-    toast('Screen sharing is not supported in this browser');
+  if (!isScreenShareSupported()) {
+    showScreenShareNotSupported();
     return;
   }
   
   try {
     showOverlay('Opening screen share selector...');
     
-    // Request screen share with audio option (if supported)
+    // Request screen share
     const screenStream = await navigator.mediaDevices.getDisplayMedia({ 
       video: true,
-      audio: false  // Audio sharing is optional and often requires additional permissions
+      audio: false
     });
     
     hideOverlay();
@@ -482,7 +497,11 @@ async function startScreenShare() {
       if (peer.pc) {
         const sender = peer.pc.getSenders().find(s => s.track && s.track.kind === 'video');
         if (sender && videoTrack) {
-          await sender.replaceTrack(videoTrack);
+          try {
+            await sender.replaceTrack(videoTrack);
+          } catch (e) {
+            console.log('Replace track error:', e);
+          }
         }
       }
     }
@@ -497,7 +516,7 @@ async function startScreenShare() {
     videoTrack.onended = () => {
       if (S.isScreenSharing) {
         stopScreenShare();
-        toast('Screen sharing stopped');
+        toast('Screen sharing stopped by user');
       }
     };
     
@@ -505,13 +524,15 @@ async function startScreenShare() {
     hideOverlay();
     console.error('Screen share error:', err);
     
-    // Handle different error types
+    // Handle different error types with user-friendly messages
     if (err.name === 'NotAllowedError') {
       toast('Screen share permission denied. Please allow access to share your screen.');
     } else if (err.name === 'NotFoundError') {
       toast('No screen sharing source found');
     } else if (err.name === 'AbortError') {
-      toast('Screen share was cancelled');
+      toast('Screen share selection was cancelled');
+    } else if (err.name === 'NotSupportedError') {
+      showScreenShareNotSupported();
     } else {
       toast('Screen share failed: ' + (err.message || 'Unknown error'));
     }
@@ -520,7 +541,6 @@ async function startScreenShare() {
 
 function stopScreenShare() {
   if (S.screenStream) {
-    // Stop all tracks
     S.screenStream.getTracks().forEach(track => {
       track.stop();
     });
