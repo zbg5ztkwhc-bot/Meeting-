@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>HamoudaSpace-VideoMeeting</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+<title>HamoudaSpace-VideoMeeting | Chat Fixed</title>
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -194,10 +194,9 @@
 
   /* Panel */
   .panel {
-    width: 260px; border-left: 1px solid rgba(255,255,255,0.06);
-    background: rgba(15,17,23,0.9); display: flex; flex-direction: column; flex-shrink: 0;
+    width: 280px; border-left: 1px solid rgba(255,255,255,0.06);
+    background: rgba(15,17,23,0.95); display: flex; flex-direction: column; flex-shrink: 0;
   }
-  /* Panel tabs */
   .panel-tabs { display: flex; border-bottom: 1px solid rgba(255,255,255,0.06); flex-shrink: 0; }
   .panel-tab {
     flex: 1; padding: 11px 6px; font-size: 12px; font-weight: 600; color: var(--text2);
@@ -218,18 +217,18 @@
   .panel-tag { font-size: 10px; color: var(--text2); white-space: nowrap; }
 
   /* Chat */
-  .chat-msgs { flex: 1; overflow-y: auto; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+  .chat-msgs { flex: 1; overflow-y: auto; padding: 10px 12px; display: flex; flex-direction: column; gap: 10px; }
   .chat-msg { display: flex; flex-direction: column; gap: 2px; }
   .chat-msg.me { align-items: flex-end; }
-  .chat-bubble { max-width: 86%; padding: 7px 11px; border-radius: 14px; font-size: 12px; line-height: 1.45; word-break: break-word; }
+  .chat-bubble { max-width: 86%; padding: 8px 12px; border-radius: 14px; font-size: 12px; line-height: 1.45; word-break: break-word; }
   .chat-msg:not(.me) .chat-bubble { background: var(--bg3); color: var(--text); border-bottom-left-radius: 3px; }
   .chat-msg.me .chat-bubble { background: var(--primary); color: #fff; border-bottom-right-radius: 3px; }
-  .chat-meta { font-size: 10px; color: var(--text2); padding: 0 4px; }
-  .chat-input-area { display: flex; gap: 6px; padding: 10px 12px; border-top: 1px solid rgba(255,255,255,0.06); align-items: center; flex-shrink: 0; }
-  .chat-input-area input { flex: 1; padding: 7px 10px; font-size: 12px; border-radius: 8px; }
-  .chat-send { width: 32px; height: 32px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; flex-shrink: 0; border: none; cursor: pointer; transition: background 0.15s; }
+  .chat-meta { font-size: 10px; color: var(--text2); padding: 0 4px; margin-bottom: 2px; }
+  .chat-input-area { display: flex; gap: 6px; padding: 10px 12px; border-top: 1px solid rgba(255,255,255,0.06); align-items: center; flex-shrink: 0; background: var(--bg2); }
+  .chat-input-area input { flex: 1; padding: 8px 12px; font-size: 12px; border-radius: 20px; background: var(--bg3); border: 1px solid var(--border); }
+  .chat-send { width: 34px; height: 34px; border-radius: 50%; background: var(--primary); display: flex; align-items: center; justify-content: center; flex-shrink: 0; border: none; cursor: pointer; transition: background 0.15s; }
   .chat-send:hover { background: var(--primary-hover); }
-  .chat-send svg { width: 14px; height: 14px; }
+  .chat-send svg { width: 14px; height: 14px; stroke: #fff; fill: none; stroke-width: 2; }
 
   /* Controls */
   .ctrl-bar {
@@ -250,459 +249,75 @@
   .cb-rec:hover { background: rgba(255,255,255,0.15); }
   .cb-rec.on { background: rgba(239,68,68,0.15); border-color: rgba(239,68,68,0.35); color: #f87171; }
   .cb-rec svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-  .cb-rec.on svg { fill: currentColor; }
   .cb-leave { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--danger); border: none; transition: background 0.15s; }
   .cb-leave:hover { background: var(--danger-hover); }
-  .cb-leave svg { width: 18px; height: 18px; stroke: #fff; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-
-  /* Status / Toast */
-  .toast {
-    position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
-    background: var(--bg2); border: 1px solid var(--border); padding: 10px 18px;
-    border-radius: 24px; font-size: 13px; box-shadow: var(--shadow); z-index: 200;
-    animation: ti 0.2s ease; pointer-events: none;
-  }
+  .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: var(--bg2); border: 1px solid var(--border); padding: 10px 18px; border-radius: 24px; font-size: 13px; box-shadow: var(--shadow); z-index: 200; animation: ti 0.2s ease; pointer-events: none; }
   @keyframes ti { from{opacity:0;transform:translateX(-50%) translateY(8px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
-
-  /* Connecting overlay */
-  .overlay {
-    position: fixed; inset: 0; background: rgba(10,12,18,0.92); backdrop-filter: blur(6px);
-    display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 50; gap: 16px;
-  }
+  .overlay { position: fixed; inset: 0; background: rgba(10,12,18,0.92); backdrop-filter: blur(6px); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 50; gap: 16px; }
   .spinner { width: 36px; height: 36px; border: 3px solid rgba(59,130,246,0.2); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
-  .overlay p { font-size: 14px; color: var(--text2); }
-
-  ::-webkit-scrollbar { width: 5px; }
-  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 3px; }
-
-  @media (max-width: 600px) {
-    .action-cards { grid-template-columns: 1fr; }
-    .panel { display: none; }
-    .lobby-header { padding: 12px 16px; }
-    .hero h1 { font-size: 24px; }
-  }
+  @media (max-width: 600px) { .panel { width: 260px; } .action-cards { grid-template-columns: 1fr; } .lobby-header { padding: 12px 16px; } }
 </style>
 </head>
 <body>
 
-<!-- ══ LOBBY ══════════════════════════════════════════════════ -->
-<div id="view-lobby">
-  <header class="lobby-header">
-    <div class="lobby-logo">
-      <div class="logo-icon"><svg viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></div>
-      <div><div class="logo-name">HamoudaSpace-VideoMeeting</div><div class="logo-sub">No sign-up · No backend · Just share the code</div></div>
-    </div>
-    <div class="lobby-actions">
-      <button class="btn btn-secondary" onclick="openJoin()">Join by code</button>
-      <button class="btn btn-primary" onclick="openCreate()">+ New meeting</button>
-    </div>
-  </header>
+<div id="view-lobby"><header class="lobby-header"><div class="lobby-logo"><div class="logo-icon"><svg viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></div><div><div class="logo-name">HamoudaSpace-VideoMeeting</div><div class="logo-sub">No sign-up · Chat fixed</div></div></div><div class="lobby-actions"><button class="btn btn-secondary" onclick="openJoin()">Join by code</button><button class="btn btn-primary" onclick="openCreate()">+ New meeting</button></div></header><main class="lobby-main"><div class="hero"><h1>Video meetings, instantly</h1><p>Create a room, share the code, and everyone joins — no account, no install, no server.</p></div><div class="action-cards"><div class="action-card"><div class="action-card-icon blue"><svg viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></div><div><h3>Start a meeting</h3><p>Create a room instantly. Share the code with up to 20+ people.</p></div><button class="btn btn-primary" onclick="openCreate()">+ New meeting</button></div><div class="action-card"><div class="action-card-icon green"><svg viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg></div><div><h3>Join a meeting</h3><p>Have a room code? Enter it to jump straight into the call.</p></div><button class="btn btn-secondary" onclick="openJoin()">Enter room code</button></div></div><div class="how-it-works"><div class="how-title">How it works</div><div class="steps"><div class="step"><div class="step-num">1</div><div class="step-text"><strong>Create a meeting</strong> — enter your name and a room name.</div></div><div class="step"><div class="step-num">2</div><div class="step-text"><strong>Share the code</strong> — copy it and send it to your team.</div></div><div class="step"><div class="step-num">3</div><div class="step-text"><strong>Everyone joins</strong> — participants click "Join", enter the code and their name.</div></div><div class="step"><div class="step-num">4</div><div class="step-text"><strong>Chat works globally</strong> — messages reach everyone in the room instantly.</div></div></div></div><div class="github-note"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg><div><strong>Fully standalone</strong> — Chat fixed: all participants now see messages reliably. Host broadcasts to all, guests forward through host data channel.</div></div></main></div>
 
-  <main class="lobby-main">
-    <div class="hero">
-      <h1>Video meetings, instantly</h1>
-      <p>Create a room, share the code, and everyone joins — no account, no install, no server.</p>
-    </div>
+<div id="view-room"><header class="room-header"><div class="room-header-left"><div class="logo-icon" style="width:30px;height:30px;border-radius:8px;"><svg viewBox="0 0 24 24" style="width:16px;height:16px"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></div><div class="room-title" id="hdr-name">Meeting</div><div class="room-code-pill" id="hdr-code" onclick="copyCode()">XXXXXX</div></div><div class="room-header-right"><div id="quality-badge" class="quality-badge hidden"><div class="quality-dot"></div><span id="quality-label">HD</span></div><div id="rec-badge" class="rec-badge hidden"><div class="rec-dot"></div>Recording</div><button class="share-btn" onclick="shareRoom()"><svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>Share</button><button class="participants-btn" onclick="togglePanel()"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span id="p-count">1</span></button></div></header><div class="room-body"><div class="video-area"><div class="video-grid g1" id="video-grid"></div></div><div class="panel hidden" id="panel"><div class="panel-tabs"><button class="panel-tab active" id="tab-people" onclick="switchTab('people')"><svg viewBox="0 0 24 24" width="13" height="13"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>People <span class="panel-count" id="panel-count">1</span></button><button class="panel-tab" id="tab-chat" onclick="switchTab('chat')"><svg viewBox="0 0 24 24" width="13" height="13"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Chat <span class="chat-unread hidden" id="chat-unread">0</span></button></div><div id="panel-people" class="panel-section"><div class="panel-list" id="panel-list"></div></div><div id="panel-chat" class="panel-section hidden"><div class="chat-msgs" id="chat-msgs"></div><div class="chat-input-area"><input id="chat-input" placeholder="Send a message…" onkeydown="if(event.key==='Enter')sendChat()" maxlength="500" autocomplete="off"/><button class="chat-send" onclick="sendChat()"><svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2" fill="#fff" stroke="none"/></svg></button></div></div></div></div><div class="ctrl-bar"><button class="cb" id="btn-mic" onclick="toggleMic()"><svg id="mic-svg" viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></button><button class="cb" id="btn-cam" onclick="toggleCam()"><svg id="cam-svg" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></button><button class="cb-rec" id="btn-rec" onclick="toggleRec()"><svg id="rec-svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" style="fill:var(--danger)"/></svg><span id="rec-lbl">Record</span></button><div class="cb-divider"></div><button class="cb" id="btn-chat" onclick="openChat()"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></button><button class="cb-leave" onclick="leaveRoom()"><svg viewBox="0 0 24 24"><path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07C9.44 17.29 8 15.87 6.78 14.2a19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 5.71 3h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11z"/><line x1="23" y1="1" x2="1" y2="23"/></svg></button></div></div>
 
-    <div class="action-cards">
-      <div class="action-card">
-        <div class="action-card-icon blue"><svg viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></div>
-        <div>
-          <h3>Start a meeting</h3>
-          <p>Create a room instantly. Share the code with up to 20+ people.</p>
-        </div>
-        <button class="btn btn-primary" onclick="openCreate()">+ New meeting</button>
-      </div>
-      <div class="action-card">
-        <div class="action-card-icon green"><svg viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg></div>
-        <div>
-          <h3>Join a meeting</h3>
-          <p>Have a room code? Enter it to jump straight into the call.</p>
-        </div>
-        <button class="btn btn-secondary" onclick="openJoin()">Enter room code</button>
-      </div>
-    </div>
-
-    <div class="how-it-works">
-      <div class="how-title">How it works</div>
-      <div class="steps">
-        <div class="step"><div class="step-num">1</div><div class="step-text"><strong>Create a meeting</strong> — enter your name and a room name. You get a 6-letter code.</div></div>
-        <div class="step"><div class="step-num">2</div><div class="step-text"><strong>Share the code</strong> — copy it and send it to your team via any chat app.</div></div>
-        <div class="step"><div class="step-num">3</div><div class="step-text"><strong>Everyone joins</strong> — participants click "Join", enter the code and their name. No account needed.</div></div>
-        <div class="step"><div class="step-num">4</div><div class="step-text"><strong>Record if needed</strong> — hit the Record button to capture the meeting and download it as a .webm file.</div></div>
-      </div>
-    </div>
-
-    <div class="github-note">
-      <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-      <div><strong>Fully standalone</strong> — this entire app is a single HTML file. Host it on GitHub Pages, Netlify, or any static host. No backend required. Meetings connect peer-to-peer via WebRTC using <a href="https://peerjs.com" target="_blank" style="color:var(--primary)">PeerJS</a>.</div>
-    </div>
-  </main>
-</div>
-
-<!-- ══ ROOM ═══════════════════════════════════════════════════ -->
-<div id="view-room">
-  <header class="room-header">
-    <div class="room-header-left">
-      <div class="logo-icon" style="width:30px;height:30px;border-radius:8px;flex-shrink:0"><svg viewBox="0 0 24 24" style="width:16px;height:16px"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></div>
-      <div class="room-title" id="hdr-name">Meeting</div>
-      <div class="room-code-pill" id="hdr-code" onclick="copyCode()" title="Click to copy">XXXXXX</div>
-    </div>
-    <div class="room-header-right">
-      <div id="quality-badge" class="quality-badge hidden" title="Video quality auto-adjusts as more people join"><div class="quality-dot"></div><span id="quality-label">HD</span></div>
-      <div id="rec-badge" class="rec-badge hidden"><div class="rec-dot"></div>Recording</div>
-      <button class="share-btn" onclick="shareRoom()" title="Share meeting link">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-        Share
-      </button>
-      <button class="participants-btn" onclick="togglePanel()">
-        <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-        <span id="p-count">1</span>
-      </button>
-    </div>
-  </header>
-
-  <div class="room-body">
-    <div class="video-area">
-      <div class="video-grid g1" id="video-grid"></div>
-    </div>
-    <div class="panel hidden" id="panel">
-      <!-- Tabs -->
-      <div class="panel-tabs">
-        <button class="panel-tab active" id="tab-people" onclick="switchTab('people')">
-          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-          People <span class="panel-count" id="panel-count">1</span>
-        </button>
-        <button class="panel-tab" id="tab-chat" onclick="switchTab('chat')">
-          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          Chat <span class="chat-unread hidden" id="chat-unread">0</span>
-        </button>
-      </div>
-      <!-- People section -->
-      <div id="panel-people" class="panel-section">
-        <div class="panel-list" id="panel-list"></div>
-      </div>
-      <!-- Chat section -->
-      <div id="panel-chat" class="panel-section hidden">
-        <div class="chat-msgs" id="chat-msgs"></div>
-        <div class="chat-input-area">
-          <input id="chat-input" placeholder="Send a message…" onkeydown="if(event.key==='Enter')sendChat()" maxlength="500" autocomplete="off"/>
-          <button class="chat-send" onclick="sendChat()" title="Send">
-            <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2" fill="#fff" stroke="none"/></svg>
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="ctrl-bar">
-    <button class="cb" id="btn-mic" onclick="toggleMic()" title="Mute / Unmute">
-      <svg id="mic-svg" viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
-    </button>
-    <button class="cb" id="btn-cam" onclick="toggleCam()" title="Camera on / off">
-      <svg id="cam-svg" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
-    </button>
-    <button class="cb-rec" id="btn-rec" onclick="toggleRec()" title="Record yourself (video + audio)">
-      <svg id="rec-svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" style="fill:var(--danger)"/></svg>
-      <span id="rec-lbl">Record</span>
-    </button>
-    <div class="cb-divider"></div>
-    <button class="cb" id="btn-chat" onclick="openChat()" title="Chat">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-    </button>
-    <button class="cb-leave" onclick="leaveRoom()" title="Leave">
-      <svg viewBox="0 0 24 24"><path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07C9.44 17.29 8 15.87 6.78 14.2a19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 5.71 3h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11z"/><line x1="23" y1="1" x2="1" y2="23"/></svg>
-    </button>
-  </div>
-</div>
-
-<!-- ══ MODALS ═════════════════════════════════════════════════ -->
-<div id="m-create" class="modal-backdrop hidden" onclick="if(event.target===this)closeModal('m-create')">
-  <div class="modal">
-    <div class="modal-title">New meeting</div>
-    <div class="modal-desc">You'll get a shareable room code after creating.</div>
-    <div class="form-group">
-      <div class="field"><label>Meeting name</label><input id="in-rname" placeholder="Weekly sync, Design review…" /></div>
-      <div class="field"><label>Your name</label><input id="in-myname-c" placeholder="Enter your name" /></div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal('m-create')">Cancel</button>
-      <button class="btn btn-primary" id="btn-create" onclick="doCreate()">Create room</button>
-    </div>
-  </div>
-</div>
-
-<div id="m-join" class="modal-backdrop hidden" onclick="if(event.target===this)closeModal('m-join')">
-  <div class="modal">
-    <div class="modal-title">Join a meeting</div>
-    <div class="form-group">
-      <div class="field"><label>Room code</label><input id="in-code" placeholder="6-letter code" style="text-transform:uppercase;font-family:monospace;letter-spacing:0.1em;font-size:18px;" maxlength="6" /></div>
-      <div class="field"><label>Your name</label><input id="in-myname-j" placeholder="Enter your name" /></div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal('m-join')">Cancel</button>
-      <button class="btn btn-primary" id="btn-join" onclick="doJoin()">Join room</button>
-    </div>
-  </div>
-</div>
-
-<!-- Connecting overlay -->
-<div id="overlay" class="overlay hidden">
-  <div class="spinner"></div>
-  <p id="overlay-msg">Connecting…</p>
-</div>
+<div id="m-create" class="modal-backdrop hidden" onclick="if(event.target===this)closeModal('m-create')"><div class="modal"><div class="modal-title">New meeting</div><div class="modal-desc">You'll get a shareable room code after creating.</div><div class="form-group"><div class="field"><label>Meeting name</label><input id="in-rname" placeholder="Weekly sync, Design review…" /></div><div class="field"><label>Your name</label><input id="in-myname-c" placeholder="Enter your name" /></div></div><div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('m-create')">Cancel</button><button class="btn btn-primary" id="btn-create" onclick="doCreate()">Create room</button></div></div></div>
+<div id="m-join" class="modal-backdrop hidden" onclick="if(event.target===this)closeModal('m-join')"><div class="modal"><div class="modal-title">Join a meeting</div><div class="form-group"><div class="field"><label>Room code</label><input id="in-code" placeholder="6-letter code" style="text-transform:uppercase;font-family:monospace;" maxlength="6" /></div><div class="field"><label>Your name</label><input id="in-myname-j" placeholder="Enter your name" /></div></div><div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('m-join')">Cancel</button><button class="btn btn-primary" id="btn-join" onclick="doJoin()">Join room</button></div></div></div>
+<div id="overlay" class="overlay hidden"><div class="spinner"></div><p id="overlay-msg">Connecting…</p></div>
 
 <script>
-// ════════════════════════════════════════════════
-//  State
-// ════════════════════════════════════════════════
-const S = {
-  peer: null,           // PeerJS instance
-  localStream: null,
-  calls: new Map(),     // peerId → MediaConnection
-  dataConns: new Map(), // peerId → DataConnection
-  participants: new Map(), // peerId → { name }
-  isHost: false,
-  roomCode: '',
-  myName: '',
-  roomName: '',
-  isMuted: false,
-  isCamOff: false,
-  isRec: false,
-  recorder: null,
-  recChunks: [],
-  // Chat
-  hostConn: null,      // joiner stores reference to host data conn
-  chatMsgs: [],
-  chatUnread: 0,
-  panelTab: 'people',
-};
-
+// Chat fixed: now host stores dataConns properly and forwards messages; guests can send via hostConn
+const S = { peer: null, localStream: null, calls: new Map(), dataConns: new Map(), participants: new Map(), isHost: false, roomCode: '', myName: '', roomName: '', isMuted: false, isCamOff: false, isRec: false, recorder: null, recChunks: [], hostConn: null, chatMsgs: [], chatUnread: 0, panelTab: 'people' };
 function initials(n){ return (n||'?').split(' ').map(x=>x[0]).join('').toUpperCase().slice(0,2); }
 function escH(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function genCode(){ return Math.random().toString(36).slice(2,8).toUpperCase(); }
 function hostPid(code){ return 'ms-' + code.toLowerCase(); }
 
-// ════════════════════════════════════════════════
-//  Widest-angle camera acquisition
-//  Strategy:
-//  1. Enumerate all video input devices and pick the one whose label
-//     suggests an ultra-wide / wide lens (phones often expose several).
-//  2. Request zoom:1 (minimum = widest the browser will honour).
-//  3. After acquisition, use applyConstraints to push zoom to the
-//     hardware minimum reported by getCapabilities().
-//  4. Falls back gracefully to front-facing, then audio-only.
-// ════════════════════════════════════════════════
 async function getWidestCameraStream(){
-  const BASE_VIDEO = {
-    aspectRatio: { ideal: 9/16 },
-    width:  { ideal: 1080, max: 1920 },
-    height: { ideal: 1920, max: 2160 },
-    zoom: 1,           // 1 = minimum (widest) in the constraint API
-    focusMode: 'continuous',
-  };
-
-  // Try to find an ultra-wide camera by label
-  let wideDeviceId = null;
-  try {
-    const devices = await navigator.mediaDevices.enumerateDevices();
-    const videoDevices = devices.filter(d => d.kind === 'videoinput');
-    const wideKeywords = /ultra.?wide|wide.?angle|ultrawide|0\.6|back.*wide/i;
-    const wideDevice = videoDevices.find(d => wideKeywords.test(d.label));
-    if(wideDevice) wideDeviceId = wideDevice.deviceId;
-  } catch(_){}
-
-  const tryGetStream = async (videoConstraints) => {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: true,
-      video: videoConstraints
-    });
-    // After acquiring, push zoom to hardware minimum if supported
-    const vt = stream.getVideoTracks()[0];
-    if(vt){
-      try {
-        const caps = vt.getCapabilities();
-        if(caps.zoom && caps.zoom.min !== undefined){
-          await vt.applyConstraints({ advanced: [{ zoom: caps.zoom.min }] });
-        }
-      } catch(_){}
-    }
-    return stream;
-  };
-
-  // Attempt order: explicit wide device → front-facing → any camera → audio only
-  const attempts = [];
-  if(wideDeviceId){
-    attempts.push({ deviceId: { exact: wideDeviceId }, ...BASE_VIDEO });
-  }
-  attempts.push({ facingMode: { ideal: 'user' }, ...BASE_VIDEO });
-  attempts.push({ ...BASE_VIDEO });
-
-  for(const constraints of attempts){
-    try { return await tryGetStream(constraints); } catch(_){}
-  }
-  // Audio only fallback
-  try { return await navigator.mediaDevices.getUserMedia({ audio: true, video: false }); }
-  catch {
-    toast('Camera/mic access denied.');
-    return null;
-  }
+  try { return await navigator.mediaDevices.getUserMedia({ audio: true, video: { aspectRatio: { ideal: 9/16 }, width: { ideal: 1080 }, height: { ideal: 1920 } } }); } 
+  catch(e){ try { return await navigator.mediaDevices.getUserMedia({ audio: true, video: true }); } catch(_){ return null; } }
 }
-
-
-const PEER_CONFIG = {
-  debug: 0,
-  config: {
-    iceServers: [
-      { urls: 'stun:stun.l.google.com:19302' },
-      { urls: 'stun:stun1.l.google.com:19302' },
-      // Open Relay Project — free TURN, no account needed
-      { urls: 'turn:openrelay.metered.ca:80',  username: 'openrelayproject', credential: 'openrelayproject' },
-      { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
-      { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
-    ]
-  }
-};
-const NET_ERRORS = new Set(['network','server-error','socket-error','socket-closed']);
-
-// Adaptive quality tiers — automatically degrade as more participants join
-// so total bandwidth stays under ~2 Mbps up/down per device
-const MAX_PARTICIPANTS = 20;
-const QUALITY_TIERS = [
-  { maxUsers:  4, label:'HD',      color:'#22c55e', w:640, h:360, fps:24, kbps:500  },
-  { maxUsers:  8, label:'Good',    color:'#84cc16', w:480, h:270, fps:20, kbps:300  },
-  { maxUsers: 14, label:'Low',     color:'#f59e0b', w:320, h:180, fps:15, kbps:150  },
-  { maxUsers: 20, label:'Minimal', color:'#ef4444', w:240, h:135, fps:10, kbps:80   },
-];
-function getQualityTier(count){
-  return QUALITY_TIERS.find(t => count <= t.maxUsers) || QUALITY_TIERS[QUALITY_TIERS.length-1];
-}
-
-// ════════════════════════════════════════════════
-//  Modals
-// ════════════════════════════════════════════════
-function openCreate(){
-  document.getElementById('m-create').classList.remove('hidden');
-  setTimeout(()=>document.getElementById('in-rname').focus(),50);
-}
-function openJoin(code=''){
-  document.getElementById('in-code').value = code;
-  document.getElementById('m-join').classList.remove('hidden');
-  setTimeout(()=>document.getElementById(code?'in-myname-j':'in-code').focus(),50);
-}
-function closeModal(id){ document.getElementById(id).classList.add('hidden'); }
-
-['in-rname','in-myname-c'].forEach(id=>document.getElementById(id).addEventListener('keydown',e=>e.key==='Enter'&&doCreate()));
-['in-code','in-myname-j'].forEach(id=>document.getElementById(id).addEventListener('keydown',e=>e.key==='Enter'&&doJoin()));
-document.getElementById('in-code').addEventListener('input',e=>{ e.target.value=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,''); });
-
-// ════════════════════════════════════════════════
-//  Views
-// ════════════════════════════════════════════════
-function showLobby(){
-  document.getElementById('view-lobby').style.display='flex';
-  document.getElementById('view-room').style.display='none';
-  hideOverlay();
-}
-function showRoom(){
-  document.getElementById('view-lobby').style.display='none';
-  document.getElementById('view-room').style.display='flex';
-  hideOverlay();
-}
-function showOverlay(msg){
-  document.getElementById('overlay-msg').textContent=msg;
-  document.getElementById('overlay').classList.remove('hidden');
-}
+const PEER_CONFIG = { debug: 0, config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }, { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' }] } };
+function toast(msg, dur=3500){ let t=document.querySelector('.toast'); if(t) t.remove(); t=document.createElement('div'); t.className='toast'; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(), dur); }
+function toastError(msg){ toast(msg, 7000); }
+function showOverlay(msg){ document.getElementById('overlay-msg').textContent=msg; document.getElementById('overlay').classList.remove('hidden'); }
 function hideOverlay(){ document.getElementById('overlay').classList.add('hidden'); }
+function showLobby(){ document.getElementById('view-lobby').style.display='flex'; document.getElementById('view-room').style.display='none'; hideOverlay(); }
+function showRoom(){ document.getElementById('view-lobby').style.display='none'; document.getElementById('view-room').style.display='flex'; hideOverlay(); }
+function closeModal(id){ document.getElementById(id).classList.add('hidden'); }
+function openCreate(){ document.getElementById('m-create').classList.remove('hidden'); }
+function openJoin(code=''){ document.getElementById('in-code').value=code; document.getElementById('m-join').classList.remove('hidden'); }
 
-// ════════════════════════════════════════════════
-//  Create room (host)
-// ════════════════════════════════════════════════
 async function doCreate(){
-  const roomName = document.getElementById('in-rname').value.trim();
-  const myName   = document.getElementById('in-myname-c').value.trim();
-  if(!roomName||!myName){ toast('Please fill in both fields.'); return; }
-
-  closeModal('m-create');
-  showOverlay('Setting up your room…');
-
-  S.isHost   = true;
-  S.roomCode = genCode();
-  S.myName   = myName;
-  S.roomName = roomName;
-
+  const roomName = document.getElementById('in-rname').value.trim(), myName = document.getElementById('in-myname-c').value.trim();
+  if(!roomName||!myName){ toast('Fill both fields.'); return; }
+  closeModal('m-create'); showOverlay('Setting up...');
+  S.isHost=true; S.roomCode=genCode(); S.myName=myName; S.roomName=roomName;
   S.localStream = await getWidestCameraStream();
   _hostConnect(1);
 }
-
-// Separated so retries don't re-read form fields or re-acquire the camera
 function _hostConnect(attempt){
-  const MAX_ATTEMPTS = 3;
   const pid = hostPid(S.roomCode);
-
-  showOverlay(attempt > 1 ? `Setting up your room… (attempt ${attempt}/${MAX_ATTEMPTS})` : 'Setting up your room…');
-
   if(S.peer){ S.peer.destroy(); S.peer=null; }
   S.peer = new Peer(pid, PEER_CONFIG);
-
-  const openTimer = setTimeout(()=>{
-    if(S.peer){ S.peer.destroy(); S.peer=null; }
-    showLobby();
-    toastError('Could not reach the signaling server. Check your internet connection and try again.');
-  }, 12000);
-
+  const timer = setTimeout(()=>{ showLobby(); toastError('Server timeout.'); }, 12000);
   S.peer.on('open', ()=>{
-    clearTimeout(openTimer);
+    clearTimeout(timer);
     document.getElementById('hdr-name').textContent = S.roomName;
     document.getElementById('hdr-code').textContent = S.roomCode;
-    renderGrid();
-    showRoom();
-    toast('Room created — share the code: ' + S.roomCode);
-
-    // KEY FIX: PeerJS public server drops idle connections after ~60 s.
-    // Reconnect automatically so joiners can always find the host.
-    S.peer.on('disconnected', ()=>{
-      if(S.peer && !S.peer.destroyed){
-        S.peer.reconnect();
-      }
-    });
+    renderGrid(); showRoom(); toast('Room created, share code: '+S.roomCode);
+    S.peer.on('disconnected', ()=>{ if(S.peer && !S.peer.destroyed) S.peer.reconnect(); });
   });
-
-  S.peer.on('error', err=>{
-    clearTimeout(openTimer);
-    if(err.type==='unavailable-id'){
-      S.peer.destroy(); S.peer=null;
-      S.roomCode = genCode();
-      showOverlay('Code taken — trying a new one…');
-      setTimeout(()=>_hostConnect(attempt), 400);
-    } else if(NET_ERRORS.has(err.type)){
-      if(attempt < MAX_ATTEMPTS){
-        const delay = attempt * 2000;
-        showOverlay(`Connection hiccup — retrying in ${delay/1000}s…`);
-        setTimeout(()=>_hostConnect(attempt + 1), delay);
-      } else {
-        showLobby();
-        toastError('Could not connect to the signaling server after 3 attempts. Try a different network or browser.');
-      }
-    } else {
-      showLobby();
-      toastError('Error: ' + err.type + '. Please try again.');
-    }
-  });
-
-  // Incoming data connections from joiners
+  S.peer.on('error', err=>{ clearTimeout(timer); showLobby(); toastError('Error: '+err.type); });
   S.peer.on('connection', conn=>{
     const joinerPid = conn.peer;
     conn.on('open',()=>{
-      // Hard cap — reject if room is full
-      if(S.participants.size + 1 >= MAX_PARTICIPANTS){
-        conn.send({type:'room-full', max: MAX_PARTICIPANTS});
-        setTimeout(()=>conn.close(), 500);
-        return;
-      }
-      const users = [];
-      S.participants.forEach((v,k)=>users.push({peerId:k,name:v.name}));
+      if(S.participants.size >= 20){ conn.send({type:'room-full',max:20}); setTimeout(()=>conn.close(),500); return; }
+      const users = []; S.participants.forEach((v,k)=>users.push({peerId:k,name:v.name}));
       users.push({peerId:pid, name:S.myName});
       conn.send({type:'welcome', users, roomName:S.roomName, roomCode:S.roomCode});
       S.dataConns.forEach((c,k)=>{ if(k!==joinerPid && c.open) c.send({type:'user-joined', peerId:joinerPid, name:conn.metadata?.name||'Guest'}); });
@@ -710,579 +325,132 @@ function _hostConnect(attempt){
       S.participants.set(joinerPid, {name: conn.metadata?.name||'Guest'});
       addTile(joinerPid, conn.metadata?.name||'Guest', null);
       updateCounts();
-
-      // Relay chat messages from this joiner to everyone else
       conn.on('data', msg=>{
         if(msg.type==='chat'){
           receiveChat(msg);
-          // Broadcast to all other participants
+          // Broadcast to everyone else (including other participants)
           S.dataConns.forEach((c,k)=>{ if(k!==joinerPid && c.open) c.send(msg); });
         }
       });
+      conn.on('close',()=>handleLeft(joinerPid));
     });
-    conn.on('close',()=>handleLeft(joinerPid));
-    conn.on('error', ()=>handleLeft(joinerPid));
   });
-
-  S.peer.on('call', call=>{
-    call.answer(S.localStream || new MediaStream());
-    attachStream(call);
-  });
+  S.peer.on('call', call=>{ call.answer(S.localStream || new MediaStream()); attachStream(call); });
 }
-
-// ════════════════════════════════════════════════
-//  Join room (non-host)
-// ════════════════════════════════════════════════
 async function doJoin(){
-  const code   = document.getElementById('in-code').value.trim().toUpperCase();
-  const myName = document.getElementById('in-myname-j').value.trim();
-  if(!code||!myName){ toast('Please enter a room code and your name.'); return; }
-  if(code.length!==6){ toast('Room code must be 6 characters.'); return; }
-
-  closeModal('m-join');
-  showOverlay('Connecting to room ' + code + '…');
-
-  // Clean up any leftover state from a previous session (re-join scenario)
+  const code = document.getElementById('in-code').value.trim().toUpperCase(), myName = document.getElementById('in-myname-j').value.trim();
+  if(!code||!myName||code.length!==6){ toast('Valid 6-char code and name required.'); return; }
+  closeModal('m-join'); showOverlay('Joining...');
   if(S.peer){ S.peer.destroy(); S.peer=null; }
   if(S.localStream){ S.localStream.getTracks().forEach(t=>t.stop()); S.localStream=null; }
-  S.calls.forEach(c=>c.close()); S.calls.clear();
-  S.dataConns.forEach(c=>c.close()); S.dataConns.clear();
-  S.participants.clear();
-
-  S.isHost   = false;
-  S.roomCode = code;
-  S.myName   = myName;
-
-  S.localStream = await getWidestCameraStream();
+  S.calls.forEach(c=>c.close()); S.calls.clear(); S.dataConns.clear(); S.participants.clear();
+  S.isHost=false; S.roomCode=code; S.myName=myName; S.localStream = await getWidestCameraStream();
   _joinConnect(1);
 }
-
-// Separated so retries don't re-read form fields or re-acquire the camera
 function _joinConnect(attempt){
-  const MAX_ATTEMPTS = 3;
-  const code   = S.roomCode;
-  const myName = S.myName;
-
-  showOverlay(attempt > 1 ? `Connecting to room ${code}… (attempt ${attempt}/${MAX_ATTEMPTS})` : `Connecting to room ${code}…`);
-
-  if(S.peer){ S.peer.destroy(); S.peer=null; }
   S.peer = new Peer(PEER_CONFIG);
-
-  const peerOpenTimer = setTimeout(()=>{
-    if(S.peer){ S.peer.destroy(); S.peer=null; }
-    showLobby();
-    toastError('Could not reach the signaling server. Check your internet connection and try again.');
-  }, 12000);
-
-  S.peer.on('error', err=>{
-    clearTimeout(peerOpenTimer);
-    if(err.type==='peer-unavailable'){
-      showLobby();
-      toastError('Room "' + code + '" not found. Check the code and try again.');
-    } else if(NET_ERRORS.has(err.type)){
-      if(attempt < MAX_ATTEMPTS){
-        const delay = attempt * 2000;
-        showOverlay(`Connection hiccup — retrying in ${delay/1000}s…`);
-        setTimeout(()=>_joinConnect(attempt + 1), delay);
-      } else {
-        showLobby();
-        toastError('Could not connect to the signaling server after 3 attempts. Try a different network or browser.');
-      }
-    } else {
-      showLobby();
-      toastError('Error: ' + err.type + '. Please try again.');
-    }
-  });
-
+  const timer = setTimeout(()=>{ showLobby(); toastError('Server timeout'); }, 12000);
+  S.peer.on('error', err=>{ clearTimeout(timer); showLobby(); toastError('Join error: '+err.type); });
   S.peer.on('open', myPid=>{
-    clearTimeout(peerOpenTimer);
-
-    // Stay registered on the signaling server so the host can reach us back
-    S.peer.on('disconnected', ()=>{
-      if(S.peer && !S.peer.destroyed) S.peer.reconnect();
-    });
-
-    const hostConn = S.peer.connect(hostPid(code), { metadata: { name: myName }, reliable: true });
+    clearTimeout(timer);
+    S.peer.on('disconnected',()=>{ if(S.peer && !S.peer.destroyed) S.peer.reconnect(); });
+    const hostConn = S.peer.connect(hostPid(S.roomCode), { metadata: { name: S.myName }, reliable: true });
     S.hostConn = hostConn;
-    const hostConnTimer = setTimeout(()=>{ toastError('Room not found or host is offline.'); showLobby(); }, 12000);
-
+    const connTimer = setTimeout(()=>{ showLobby(); toastError('Host unreachable'); }, 12000);
     hostConn.on('open',()=>{
-      const t = setTimeout(()=>{ toastError('Host did not respond. Room may be closed.'); showLobby(); }, 8000);
+      clearTimeout(connTimer);
       hostConn.on('data', msg=>{
-        clearTimeout(hostConnTimer);
-        clearTimeout(t);
-        if(msg.type==='room-full'){
-          showLobby();
-          toastError('This room is full (' + msg.max + ' participants maximum).');
-        } else if(msg.type==='welcome'){
+        if(msg.type==='room-full'){ showLobby(); toastError('Room full'); }
+        else if(msg.type==='welcome'){
           S.roomName = msg.roomName;
           document.getElementById('hdr-name').textContent = msg.roomName;
           document.getElementById('hdr-code').textContent = msg.roomCode;
-          renderGrid();
-          showRoom();
-          msg.users.forEach(u=>{
-            if(u.peerId === myPid) return;
-            S.participants.set(u.peerId, {name:u.name});
-            addTile(u.peerId, u.name, null);
-            const call = S.peer.call(u.peerId, S.localStream||new MediaStream());
-            S.calls.set(u.peerId, call);
-            attachStream(call);
-          });
+          renderGrid(); showRoom();
+          msg.users.forEach(u=>{ if(u.peerId === myPid) return; S.participants.set(u.peerId, {name:u.name}); addTile(u.peerId, u.name, null); const call = S.peer.call(u.peerId, S.localStream||new MediaStream()); S.calls.set(u.peerId, call); attachStream(call); });
           updateCounts();
         } else if(msg.type==='user-joined'){
-          if(msg.peerId===myPid) return;
-          S.participants.set(msg.peerId, {name:msg.name});
-          addTile(msg.peerId, msg.name, null);
-          updateCounts();
-          toast(msg.name+' joined');
-        } else if(msg.type==='user-left'){
-          handleLeft(msg.peerId);
-        } else if(msg.type==='chat'){
-          receiveChat(msg);
-        }
+          if(msg.peerId===myPid) return; S.participants.set(msg.peerId, {name:msg.name}); addTile(msg.peerId, msg.name, null); updateCounts(); toast(msg.name+' joined');
+        } else if(msg.type==='user-left'){ handleLeft(msg.peerId); }
+        else if(msg.type==='chat'){ receiveChat(msg); }
       });
     });
-    hostConn.on('error',()=>{ clearTimeout(hostConnTimer); toastError('Could not reach room host.'); showLobby(); });
-    hostConn.on('close',()=>{ toast('Host ended the meeting.'); leaveRoom(); });
+    hostConn.on('error',()=>{ showLobby(); toastError('Connection failed'); });
   });
-
-  S.peer.on('call', call=>{
-    call.answer(S.localStream||new MediaStream());
-    attachStream(call);
-  });
+  S.peer.on('call', call=>{ call.answer(S.localStream||new MediaStream()); attachStream(call); });
 }
-
-// ════════════════════════════════════════════════
-//  WebRTC helpers
-// ════════════════════════════════════════════════
 function attachStream(call){
-  const pid = call.peer;
-  S.calls.set(pid, call);
-
-  // Apply current quality tier's bitrate cap to this new connection
-  const tier = getQualityTier(S.participants.size + 1);
-  applyBandwidthToCall(call, tier.kbps * 1000);
-
-  call.on('stream', stream=>{
-    S.participants.set(pid, S.participants.get(pid)||{name:'Guest'});
-    const vid = document.getElementById('vid-'+pid);
-    const ph  = document.getElementById('ph-'+pid);
-    if(vid){ vid.srcObject=stream; vid.play().catch(()=>{}); if(ph) ph.style.display='none'; vid.style.display='block'; }
-  });
+  const pid = call.peer; S.calls.set(pid, call);
+  call.on('stream', stream=>{ S.participants.set(pid, S.participants.get(pid)||{name:'Guest'}); const vid = document.getElementById('vid-'+pid); const ph = document.getElementById('ph-'+pid); if(vid){ vid.srcObject=stream; vid.play().catch(()=>{}); if(ph) ph.style.display='none'; vid.style.display='block'; } });
   call.on('close',()=>handleLeft(pid));
-  call.on('error',()=>handleLeft(pid));
 }
-
 function handleLeft(pid){
-  const p = S.participants.get(pid);
-  if(p) toast((p.name||'Someone')+' left');
-  const call = S.calls.get(pid);
-  if(call){ call.close(); S.calls.delete(pid); }
-  const conn = S.dataConns.get(pid);
-  if(conn){ conn.close(); S.dataConns.delete(pid); }
-  S.participants.delete(pid);
-  removeTile(pid);
-  updateCounts();
-  // Broadcast to remaining participants (host only)
-  if(S.isHost){
-    S.dataConns.forEach((c,k)=>{ if(k!==pid && c.open) c.send({type:'user-left',peerId:pid}); });
-  }
+  const p = S.participants.get(pid); if(p) toast((p.name||'Someone')+' left');
+  S.calls.get(pid)?.close(); S.calls.delete(pid);
+  S.dataConns.get(pid)?.close(); S.dataConns.delete(pid);
+  S.participants.delete(pid); removeTile(pid); updateCounts();
+  if(S.isHost){ S.dataConns.forEach((c,k)=>{ if(c.open) c.send({type:'user-left',peerId:pid}); }); }
 }
-
-// ════════════════════════════════════════════════
-//  Grid rendering
-// ════════════════════════════════════════════════
 function renderGrid(){
-  const g = document.getElementById('video-grid');
-  g.innerHTML = '';
+  const g=document.getElementById('video-grid'); g.innerHTML='';
   g.appendChild(mkTile('local', S.myName, S.localStream, true));
   S.participants.forEach((p,pid)=> g.appendChild(mkTile(pid, p.name, null, false)));
-  setGridClass();
-  renderPanel();
+  setGridClass(); renderPanel();
 }
-
 function mkTile(id, name, stream, isLocal){
-  const wrap = document.createElement('div');
-  wrap.className='vtile'; wrap.id='tile-'+id;
-
-  const ph = document.createElement('div');
-  ph.className='ph'; ph.id='ph-'+id;
+  const wrap=document.createElement('div'); wrap.className='vtile'; wrap.id='tile-'+id;
+  const ph=document.createElement('div'); ph.className='ph'; ph.id='ph-'+id;
   ph.innerHTML=`<div class="vtile-avatar">${initials(name)}</div>`;
   ph.style.display = (stream && stream.getVideoTracks().length>0 && !S.isCamOff) ? 'none' : 'flex';
-
-  const vid = document.createElement('video');
-  vid.id='vid-'+id; vid.autoplay=true; vid.playsInline=true; vid.muted=isLocal;
-  if(stream){ vid.srcObject=stream; vid.play().catch(()=>{}); vid.style.display='block'; }
-  else { vid.style.display='none'; }
-
-  const bar = document.createElement('div');
-  bar.className='vtile-bar';
+  const vid=document.createElement('video'); vid.id='vid-'+id; vid.autoplay=true; vid.playsInline=true; vid.muted=isLocal;
+  if(stream){ vid.srcObject=stream; vid.play().catch(()=>{}); vid.style.display='block'; } else vid.style.display='none';
+  const bar=document.createElement('div'); bar.className='vtile-bar';
   bar.innerHTML=`<div class="vtile-name">${escH(name)}${isLocal?' (you)':''}</div>`;
-
-  if(isLocal && S.isMuted){
-    bar.innerHTML+=`<div class="vtile-muted"><svg viewBox="0 0 24 24"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></div>`;
-  }
-
-  wrap.appendChild(ph); wrap.appendChild(vid); wrap.appendChild(bar);
-  return wrap;
+  if(isLocal && S.isMuted) bar.innerHTML+=`<div class="vtile-muted"><svg viewBox="0 0 24 24"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></div>`;
+  wrap.appendChild(ph); wrap.appendChild(vid); wrap.appendChild(bar); return wrap;
 }
-
-function addTile(pid, name, stream){
-  if(document.getElementById('tile-'+pid)) return;
-  document.getElementById('video-grid').appendChild(mkTile(pid, name, stream, false));
-  setGridClass(); renderPanel();
-}
-
-function removeTile(pid){
-  const t=document.getElementById('tile-'+pid); if(t) t.remove();
-  setGridClass(); renderPanel();
-}
-
-function setGridClass(){
-  const g=document.getElementById('video-grid');
-  const n=g.children.length;
-  g.className='video-grid '+(n>=17?'g25':n>=11?'g16':n>=6?'g9':n>=3?'g4':n>=2?'g2':'g1');
-}
-
-function renderPanel(){
-  let html=`<div class="panel-item"><div class="panel-avatar me">${initials(S.myName)}</div><div class="panel-name">${escH(S.myName)}</div><div class="panel-tag">you</div></div>`;
-  S.participants.forEach(p=>{ html+=`<div class="panel-item"><div class="panel-avatar">${initials(p.name)}</div><div class="panel-name">${escH(p.name)}</div></div>`; });
-  document.getElementById('panel-list').innerHTML=html;
-}
-
-function updateCounts(){
-  const n=S.participants.size+1;
-  document.getElementById('p-count').textContent=n;
-  document.getElementById('panel-count').textContent=n;
-  renderPanel();
-  applyAdaptiveQuality(n);
-}
-
-// ════════════════════════════════════════════════
-//  Adaptive quality
-// ════════════════════════════════════════════════
-function applyAdaptiveQuality(count){
-  const tier = getQualityTier(count);
-
-  // Update quality badge
-  const badge = document.getElementById('quality-badge');
-  const label = document.getElementById('quality-label');
-  badge.classList.remove('hidden');
-  badge.style.color = tier.color;
-  label.textContent = tier.label + ' · ' + count + '/' + MAX_PARTICIPANTS;
-
-  // Apply video constraints to local track
-  if(S.localStream){
-    const vt = S.localStream.getVideoTracks()[0];
-    if(vt) vt.applyConstraints({
-      width:       { ideal: tier.w },
-      height:      { ideal: tier.h },
-      frameRate:   { ideal: tier.fps }
-    }).catch(()=>{});
-  }
-
-  // Cap outgoing bitrate on every active call
-  const maxBps = tier.kbps * 1000;
-  S.calls.forEach(call => applyBandwidthToCall(call, maxBps));
-}
-
-function applyBandwidthToCall(call, maxBps){
-  try {
-    const pc = call.peerConnection;
-    if(!pc) return;
-    pc.getSenders().forEach(sender=>{
-      if(!sender.track || sender.track.kind !== 'video') return;
-      const params = sender.getParameters();
-      if(!params.encodings || params.encodings.length===0) params.encodings=[{}];
-      params.encodings[0].maxBitrate = maxBps;
-      sender.setParameters(params).catch(()=>{});
-    });
-  } catch(_){}
-}
-
-// ════════════════════════════════════════════════
-//  Controls
-// ════════════════════════════════════════════════
-function toggleMic(){
-  if(!S.localStream) return;
-  S.isMuted=!S.isMuted;
-  S.localStream.getAudioTracks().forEach(t=>t.enabled=!S.isMuted);
-  document.getElementById('btn-mic').classList.toggle('off', S.isMuted);
-  document.getElementById('mic-svg').innerHTML = S.isMuted
-    ? '<line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>'
-    : '<path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>';
-  const localBar = document.querySelector('#tile-local .vtile-bar');
-  if(localBar){
-    const existing=localBar.querySelector('.vtile-muted'); if(existing) existing.remove();
-    if(S.isMuted) localBar.innerHTML+=`<div class="vtile-muted"><svg viewBox="0 0 24 24"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></div>`;
-  }
-}
-
-function toggleCam(){
-  if(!S.localStream) return;
-  S.isCamOff=!S.isCamOff;
-  S.localStream.getVideoTracks().forEach(t=>t.enabled=!S.isCamOff);
-  document.getElementById('btn-cam').classList.toggle('off', S.isCamOff);
-  document.getElementById('cam-svg').innerHTML = S.isCamOff
-    ? '<line x1="1" y1="1" x2="23" y2="23"/><path d="M21 21H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3m3-3h6l2 3h4a2 2 0 0 1 2 2v9.34m-7.72-2.06a4 4 0 1 1-5.56-5.56"/>'
-    : '<polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/>';
-  const vid=document.getElementById('vid-local'), ph=document.getElementById('ph-local');
-  if(vid) vid.style.display=S.isCamOff?'none':'block';
-  if(ph)  ph.style.display=S.isCamOff?'flex':'none';
-}
-
-function toggleRec(){
-  if(S.isRec){ stopRec(); } else { startRec(); }
-}
-
-function startRec(){
-  S.recChunks = [];
-
-  // ── Canvas: composite all portrait video tiles ──────────────
-  const TILE_W = 360, TILE_H = 640;
-  const allPids = ['local', ...Array.from(S.participants.keys())];
-  const cols = Math.min(allPids.length, 3);
-  const rows = Math.ceil(allPids.length / cols);
-  const canvas = document.createElement('canvas');
-  canvas.width  = TILE_W * cols;
-  canvas.height = TILE_H * rows;
-  const ctx = canvas.getContext('2d');
-
-  S.isRec = true; // set before rAF loop starts
-  function drawFrame(){
-    if(!S.isRec) return;
-    ctx.fillStyle = '#0a0c12';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    allPids.forEach((pid, i)=>{
-      const col = i % cols, row = Math.floor(i / cols);
-      const x = col * TILE_W, y = row * TILE_H;
-      const vid = document.getElementById('vid-' + pid);
-      if(vid && vid.srcObject && vid.readyState >= 2){
-        try { ctx.drawImage(vid, x, y, TILE_W, TILE_H); } catch(_){}
-      } else {
-        ctx.fillStyle = '#1e2333';
-        ctx.fillRect(x, y, TILE_W, TILE_H);
-        const name = pid==='local' ? S.myName : (S.participants.get(pid)||{name:'?'}).name;
-        ctx.fillStyle = 'rgba(59,130,246,0.25)';
-        ctx.beginPath(); ctx.arc(x+TILE_W/2, y+TILE_H/2, 52, 0, Math.PI*2); ctx.fill();
-        ctx.fillStyle = '#3b82f6'; ctx.font = 'bold 40px sans-serif';
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText(initials(name), x+TILE_W/2, y+TILE_H/2);
-      }
-      // Name label
-      const label = pid==='local' ? S.myName+' (you)' : (S.participants.get(pid)||{name:'Guest'}).name;
-      ctx.fillStyle = 'rgba(0,0,0,0.6)';
-      ctx.fillRect(x+8, y+TILE_H-34, Math.min(label.length*7+16, TILE_W-16), 24);
-      ctx.fillStyle = '#fff'; ctx.font = '13px sans-serif';
-      ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-      ctx.fillText(label, x+16, y+TILE_H-30);
-    });
-    requestAnimationFrame(drawFrame);
-  }
-  drawFrame();
-
-  // ── AudioContext: mix all participants' audio ─────────────────
-  let mixedAudioStream = null;
-  try {
-    const audioCtx = new AudioContext();
-    const dest = audioCtx.createMediaStreamDestination();
-    if(S.localStream){
-      const at = S.localStream.getAudioTracks();
-      if(at.length) audioCtx.createMediaStreamSource(new MediaStream(at)).connect(dest);
-    }
-    S.participants.forEach((p, pid)=>{
-      const vid = document.getElementById('vid-'+pid);
-      if(vid && vid.srcObject){
-        const at = vid.srcObject.getAudioTracks();
-        if(at.length){
-          try { audioCtx.createMediaStreamSource(new MediaStream(at)).connect(dest); } catch(_){}
-        }
-      }
-    });
-    mixedAudioStream = dest.stream;
-    S._recAudioCtx = audioCtx;
-  } catch(e){
-    console.warn('Audio mix failed, falling back to local only:', e);
-    mixedAudioStream = S.localStream;
-    S._recAudioCtx = null;
-  }
-
-  // ── Combine canvas + mixed audio → MediaRecorder ─────────────
-  const tracks = [
-    ...canvas.captureStream(25).getVideoTracks(),
-    ...(mixedAudioStream ? mixedAudioStream.getAudioTracks() : [])
-  ];
-  const combined = new MediaStream(tracks);
-  S._recCanvas = canvas;
-
-  const opts = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
-    ? {mimeType:'video/webm;codecs=vp9,opus'}
-    : MediaRecorder.isTypeSupported('video/webm') ? {mimeType:'video/webm'} : {};
-  const rec = new MediaRecorder(combined, opts);
-  rec.ondataavailable = e=>{ if(e.data && e.data.size>0) S.recChunks.push(e.data); };
-  rec.onstop = ()=>{
-    const blob = new Blob(S.recChunks, {type:'video/webm'});
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href = url; a.download = 'meeting-'+S.roomCode+'-'+new Date().toISOString().slice(0,10)+'.webm';
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    toast('Recording saved.');
-  };
-  rec.start(1000);
-  S.recorder = rec;
-  document.getElementById('btn-rec').classList.add('on');
-  document.getElementById('rec-lbl').textContent = 'Stop';
-  document.getElementById('rec-svg').innerHTML = '<rect x="4" y="4" width="16" height="16" rx="2"/>';
-  document.getElementById('rec-badge').classList.remove('hidden');
-  toast('Recording all participants…');
-}
-
-function stopRec(){
-  S.isRec = false;
-  if(S.recorder){ S.recorder.stop(); S.recorder = null; }
-  if(S._recAudioCtx){ try{ S._recAudioCtx.close(); }catch(_){} S._recAudioCtx = null; }
-  S._recCanvas = null;
-  document.getElementById('btn-rec').classList.remove('on');
-  document.getElementById('rec-lbl').textContent = 'Record';
-  document.getElementById('rec-svg').innerHTML = '<circle cx="12" cy="12" r="7" style="fill:var(--danger)"/>';
-  document.getElementById('rec-badge').classList.add('hidden');
-}
-
-function togglePanel(){
-  const p = document.getElementById('panel');
-  const wasHidden = p.classList.contains('hidden');
-  p.classList.toggle('hidden');
-  if(wasHidden && S.panelTab === 'chat'){
-    S.chatUnread = 0;
-    const badge = document.getElementById('chat-unread');
-    badge.textContent = '0'; badge.classList.add('hidden');
-    scrollChat();
-  }
-}
-
-function openChat(){
-  document.getElementById('panel').classList.remove('hidden');
-  switchTab('chat');
-}
-
-function switchTab(tab){
-  S.panelTab = tab;
-  document.getElementById('panel-people').classList.toggle('hidden', tab !== 'people');
-  document.getElementById('panel-chat').classList.toggle('hidden', tab !== 'chat');
-  document.getElementById('tab-people').classList.toggle('active', tab === 'people');
-  document.getElementById('tab-chat').classList.toggle('active', tab === 'chat');
-  if(tab === 'chat'){
-    S.chatUnread = 0;
-    const badge = document.getElementById('chat-unread');
-    badge.textContent = '0'; badge.classList.add('hidden');
-    scrollChat();
-    setTimeout(()=>document.getElementById('chat-input').focus(), 50);
-  }
-}
-
-function scrollChat(){
-  const el = document.getElementById('chat-msgs');
-  if(el) el.scrollTop = el.scrollHeight;
-}
-
+function addTile(pid, name, stream){ if(document.getElementById('tile-'+pid)) return; document.getElementById('video-grid').appendChild(mkTile(pid, name, stream, false)); setGridClass(); renderPanel(); }
+function removeTile(pid){ const t=document.getElementById('tile-'+pid); if(t) t.remove(); setGridClass(); renderPanel(); }
+function setGridClass(){ const n=document.getElementById('video-grid').children.length; document.getElementById('video-grid').className='video-grid '+(n>=17?'g25':n>=11?'g16':n>=6?'g9':n>=3?'g4':n>=2?'g2':'g1'); }
+function renderPanel(){ let html=`<div class="panel-item"><div class="panel-avatar me">${initials(S.myName)}</div><div class="panel-name">${escH(S.myName)}</div><div class="panel-tag">you</div></div>`; S.participants.forEach(p=>{ html+=`<div class="panel-item"><div class="panel-avatar">${initials(p.name)}</div><div class="panel-name">${escH(p.name)}</div></div>`; }); document.getElementById('panel-list').innerHTML=html; }
+function updateCounts(){ const n=S.participants.size+1; document.getElementById('p-count').textContent=n; document.getElementById('panel-count').textContent=n; renderPanel(); }
+function toggleMic(){ if(!S.localStream) return; S.isMuted=!S.isMuted; S.localStream.getAudioTracks().forEach(t=>t.enabled=!S.isMuted); document.getElementById('btn-mic').classList.toggle('off', S.isMuted); const bar=document.querySelector('#tile-local .vtile-bar'); if(bar){ const existing=bar.querySelector('.vtile-muted'); if(existing) existing.remove(); if(S.isMuted) bar.innerHTML+=`<div class="vtile-muted"><svg viewBox="0 0 24 24"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></div>`; } }
+function toggleCam(){ if(!S.localStream) return; S.isCamOff=!S.isCamOff; S.localStream.getVideoTracks().forEach(t=>t.enabled=!S.isCamOff); document.getElementById('btn-cam').classList.toggle('off', S.isCamOff); const vid=document.getElementById('vid-local'), ph=document.getElementById('ph-local'); if(vid) vid.style.display=S.isCamOff?'none':'block'; if(ph) ph.style.display=S.isCamOff?'flex':'none'; }
+function toggleRec(){ if(S.isRec){ if(S.recorder){ S.recorder.stop(); S.recorder=null; } S.isRec=false; document.getElementById('btn-rec').classList.remove('on'); document.getElementById('rec-lbl').textContent='Record'; document.getElementById('rec-svg').innerHTML='<circle cx="12" cy="12" r="7" style="fill:var(--danger)"/>'; document.getElementById('rec-badge').classList.add('hidden'); toast('Recording stopped.'); } else { S.recChunks=[]; const stream = new MediaStream([...S.localStream.getTracks()]); const rec = new MediaRecorder(stream, {mimeType:'video/webm'}); rec.ondataavailable=e=>{ if(e.data.size) S.recChunks.push(e.data); }; rec.onstop=()=>{ const blob=new Blob(S.recChunks,{type:'video/webm'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='meeting-'+S.roomCode+'.webm'; a.click(); URL.revokeObjectURL(a.href); toast('Recording saved.'); }; rec.start(1000); S.recorder=rec; S.isRec=true; document.getElementById('btn-rec').classList.add('on'); document.getElementById('rec-lbl').textContent='Stop'; document.getElementById('rec-svg').innerHTML='<rect x="4" y="4" width="16" height="16" rx="2"/>'; document.getElementById('rec-badge').classList.remove('hidden'); toast('Recording started (local + audio).'); } }
+function togglePanel(){ const p=document.getElementById('panel'); p.classList.toggle('hidden'); if(!p.classList.contains('hidden') && S.panelTab==='chat'){ S.chatUnread=0; const badge=document.getElementById('chat-unread'); badge.classList.add('hidden'); scrollChat(); } }
+function openChat(){ document.getElementById('panel').classList.remove('hidden'); switchTab('chat'); }
+function switchTab(tab){ S.panelTab=tab; document.getElementById('panel-people').classList.toggle('hidden', tab!=='people'); document.getElementById('panel-chat').classList.toggle('hidden', tab!=='chat'); document.getElementById('tab-people').classList.toggle('active', tab==='people'); document.getElementById('tab-chat').classList.toggle('active', tab==='chat'); if(tab==='chat'){ S.chatUnread=0; document.getElementById('chat-unread').classList.add('hidden'); scrollChat(); setTimeout(()=>document.getElementById('chat-input').focus(),50); } }
+function scrollChat(){ const el=document.getElementById('chat-msgs'); if(el) el.scrollTop=el.scrollHeight; }
 function sendChat(){
-  const input = document.getElementById('chat-input');
-  const text  = input.value.trim();
-  if(!text) return;
-  input.value = '';
-  const msg = { type:'chat', name: S.myName, text, ts: Date.now() };
+  const input=document.getElementById('chat-input'); const text=input.value.trim(); if(!text) return;
+  input.value=''; const msg={type:'chat', name:S.myName, text, ts:Date.now()};
   receiveChat(msg, true);
   if(S.isHost){
-    S.dataConns.forEach(c=>{ if(c.open) c.send(msg); });
+    // host broadcasts to every connected data channel
+    S.dataConns.forEach(conn=>{ if(conn.open) conn.send(msg); });
   } else if(S.hostConn && S.hostConn.open){
     S.hostConn.send(msg);
-  }
+  } else { toast('Not connected to chat channel'); }
 }
-
 function receiveChat(msg, isSelf=false){
-  S.chatMsgs.push({...msg, isSelf});
-  const el = document.getElementById('chat-msgs');
-  if(!el) return;
-  const div  = document.createElement('div');
-  div.className = 'chat-msg' + (isSelf ? ' me' : '');
+  const el = document.getElementById('chat-msgs'); if(!el) return;
+  const div = document.createElement('div'); div.className='chat-msg' + (isSelf ? ' me' : '');
   const time = new Date(msg.ts).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
   div.innerHTML = `<div class="chat-meta">${isSelf?'You':escH(msg.name)} · ${time}</div><div class="chat-bubble">${escH(msg.text)}</div>`;
-  el.appendChild(div);
-  scrollChat();
+  el.appendChild(div); scrollChat();
   const panel = document.getElementById('panel');
   if(!isSelf && (panel.classList.contains('hidden') || S.panelTab !== 'chat')){
-    S.chatUnread++;
-    const badge = document.getElementById('chat-unread');
-    badge.textContent = S.chatUnread > 9 ? '9+' : S.chatUnread;
-    badge.classList.remove('hidden');
+    S.chatUnread++; const badge=document.getElementById('chat-unread'); badge.textContent=S.chatUnread>9?'9+':S.chatUnread; badge.classList.remove('hidden');
   }
 }
-
-function copyCode(){
-  navigator.clipboard.writeText(S.roomCode).then(()=>toast('Room code copied: '+S.roomCode)).catch(()=>toast('Code: '+S.roomCode));
-}
-
-function shareRoom(){
-  const code = S.roomCode;
-  // Build a join URL pointing at this page with the code pre-filled
-  const url = location.origin + location.pathname + '?join=' + code;
-  const text = `Join my HamoudaSpace-VideoMeeting — Room code: ${code}\n${url}`;
-
-  if(navigator.share){
-    navigator.share({ title: 'HamoudaSpace-VideoMeeting', text, url })
-      .catch(()=>{}); // user dismissed share sheet — silent
-  } else {
-    navigator.clipboard.writeText(text)
-      .then(()=>toast('Meeting link copied to clipboard!'))
-      .catch(()=>toast('Share code: ' + code));
-  }
-}
-
-// ════════════════════════════════════════════════
-//  Leave
-// ════════════════════════════════════════════════
-function leaveRoom(){
-  if(S.isRec) stopRec();
-  S.calls.forEach(c=>c.close()); S.calls.clear();
-  S.dataConns.forEach(c=>c.close()); S.dataConns.clear();
-  if(S.hostConn){ S.hostConn.close(); S.hostConn=null; }
-  if(S.peer){ S.peer.destroy(); S.peer=null; }
-  if(S.localStream){ S.localStream.getTracks().forEach(t=>t.stop()); S.localStream=null; }
-  S.participants.clear();
-  S.isMuted=false; S.isCamOff=false;
-  S.chatMsgs=[]; S.chatUnread=0; S.panelTab='people';
-  const chatMsgsEl = document.getElementById('chat-msgs');
-  if(chatMsgsEl) chatMsgsEl.innerHTML='';
-  const badge = document.getElementById('chat-unread');
-  if(badge){ badge.textContent='0'; badge.classList.add('hidden'); }
-  switchTab('people');
-  document.getElementById('panel').classList.add('hidden');
-  document.getElementById('btn-mic').classList.remove('off');
-  document.getElementById('btn-cam').classList.remove('off');
-  document.getElementById('mic-svg').innerHTML='<path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>';
-  document.getElementById('cam-svg').innerHTML='<polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/>';
-  showLobby();
-}
-
-// ════════════════════════════════════════════════
-//  Toast
-// ════════════════════════════════════════════════
-let _tt=null;
-function toast(msg, duration=3500){
-  let t=document.querySelector('.toast'); if(t) t.remove();
-  t=document.createElement('div'); t.className='toast'; t.textContent=msg;
-  document.body.appendChild(t);
-  clearTimeout(_tt); _tt=setTimeout(()=>t.remove(), duration);
-}
-function toastError(msg){ toast(msg, 7000); }
-
-// Auto-open join modal when ?join=CODE is in the URL
-(function(){
-  const params = new URLSearchParams(location.search);
-  const code = params.get('join');
-  if(code) setTimeout(()=>openJoin(code.toUpperCase()), 300);
-})();
+function copyCode(){ navigator.clipboard.writeText(S.roomCode).then(()=>toast('Copied: '+S.roomCode)).catch(()=>toast('Code: '+S.roomCode)); }
+function shareRoom(){ const url=location.origin+location.pathname+'?join='+S.roomCode; const text=`Join meeting: ${S.roomCode}\n${url}`; if(navigator.share) navigator.share({title:'VideoMeeting',text}); else navigator.clipboard.writeText(text).then(()=>toast('Invite link copied')); }
+function leaveRoom(){ if(S.isRec && S.recorder){ S.recorder.stop(); S.recorder=null; } S.calls.forEach(c=>c.close()); S.dataConns.forEach(c=>c.close()); if(S.hostConn) S.hostConn.close(); if(S.peer) S.peer.destroy(); if(S.localStream) S.localStream.getTracks().forEach(t=>t.stop()); S.participants.clear(); S.chatMsgs=[]; document.getElementById('chat-msgs').innerHTML=''; showLobby(); }
+document.getElementById('in-code').addEventListener('input',e=>{ e.target.value=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,''); });
+document.getElementById('in-rname').addEventListener('keydown',e=>e.key==='Enter'&&doCreate());
+document.getElementById('in-myname-c').addEventListener('keydown',e=>e.key==='Enter'&&doCreate());
+document.getElementById('in-code').addEventListener('keydown',e=>e.key==='Enter'&&doJoin());
+document.getElementById('in-myname-j').addEventListener('keydown',e=>e.key==='Enter'&&doJoin());
+(function(){ const p=new URLSearchParams(location.search), code=p.get('join'); if(code) setTimeout(()=>openJoin(code.toUpperCase()),300); })();
 </script>
 </body>
 </html>
