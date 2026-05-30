@@ -13,8 +13,8 @@
   }
 
   :root {
-    --bg-dark: #070a10;
-    --bg-card: #131823;
+    --bg-dark: #05070c;
+    --bg-card: #12161f;
     --bg-soft: #1a1f2c;
     --border-dim: #2a2f3e;
     --text-primary: #eef2ff;
@@ -23,8 +23,6 @@
     --accent-hover: #2563eb;
     --danger: #ef4444;
     --success: #22c55e;
-    --radius-lg: 20px;
-    --radius-md: 12px;
   }
 
   body {
@@ -65,7 +63,7 @@
   .card { background: var(--bg-card); padding: 28px; border-radius: 28px; width: 240px; border: 1px solid var(--border-dim); }
   .card button { margin-top: 16px; width: 100%; }
 
-  /* ROOM: SPLIT LAYOUT (UPPER: CHAT OR PRESENTATION, LOWER: VIDEO GRID) */
+  /* ROOM: SPLIT LAYOUT (UPPER = CHAT OR PRESENTATION, LOWER = VIDEOS) */
   #view-room {
     display: none;
     flex-direction: column;
@@ -75,7 +73,7 @@
 
   /* Top bar */
   .room-header {
-    background: rgba(8, 10, 16, 0.9);
+    background: rgba(8, 10, 16, 0.95);
     backdrop-filter: blur(16px);
     padding: 10px 24px;
     display: flex;
@@ -101,13 +99,13 @@
   .icon-btn.active { background: var(--accent); color: white; }
   .icon-btn:hover { background: rgba(255,255,255,0.12); color: white; }
 
-  /* UPPER PANEL (CHAT OR PRESENTATION, NEVER BOTH) */
+  /* UPPER PANEL (50% height, contains either Chat OR Presentation) */
   .upper-panel {
-    background: rgba(16, 20, 28, 0.92);
+    background: rgba(16, 20, 28, 0.96);
     backdrop-filter: blur(20px);
     border-bottom: 1px solid var(--border-dim);
-    height: 38%;
-    min-height: 280px;
+    height: 48%;
+    min-height: 260px;
     display: flex;
     flex-direction: column;
     transition: all 0.2s;
@@ -178,6 +176,7 @@
     border-radius: 30px;
     color: white;
     outline: none;
+    font-size: 13px;
   }
   .send-btn {
     background: var(--accent);
@@ -188,7 +187,7 @@
     font-size: 18px;
   }
 
-  /* PRESENTATION VIEW inside upper panel */
+  /* PRESENTATION VIEW inside upper panel (controls always visible) */
   .pres-container {
     flex: 1;
     display: flex;
@@ -197,17 +196,19 @@
   }
   .pres-viewer {
     flex: 1;
-    background: #000000aa;
+    background: #000000cc;
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 16px;
+    min-height: 0;
+    overflow: auto;
   }
   .pres-viewer img, .pres-viewer canvas {
     max-width: 100%;
     max-height: 100%;
     object-fit: contain;
-    border-radius: 16px;
+    border-radius: 12px;
   }
   .pres-controls {
     padding: 12px 16px;
@@ -216,7 +217,8 @@
     align-items: center;
     flex-wrap: wrap;
     border-top: 1px solid rgba(255,255,255,0.06);
-    background: rgba(0,0,0,0.3);
+    background: rgba(0,0,0,0.4);
+    flex-shrink: 0;
   }
   .pres-controls button {
     background: var(--bg-soft);
@@ -226,44 +228,57 @@
     color: white;
     font-size: 12px;
     cursor: pointer;
+    transition: 0.15s;
   }
+  .pres-controls button:hover:not(:disabled) { background: var(--accent); }
+  .pres-controls button:disabled { opacity: 0.4; cursor: not-allowed; }
   .pres-progress {
     flex: 1;
     height: 4px;
     background: var(--border-dim);
     border-radius: 2px;
     cursor: pointer;
+    position: relative;
   }
   .pres-progress-fill {
     width: 0%;
     height: 100%;
     background: var(--accent);
     border-radius: 2px;
+    transition: width 0.2s;
   }
   .page-indicator {
     font-size: 11px;
     color: var(--text-secondary);
     min-width: 60px;
+    text-align: center;
   }
   .upload-mini {
-    background: var(--accent);
+    background: var(--accent) !important;
+  }
+  .pres-empty {
+    text-align: center;
+    color: #aaa;
+    padding: 20px;
   }
 
-  /* LOWER SECTION: VIDEO GRID (FULL WIDTH, FLEXIBLE) */
+  /* LOWER SECTION: VIDEO GRID (FULL WIDTH, ZOOMED OUT, SCROLLABLE) */
   .video-section {
     flex: 1;
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    padding: 16px;
+    padding: 12px;
+    background: #03050a;
   }
   .video-grid {
     display: grid;
-    gap: 14px;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
     overflow-y: auto;
     padding: 4px;
     height: 100%;
+    align-content: center;
   }
   .vtile {
     background: #11161f;
@@ -272,6 +287,7 @@
     position: relative;
     aspect-ratio: 9 / 16;
     border: 1px solid rgba(255,255,255,0.08);
+    transition: 0.1s;
   }
   .vtile video {
     width: 100%;
@@ -316,7 +332,7 @@
   .ctrl-bar {
     background: rgba(8, 10, 16, 0.95);
     border-top: 1px solid rgba(255,255,255,0.06);
-    padding: 10px 20px;
+    padding: 8px 20px;
     display: flex;
     justify-content: center;
     gap: 16px;
@@ -385,38 +401,38 @@
 
 <!-- LOBBY -->
 <div id="view-lobby">
-  <div class="lobby-header"><div class="logo-area"><div class="logo-icon">🎥</div><div><strong>HamoudaSpace</strong><div style="font-size:11px;">Split view · Chat/Presentation + Grid</div></div></div><div class="lobby-actions"><button class="btn btn-secondary" id="showJoinBtn">🔗 Join</button><button class="btn btn-primary" id="showCreateBtn">✨ New Meeting</button></div></div>
-  <div class="lobby-main"><div class="hero"><h1>Immersive video calls</h1><p>Chat & presentations open in the upper area, never both at once. Videos always visible below.</p></div><div class="action-cards"><div class="card"><h3>Host a meeting</h3><button class="btn btn-primary" id="createCardBtn">Create room</button></div><div class="card"><h3>Join with code</h3><button class="btn btn-secondary" id="joinCardBtn">Enter code</button></div></div></div>
+  <div class="lobby-header"><div class="logo-area"><div class="logo-icon">🎥</div><div><strong>HamoudaSpace</strong><div style="font-size:11px;">Split view · Upper: Chat/Slides | Lower: Videos</div></div></div><div class="lobby-actions"><button class="btn btn-secondary" id="showJoinBtn">🔗 Join</button><button class="btn btn-primary" id="showCreateBtn">✨ New Meeting</button></div></div>
+  <div class="lobby-main"><div class="hero"><h1>Video calls + Shared content</h1><p>Chat and presentations open in the upper area (never both at once). Videos always visible below.</p></div><div class="action-cards"><div class="card"><h3>Host a meeting</h3><button class="btn btn-primary" id="createCardBtn">Create room</button></div><div class="card"><h3>Join with code</h3><button class="btn btn-secondary" id="joinCardBtn">Enter code</button></div></div></div>
 </div>
 
-<!-- MEETING ROOM (SPLIT) -->
+<!-- MEETING ROOM: SPLIT SCREEN -->
 <div id="view-room">
   <div class="room-header"><div class="room-info"><span class="room-title" id="roomNameDisplay">Meeting</span><span class="room-code" id="roomCodeDisplay" onclick="copyRoomCode()">XXXXXX</span></div><div class="action-buttons"><button class="icon-btn" id="chatUpperBtn">💬 Chat <span id="chatUnreadBadge" class="badge" style="display:none;">0</span></button><button class="icon-btn" id="presUpperBtn">📽️ Slides</button><button class="icon-btn" onclick="shareMeetingLink()">🔗 Share</button></div></div>
 
-  <!-- UPPER PANEL: either CHAT or PRESENTATION (mutually exclusive) -->
+  <!-- UPPER PANEL: either CHAT or PRESENTATION (mutually exclusive, zoomed out content) -->
   <div id="upperPanel" class="upper-panel collapsed">
     <div class="panel-header"><span class="panel-title" id="upperPanelTitle">Chat</span><button class="close-upper-btn" id="closeUpperBtn">✕</button></div>
-    <!-- CHAT VIEW (inside upper) -->
+    <!-- CHAT VIEW -->
     <div id="chatView" class="chat-container hidden">
       <div class="chat-messages" id="chatMessagesList"></div>
-      <div class="chat-input-row"><input type="text" id="chatInputField" placeholder="Type a message..." maxlength="300"><button class="send-btn" id="sendChatUpperBtn">➤</button></div>
+      <div class="chat-input-row"><input type="text" id="chatInputField" placeholder="Type a message..." maxlength="300" autocomplete="off"><button class="send-btn" id="sendChatUpperBtn">➤</button></div>
     </div>
-    <!-- PRESENTATION VIEW (inside upper) -->
+    <!-- PRESENTATION VIEW (controls always visible when open) -->
     <div id="presView" class="pres-container hidden">
-      <div class="pres-viewer" id="presViewer"><div class="pres-empty" style="color:#aaa;">No presentation yet.<br>Host uploads PDF/image</div></div>
+      <div class="pres-viewer" id="presViewer"><div class="pres-empty">No presentation yet.<br>Host uploads PDF/image</div></div>
       <div class="pres-controls"><button id="presPrevBtn" disabled>◀ Prev</button><button id="presNextBtn" disabled>Next ▶</button><div class="pres-progress" id="presProgressBar"><div class="pres-progress-fill" id="presProgressFill"></div></div><span class="page-indicator" id="presPageInfo">0/0</span><button id="presUploadUpperBtn" class="upload-mini">📤 Upload</button><input type="file" id="presFileInput" accept=".pdf,.jpg,.jpeg,.png,.gif" style="display:none"></div>
     </div>
   </div>
 
-  <!-- LOWER SECTION: VIDEO GRID (ALWAYS VISIBLE) -->
+  <!-- LOWER SECTION: VIDEO GRID (ALWAYS VISIBLE, ZOOMED OUT) -->
   <div class="video-section"><div class="video-grid" id="videoGridContainer"></div></div>
 
   <div class="ctrl-bar"><button class="ctrl-btn" id="micBtn">🎤</button><button class="ctrl-btn" id="camBtn">📷</button><button class="ctrl-btn" id="recBtn">⏺</button><button class="ctrl-btn leave" id="leaveRoomBtn">🚪</button></div>
 </div>
 
 <!-- MODALS -->
-<div id="createModal" class="modal-backdrop hidden"><div class="modal-card"><div style="font-size:20px; margin-bottom:16px;">New meeting</div><input id="createRoomName" placeholder="Meeting name"><input id="createUserName" placeholder="Your name"><div style="display:flex; justify-content:flex-end; gap:12px; margin-top:20px;"><button id="cancelCreateModal" class="btn btn-secondary">Cancel</button><button id="confirmCreateModal" class="btn btn-primary">Create</button></div></div></div>
-<div id="joinModal" class="modal-backdrop hidden"><div class="modal-card"><div style="font-size:20px; margin-bottom:16px;">Join meeting</div><input id="joinRoomCode" maxlength="6" placeholder="6-letter code" style="text-transform:uppercase"><input id="joinUserName" placeholder="Your name"><div style="display:flex; justify-content:flex-end; gap:12px; margin-top:20px;"><button id="cancelJoinModal" class="btn btn-secondary">Cancel</button><button id="confirmJoinModal" class="btn btn-primary">Join</button></div></div></div>
+<div id="createModal" class="modal-backdrop hidden"><div class="modal-card"><div style="font-size:20px; margin-bottom:16px;">New meeting</div><input id="createRoomName" placeholder="Meeting name" autocomplete="off"><input id="createUserName" placeholder="Your name" autocomplete="off"><div style="display:flex; justify-content:flex-end; gap:12px; margin-top:20px;"><button id="cancelCreateModal" class="btn btn-secondary">Cancel</button><button id="confirmCreateModal" class="btn btn-primary">Create</button></div></div></div>
+<div id="joinModal" class="modal-backdrop hidden"><div class="modal-card"><div style="font-size:20px; margin-bottom:16px;">Join meeting</div><input id="joinRoomCode" maxlength="6" placeholder="6-letter code" style="text-transform:uppercase" autocomplete="off"><input id="joinUserName" placeholder="Your name" autocomplete="off"><div style="display:flex; justify-content:flex-end; gap:12px; margin-top:20px;"><button id="cancelJoinModal" class="btn btn-secondary">Cancel</button><button id="confirmJoinModal" class="btn btn-primary">Join</button></div></div></div>
 <div id="loadingOverlay" class="overlay hidden"><div class="spinner"></div><p>Connecting...</p></div>
 
 <script>
@@ -439,8 +455,9 @@
   function showLobby(){ document.getElementById('view-lobby').style.display='flex'; document.getElementById('view-room').style.display='none'; hideOverlay(); closeAllModals(); if(state.localStream) state.localStream.getTracks().forEach(t=>t.stop()); state.participants.clear(); state.calls.clear(); }
   function showRoom(){ document.getElementById('view-lobby').style.display='none'; document.getElementById('view-room').style.display='flex'; hideOverlay(); }
   function closeAllModals(){ document.getElementById('createModal').classList.add('hidden'); document.getElementById('joinModal').classList.add('hidden'); }
+  function escapeHtml(s){ return String(s).replace(/[&<>]/g, function(m){ if(m==='&') return '&amp;'; if(m==='<') return '&lt;'; if(m==='>') return '&gt;'; return m;}); }
 
-  // ---------- UPPER PANEL LOGIC (mutual exclusive) ----------
+  // ---------- UPPER PANEL LOGIC (mutual exclusive, only one at a time) ----------
   const upperPanel = document.getElementById('upperPanel');
   const chatView = document.getElementById('chatView');
   const presView = document.getElementById('presView');
@@ -453,6 +470,7 @@
     document.getElementById('presUpperBtn').classList.remove('active');
   }
   function openChatPanel(){
+    if(state.activeUpperPanel === 'chat') { closeUpperPanel(); return; }
     // close presentation if open, then show chat
     upperPanel.classList.remove('collapsed');
     chatView.classList.remove('hidden');
@@ -461,14 +479,14 @@
     state.activeUpperPanel = 'chat';
     document.getElementById('chatUpperBtn').classList.add('active');
     document.getElementById('presUpperBtn').classList.remove('active');
-    // reset unread badge
     state.chatUnread = 0;
     document.getElementById('chatUnreadBadge').style.display = 'none';
-    document.getElementById('chatInputField').focus();
+    setTimeout(() => document.getElementById('chatInputField')?.focus(), 100);
     const container = document.getElementById('chatMessagesList');
     if(container) container.scrollTop = container.scrollHeight;
   }
   function openPresPanel(){
+    if(state.activeUpperPanel === 'pres') { closeUpperPanel(); return; }
     upperPanel.classList.remove('collapsed');
     presView.classList.remove('hidden');
     chatView.classList.add('hidden');
@@ -476,18 +494,10 @@
     state.activeUpperPanel = 'pres';
     document.getElementById('presUpperBtn').classList.add('active');
     document.getElementById('chatUpperBtn').classList.remove('active');
-    // refresh viewer
     if(state.presentation.pages.length) renderPresentationPage(state.presentation.currentPage);
   }
-  // button handlers
-  document.getElementById('chatUpperBtn').onclick = () => {
-    if(state.activeUpperPanel === 'chat') closeUpperPanel();
-    else openChatPanel();
-  };
-  document.getElementById('presUpperBtn').onclick = () => {
-    if(state.activeUpperPanel === 'pres') closeUpperPanel();
-    else openPresPanel();
-  };
+  document.getElementById('chatUpperBtn').onclick = openChatPanel;
+  document.getElementById('presUpperBtn').onclick = openPresPanel;
   document.getElementById('closeUpperBtn').onclick = closeUpperPanel;
   
   // ---------- CHAT ----------
@@ -518,7 +528,7 @@
   document.getElementById('sendChatUpperBtn').onclick = sendChatMessage;
   document.getElementById('chatInputField').addEventListener('keypress', e => { if(e.key === 'Enter') sendChatMessage(); });
   
-  // ---------- PRESENTATION ----------
+  // ---------- PRESENTATION (controls always visible when panel open) ----------
   async function loadPresentationFile(file){
     if(!state.isHost) { toast('Only host can share'); return null; }
     let pages = [];
@@ -549,7 +559,7 @@
     const page = pages[pageNum];
     viewer.innerHTML = '';
     if(page.type === 'image'){ const img = document.createElement('img'); img.src = page.url; viewer.appendChild(img); }
-    else viewer.innerHTML = `<div style="color:white;">slide</div>`;
+    else viewer.innerHTML = `<div class="pres-empty">Slide preview</div>`;
     document.getElementById('presPageInfo').innerText = `${pageNum+1}/${pages.length}`;
     const fill = document.getElementById('presProgressFill'); if(fill) fill.style.width = `${((pageNum+1)/pages.length)*100}%`;
     document.getElementById('presPrevBtn').disabled = (pageNum === 0);
@@ -694,9 +704,8 @@
   document.getElementById('leaveRoomBtn').onclick = () => { if(state.mediaRecorder) state.mediaRecorder.stop(); state.calls.forEach(c=>c.close()); state.dataConns.forEach(c=>c.close()); if(state.hostConn) state.hostConn.close(); if(state.peer) state.peer.destroy(); if(state.localStream) state.localStream.getTracks().forEach(t=>t.stop()); showLobby(); };
   function copyRoomCode(){ navigator.clipboard.writeText(state.roomCode); toast('Code copied'); }
   function shareMeetingLink(){ const url=window.location.origin+window.location.pathname+'?join='+state.roomCode; navigator.clipboard.writeText(url); toast('Invite link copied'); }
-  function escapeHtml(s){ return String(s).replace(/[&<>]/g, function(m){ if(m==='&') return '&amp;'; if(m==='<') return '&lt;'; if(m==='>') return '&gt;'; return m;}); }
   
-  // modal triggers
+  // Modal triggers
   document.getElementById('showCreateBtn').onclick = () => document.getElementById('createModal').classList.remove('hidden');
   document.getElementById('showJoinBtn').onclick = () => document.getElementById('joinModal').classList.remove('hidden');
   document.getElementById('createCardBtn').onclick = () => document.getElementById('createModal').classList.remove('hidden');
@@ -707,7 +716,7 @@
   document.getElementById('confirmJoinModal').onclick = joinRoom;
   document.getElementById('joinRoomCode').addEventListener('input', e=> e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,''));
   
-  // url prefills join modal only (no auto-join)
+  // URL prefills join modal only (no auto-join)
   const urlParams = new URLSearchParams(window.location.search);
   const autoCode = urlParams.get('join');
   if(autoCode && autoCode.length===6) setTimeout(()=>{ document.getElementById('joinRoomCode').value = autoCode.toUpperCase(); document.getElementById('joinModal').classList.remove('hidden'); toast('Enter your name to join'); },300);
