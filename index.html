@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-<title>HamoudaSpace · Full AV Recording + Host Controlled Slides</title>
+<title>HamoudaSpace · Bottom Controls | Full Recording + Live Slides</title>
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <style>
   * {
@@ -63,7 +63,7 @@
   .card { background: var(--bg-card); padding: 28px; border-radius: 28px; width: 240px; border: 1px solid var(--border-dim); }
   .card button { margin-top: 16px; width: 100%; }
 
-  /* ROOM: SPLIT LAYOUT */
+  /* ROOM: SPLIT LAYOUT - ALL BUTTONS AT BOTTOM */
   #view-room {
     display: none;
     flex-direction: column;
@@ -71,10 +71,11 @@
     background: #05070c;
   }
 
+  /* TOP BAR - only room info and action buttons (chat/slides toggle) */
   .room-header {
     background: rgba(8, 10, 16, 0.95);
     backdrop-filter: blur(16px);
-    padding: 10px 24px;
+    padding: 10px 20px;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -83,22 +84,22 @@
     z-index: 10;
   }
   .room-info { display: flex; gap: 12px; align-items: baseline; }
-  .room-title { font-weight: 600; }
+  .room-title { font-weight: 600; font-size: 14px; }
   .room-code {
-    font-family: monospace; background: rgba(59,130,246,0.2); padding: 4px 14px;
+    font-family: monospace; background: rgba(59,130,246,0.2); padding: 4px 12px;
     border-radius: 40px; font-size: 0.75rem; cursor: pointer;
   }
-  .action-buttons { display: flex; gap: 10px; }
+  .action-buttons { display: flex; gap: 8px; }
   .icon-btn {
     background: rgba(255,255,255,0.06); border: none; padding: 6px 14px;
-    border-radius: 30px; color: var(--text-secondary); font-size: 13px;
+    border-radius: 30px; color: var(--text-secondary); font-size: 12px;
     cursor: pointer; display: flex; align-items: center; gap: 6px;
     transition: 0.2s;
   }
   .icon-btn.active { background: var(--accent); color: white; }
   .icon-btn:hover { background: rgba(255,255,255,0.12); color: white; }
 
-  /* UPPER PANEL */
+  /* UPPER PANEL (Chat or Presentation) */
   .upper-panel {
     background: rgba(16, 20, 28, 0.96);
     backdrop-filter: blur(20px);
@@ -112,20 +113,20 @@
   }
   .upper-panel.collapsed { display: none; }
   .panel-header {
-    padding: 12px 20px;
+    padding: 10px 20px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     border-bottom: 1px solid rgba(255,255,255,0.06);
     background: rgba(0,0,0,0.3);
   }
-  .panel-title { font-weight: 600; font-size: 0.9rem; }
+  .panel-title { font-weight: 600; font-size: 13px; }
   .close-upper-btn {
     background: none; border: none; color: var(--text-secondary);
-    font-size: 20px; cursor: pointer; padding: 0 8px;
+    font-size: 18px; cursor: pointer; padding: 0 8px;
   }
   .close-upper-btn:hover { color: var(--danger); }
-  .host-badge { background: var(--accent); padding: 2px 8px; border-radius: 20px; font-size: 10px; margin-left: 8px; }
+  .host-badge { background: var(--accent); padding: 2px 8px; border-radius: 20px; font-size: 9px; margin-left: 8px; }
 
   /* CHAT VIEW */
   .chat-container {
@@ -137,16 +138,16 @@
   .chat-messages {
     flex: 1;
     overflow-y: auto;
-    padding: 16px;
+    padding: 12px 16px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
   }
   .chat-bubble {
     max-width: 75%;
     padding: 8px 14px;
     border-radius: 20px;
-    font-size: 13px;
+    font-size: 12px;
     background: var(--bg-soft);
     align-self: flex-start;
   }
@@ -155,14 +156,14 @@
     align-self: flex-end;
   }
   .chat-meta {
-    font-size: 10px;
+    font-size: 9px;
     color: var(--text-secondary);
     margin-bottom: 4px;
   }
   .chat-input-row {
     display: flex;
-    gap: 10px;
-    padding: 12px 16px;
+    gap: 8px;
+    padding: 10px 16px;
     border-top: 1px solid rgba(255,255,255,0.06);
     background: rgba(0,0,0,0.2);
   }
@@ -170,19 +171,19 @@
     flex: 1;
     background: var(--bg-soft);
     border: none;
-    padding: 10px 16px;
+    padding: 8px 14px;
     border-radius: 30px;
     color: white;
     outline: none;
-    font-size: 13px;
+    font-size: 12px;
   }
   .send-btn {
     background: var(--accent);
     border: none;
-    width: 40px;
+    width: 36px;
     border-radius: 30px;
     cursor: pointer;
-    font-size: 18px;
+    font-size: 16px;
   }
 
   /* PRESENTATION VIEW */
@@ -198,7 +199,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 16px;
+    padding: 12px;
     min-height: 0;
     overflow: auto;
   }
@@ -209,9 +210,9 @@
     border-radius: 12px;
   }
   .pres-controls {
-    padding: 12px 16px;
+    padding: 10px 16px;
     display: flex;
-    gap: 12px;
+    gap: 10px;
     align-items: center;
     flex-wrap: wrap;
     border-top: 1px solid rgba(255,255,255,0.06);
@@ -221,33 +222,32 @@
   .pres-controls button {
     background: var(--bg-soft);
     border: none;
-    padding: 6px 16px;
+    padding: 5px 14px;
     border-radius: 30px;
     color: white;
-    font-size: 12px;
+    font-size: 11px;
     cursor: pointer;
   }
   .pres-controls button:disabled { opacity: 0.5; cursor: not-allowed; }
   .pres-controls button:not(:disabled):hover { background: var(--accent); }
-  .pres-progress { flex: 1; height: 4px; background: var(--border-dim); border-radius: 2px; cursor: pointer; }
+  .pres-progress { flex: 1; height: 3px; background: var(--border-dim); border-radius: 2px; cursor: pointer; }
   .pres-progress-fill { width: 0%; height: 100%; background: var(--accent); border-radius: 2px; }
-  .page-indicator { font-size: 11px; color: var(--text-secondary); min-width: 60px; text-align: center; }
+  .page-indicator { font-size: 10px; color: var(--text-secondary); min-width: 55px; text-align: center; }
   .upload-mini { background: var(--accent) !important; }
-  .pres-empty { text-align: center; color: #aaa; padding: 20px; }
 
-  /* VIDEO GRID */
+  /* LOWER SECTION: VIDEO GRID */
   .video-section {
     flex: 1;
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    padding: 12px;
+    padding: 10px;
     background: #03050a;
   }
   .video-grid {
     display: grid;
-    gap: 12px;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 10px;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
     overflow-y: auto;
     padding: 4px;
     height: 100%;
@@ -255,7 +255,7 @@
   }
   .vtile {
     background: #11161f;
-    border-radius: 20px;
+    border-radius: 18px;
     overflow: hidden;
     position: relative;
     aspect-ratio: 9 / 16;
@@ -270,66 +270,74 @@
     background: #0a0e16;
   }
   .avatar-big {
-    width: 65px;
-    height: 65px;
+    width: 55px;
+    height: 55px;
     background: var(--accent);
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 28px;
+    font-size: 24px;
     font-weight: bold;
   }
   .vtile-bar {
     position: absolute;
-    bottom: 12px;
-    left: 12px;
-    right: 12px;
+    bottom: 8px;
+    left: 8px;
+    right: 8px;
     display: flex;
     justify-content: space-between;
   }
   .vtile-name {
     background: rgba(0,0,0,0.7);
     backdrop-filter: blur(6px);
-    padding: 4px 12px;
+    padding: 3px 10px;
     border-radius: 30px;
-    font-size: 11px;
+    font-size: 10px;
   }
 
-  .ctrl-bar {
-    background: rgba(8, 10, 16, 0.95);
-    border-top: 1px solid rgba(255,255,255,0.06);
-    padding: 8px 20px;
+  /* BOTTOM CONTROL BAR - ALL BUTTONS HERE */
+  .bottom-controls {
+    background: rgba(8, 10, 16, 0.98);
+    backdrop-filter: blur(20px);
+    border-top: 1px solid rgba(255,255,255,0.08);
+    padding: 12px 20px;
     display: flex;
     justify-content: center;
-    gap: 16px;
+    gap: 20px;
     flex-shrink: 0;
+    z-index: 20;
   }
   .ctrl-btn {
-    width: 48px;
-    height: 48px;
+    width: 52px;
+    height: 52px;
     border-radius: 50%;
-    background: rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.1);
     border: none;
-    font-size: 20px;
+    font-size: 22px;
     cursor: pointer;
+    transition: 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
+  .ctrl-btn:hover { background: rgba(255,255,255,0.2); transform: scale(1.02); }
   .ctrl-btn.off { background: var(--danger); }
   .ctrl-btn.leave { background: var(--danger); }
   .ctrl-btn.recording { background: var(--danger); animation: pulse 1s infinite; }
 
-  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
 
   .toast {
     position: fixed;
-    bottom: 100px;
+    bottom: 90px;
     left: 50%;
     transform: translateX(-50%);
     background: #1e1f2c;
     padding: 8px 20px;
     border-radius: 40px;
     z-index: 400;
-    font-size: 13px;
+    font-size: 12px;
   }
   .overlay {
     position: fixed;
@@ -363,20 +371,23 @@
     width: 100%; margin-bottom: 12px; background: var(--bg-soft); border: 1px solid var(--border-dim);
     border-radius: 14px; padding: 10px; color: white;
   }
-  .badge { background: var(--danger); border-radius: 20px; padding: 2px 8px; font-size: 10px; margin-left: 6px; }
+  .badge { background: var(--danger); border-radius: 20px; padding: 2px 6px; font-size: 9px; margin-left: 6px; }
 </style>
 </head>
 <body>
 
 <!-- LOBBY -->
 <div id="view-lobby">
-  <div class="lobby-header"><div class="logo-area"><div class="logo-icon">🎥</div><div><strong>HamoudaSpace</strong><div style="font-size:11px;">Full AV Recording · Host Controls Slides</div></div></div><div class="lobby-actions"><button class="btn btn-secondary" id="showJoinBtn">🔗 Join</button><button class="btn btn-primary" id="showCreateBtn">✨ New Meeting</button></div></div>
-  <div class="lobby-main"><div class="hero"><h1>Video calls + Live Presentations</h1><p>Host controls slides for everyone · Record full meeting video+audio</p></div><div class="action-cards"><div class="card"><h3>Host a meeting</h3><button class="btn btn-primary" id="createCardBtn">Create room</button></div><div class="card"><h3>Join with code</h3><button class="btn btn-secondary" id="joinCardBtn">Enter code</button></div></div></div>
+  <div class="lobby-header"><div class="logo-area"><div class="logo-icon">🎥</div><div><strong>HamoudaSpace</strong><div style="font-size:11px;">Bottom Controls · Full Recording</div></div></div><div class="lobby-actions"><button class="btn btn-secondary" id="showJoinBtn">🔗 Join</button><button class="btn btn-primary" id="showCreateBtn">✨ New Meeting</button></div></div>
+  <div class="lobby-main"><div class="hero"><h1>Video calls + Live Presentations</h1><p>All controls at bottom · Host controls slides · Record full meeting</p></div><div class="action-cards"><div class="card"><h3>Host a meeting</h3><button class="btn btn-primary" id="createCardBtn">Create room</button></div><div class="card"><h3>Join with code</h3><button class="btn btn-secondary" id="joinCardBtn">Enter code</button></div></div></div>
 </div>
 
 <!-- MEETING ROOM -->
 <div id="view-room">
-  <div class="room-header"><div class="room-info"><span class="room-title" id="roomNameDisplay">Meeting</span><span class="room-code" id="roomCodeDisplay" onclick="copyRoomCode()">XXXXXX</span></div><div class="action-buttons"><button class="icon-btn" id="chatUpperBtn">💬 Chat <span id="chatUnreadBadge" class="badge" style="display:none;">0</span></button><button class="icon-btn" id="presUpperBtn">📽️ Slides</button><button class="icon-btn" onclick="shareMeetingLink()">🔗 Share</button></div></div>
+  <div class="room-header">
+    <div class="room-info"><span class="room-title" id="roomNameDisplay">Meeting</span><span class="room-code" id="roomCodeDisplay" onclick="copyRoomCode()">XXXXXX</span></div>
+    <div class="action-buttons"><button class="icon-btn" id="chatUpperBtn">💬 Chat <span id="chatUnreadBadge" class="badge" style="display:none;">0</span></button><button class="icon-btn" id="presUpperBtn">📽️ Slides</button><button class="icon-btn" onclick="shareMeetingLink()">🔗 Share</button></div>
+  </div>
 
   <div id="upperPanel" class="upper-panel collapsed">
     <div class="panel-header"><span class="panel-title" id="upperPanelTitle">Chat</span><button class="close-upper-btn" id="closeUpperBtn">✕</button></div>
@@ -385,7 +396,7 @@
       <div class="chat-input-row"><input type="text" id="chatInputField" placeholder="Type a message..." maxlength="300"><button class="send-btn" id="sendChatUpperBtn">➤</button></div>
     </div>
     <div id="presView" class="pres-container hidden">
-      <div class="pres-viewer" id="presViewer"><div class="pres-empty">No presentation yet.<br>Host uploads PDF/image and controls slides live</div></div>
+      <div class="pres-viewer" id="presViewer"><div class="pres-empty" style="color:#aaa; text-align:center; padding:20px;">No presentation yet.<br>Host uploads PDF/image</div></div>
       <div class="pres-controls">
         <button id="presPrevBtn" disabled>◀ Prev</button>
         <button id="presNextBtn" disabled>Next ▶</button>
@@ -400,7 +411,13 @@
 
   <div class="video-section"><div class="video-grid" id="videoGridContainer"></div></div>
 
-  <div class="ctrl-bar"><button class="ctrl-btn" id="micBtn">🎤</button><button class="ctrl-btn" id="camBtn">📷</button><button class="ctrl-btn" id="recBtn">⏺</button><button class="ctrl-btn leave" id="leaveRoomBtn">🚪</button></div>
+  <!-- ALL CONTROLS AT THE BOTTOM -->
+  <div class="bottom-controls">
+    <button class="ctrl-btn" id="micBtn" title="Microphone">🎤</button>
+    <button class="ctrl-btn" id="camBtn" title="Camera">📷</button>
+    <button class="ctrl-btn" id="recBtn" title="Record Meeting">⏺</button>
+    <button class="ctrl-btn leave" id="leaveRoomBtn" title="Leave Meeting">🚪</button>
+  </div>
 </div>
 
 <!-- MODALS -->
@@ -500,7 +517,7 @@
   document.getElementById('sendChatUpperBtn').onclick = sendChatMessage;
   document.getElementById('chatInputField').addEventListener('keypress', e => { if(e.key === 'Enter') sendChatMessage(); });
   
-  // ========== PRESENTATION (Host controls live for all) ==========
+  // ========== PRESENTATION ==========
   async function loadPresentationFile(file){
     if(!state.isHost) { toast('Only host can share'); return null; }
     let pages = [];
@@ -527,7 +544,7 @@
   function renderPresentationPage(pageNum){
     const viewer = document.getElementById('presViewer');
     const pages = state.presentation.pages;
-    if(!pages.length){ viewer.innerHTML = '<div class="pres-empty">No slides loaded. Host uploads PDF/image</div>'; return; }
+    if(!pages.length){ viewer.innerHTML = '<div class="pres-empty" style="color:#aaa; text-align:center; padding:20px;">No slides loaded. Host uploads PDF/image</div>'; return; }
     const page = pages[pageNum];
     viewer.innerHTML = '';
     if(page.type === 'image'){ const img = document.createElement('img'); img.src = page.url; viewer.appendChild(img); }
@@ -549,7 +566,7 @@
       state.presentation = { pages:result.pages, currentPage:0, ownerId:state.peer?.id };
       renderPresentationPage(0);
       broadcastPresentation();
-      toast(`Loaded ${result.pages.length} slides - all participants can now follow along`);
+      toast(`Loaded ${result.pages.length} slides - all participants can follow along`);
       if(state.activeUpperPanel !== 'pres') openPresPanel();
     } else toast('Failed to load');
     e.target.value = '';
@@ -690,7 +707,7 @@
     else startFullRecording();
   }
   
-  // ========== VIDEO GRID & WEBRTC with FIXED ICE SERVERS ==========
+  // ========== VIDEO GRID & WEBRTC ==========
   const peerConfig = { 
     debug: 0,
     config: { 
@@ -700,25 +717,10 @@
         { urls: 'stun:stun2.l.google.com:19302' },
         { urls: 'stun:stun3.l.google.com:19302' },
         { urls: 'stun:stun4.l.google.com:19302' },
-        { urls: 'stun:stun.stunprotocol.org:3478' },
-        {
-          urls: 'turn:openrelay.metered.ca:80',
-          username: 'openrelayproject',
-          credential: 'openrelayproject'
-        },
-        {
-          urls: 'turn:openrelay.metered.ca:443',
-          username: 'openrelayproject',
-          credential: 'openrelayproject'
-        },
-        {
-          urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-          username: 'openrelayproject',
-          credential: 'openrelayproject'
-        }
+        { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+        { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }
       ],
-      iceCandidatePoolSize: 10,
-      iceTransportPolicy: 'all'
+      iceCandidatePoolSize: 10
     } 
   };
   
@@ -729,7 +731,7 @@
         video: { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 15 } }
       }); 
     } catch(e){ 
-      toast('Camera/mic access denied. Please allow permissions.'); 
+      toast('Camera/mic access denied'); 
       return null; 
     } 
   }
@@ -822,114 +824,43 @@
     }, 25000);
   }
   
-  // ========== CREATE ROOM (FIXED) ==========
+  // ========== CREATE ROOM ==========
   async function createRoom(){
     const roomName = document.getElementById('createRoomName').value.trim();
     const userName = document.getElementById('createUserName').value.trim();
     if(!roomName || !userName){ toast('Please fill in both fields'); return; }
-    closeAllModals(); 
-    showOverlay('Creating room...');
-    
-    state.isHost = true; 
-    state.roomCode = genCode(); 
-    state.myName = userName; 
-    state.roomName = roomName;
-    
+    closeAllModals(); showOverlay('Creating room...');
+    state.isHost = true; state.roomCode = genCode(); state.myName = userName; state.roomName = roomName;
     state.localStream = await getStream();
-    if(!state.localStream){
-      showLobby();
-      toast('Cannot access camera/microphone');
-      return;
-    }
-    
+    if(!state.localStream){ showLobby(); toast('Cannot access camera/microphone'); return; }
     if(state.peer) state.peer.destroy();
-    
     const hostId = hostPid(state.roomCode);
     state.peer = new Peer(hostId, peerConfig);
-    
-    const timer = setTimeout(()=>{ 
-      if(state.peer) state.peer.destroy();
-      showLobby(); 
-      toast('Connection timeout. Please check your internet and try again.'); 
-    }, 20000);
-    
+    const timer = setTimeout(()=>{ if(state.peer) state.peer.destroy(); showLobby(); toast('Connection timeout'); }, 20000);
     state.peer.on('open', () => {
       clearTimeout(timer);
       document.getElementById('roomNameDisplay').innerText = state.roomName;
       document.getElementById('roomCodeDisplay').innerText = state.roomCode;
-      renderGrid(); 
-      showRoom(); 
-      toast(`Room created! Share code: ${state.roomCode}`);
+      renderGrid(); showRoom(); toast(`Room created! Share code: ${state.roomCode}`);
       startKeepAlive();
-      
-      state.peer.on('disconnected', () => {
-        if(state.peer && !state.peer.destroyed) {
-          toast('Reconnecting...');
-          state.peer.reconnect();
-        }
-      });
+      state.peer.on('disconnected', () => { if(state.peer && !state.peer.destroyed) { toast('Reconnecting...'); state.peer.reconnect(); } });
     });
-    
-    state.peer.on('error', (err) => {
-      console.log('Peer error:', err);
-      clearTimeout(timer);
-      if(err.type === 'unavailable-id'){
-        // ID taken, try new code
-        state.roomCode = genCode();
-        const newId = hostPid(state.roomCode);
-        state.peer.destroy();
-        state.peer = new Peer(newId, peerConfig);
-        // Re-attach event handlers (simplified: just call create again logic)
-        toast('Retrying with new code...');
-      } else {
-        showLobby(); 
-        toast('Connection error: ' + (err.message || err.type));
-      }
-    });
-    
+    state.peer.on('error', (err) => { clearTimeout(timer); showLobby(); toast('Creation error: ' + (err.message || err.type)); });
     state.peer.on('connection', (conn) => {
       conn.on('open', () => {
-        if(state.participants.size >= 20){ 
-          conn.send({type:'room-full'}); 
-          conn.close(); 
-          return; 
-        }
-        const users = []; 
-        for(let [pid,p] of state.participants) users.push({peerId:pid, name:p.name});
+        if(state.participants.size >= 20){ conn.send({type:'room-full'}); conn.close(); return; }
+        const users = []; for(let [pid,p] of state.participants) users.push({peerId:pid, name:p.name});
         users.push({peerId:state.peer.id, name:state.myName});
-        conn.send({ 
-          type:'welcome', 
-          users, 
-          roomName:state.roomName, 
-          roomCode:state.roomCode, 
-          presentation:state.presentation.pages.length ? {
-            pages:state.presentation.pages.map(p=>p.type==='image'?{type:'image',url:p.url}:p), 
-            currentPage:state.presentation.currentPage, 
-            ownerId:state.presentation.ownerId 
-          } : null 
-        });
-        state.dataConns.forEach((c,k)=>{ 
-          if(k !== conn.peer && c.open) c.send({type:'user-joined', peerId:conn.peer, name:conn.metadata?.name || 'Guest'}); 
-        });
+        conn.send({ type:'welcome', users, roomName:state.roomName, roomCode:state.roomCode, presentation:state.presentation.pages.length ? { pages:state.presentation.pages.map(p=>p.type==='image'?{type:'image',url:p.url}:p), currentPage:state.presentation.currentPage, ownerId:state.presentation.ownerId } : null });
+        state.dataConns.forEach((c,k)=>{ if(k !== conn.peer && c.open) c.send({type:'user-joined', peerId:conn.peer, name:conn.metadata?.name || 'Guest'}); });
         state.dataConns.set(conn.peer, conn);
         state.participants.set(conn.peer, {name: conn.metadata?.name || 'Guest'});
         renderGrid();
-        conn.on('data', (msg) => { 
-          if(msg.type === 'chat'){ 
-            appendChatMessage(msg, false); 
-            state.dataConns.forEach(c => { if(c.open && c.peer !== conn.peer) c.send(msg); }); 
-          }
-        });
+        conn.on('data', (msg) => { if(msg.type === 'chat'){ appendChatMessage(msg, false); state.dataConns.forEach(c => { if(c.open && c.peer !== conn.peer) c.send(msg); }); } });
         conn.on('close', () => handleLeft(conn.peer));
       });
     });
-    
-    state.peer.on('call', (call) => { 
-      if(state.localStream){
-        call.answer(state.localStream); 
-        attachCall(call);
-      }
-    });
+    state.peer.on('call', (call) => { if(state.localStream){ call.answer(state.localStream); attachCall(call); } });
   }
   
   // ========== JOIN ROOM ==========
@@ -937,120 +868,42 @@
     const code = document.getElementById('joinRoomCode').value.trim().toUpperCase();
     const userName = document.getElementById('joinUserName').value.trim();
     if(!code || !userName || code.length !== 6){ toast('Valid 6-character code and name required'); return; }
-    closeAllModals(); 
-    showOverlay('Joining room...');
-    
+    closeAllModals(); showOverlay('Joining room...');
     if(state.peer) state.peer.destroy();
     if(state.localStream) state.localStream.getTracks().forEach(t=>t.stop());
     if(state.recordingAudioContext) state.recordingAudioContext.close();
     if(state.mediaRecorder && state.mediaRecorder.state !== 'inactive') state.mediaRecorder.stop();
-    state.calls.clear(); 
-    state.dataConns.clear(); 
-    state.participants.clear();
-    state.isRecording = false; 
-    document.getElementById('recBtn').classList.remove('recording');
-    state.isHost = false; 
-    state.roomCode = code; 
-    state.myName = userName; 
-    state.localStream = await getStream();
-    
-    if(!state.localStream){
-      showLobby();
-      toast('Cannot access camera/microphone');
-      return;
-    }
-    
+    state.calls.clear(); state.dataConns.clear(); state.participants.clear();
+    state.isRecording = false; document.getElementById('recBtn').classList.remove('recording');
+    state.isHost = false; state.roomCode = code; state.myName = userName; state.localStream = await getStream();
+    if(!state.localStream){ showLobby(); toast('Cannot access camera/microphone'); return; }
     state.peer = new Peer(peerConfig);
-    const timer = setTimeout(()=>{ 
-      if(state.peer) state.peer.destroy();
-      showLobby(); 
-      toast('Connection timeout. Server may be busy.'); 
-    }, 20000);
-    
-    state.peer.on('error', (err) => { 
-      console.log('Join error:', err);
-      clearTimeout(timer); 
-      showLobby(); 
-      toast('Join error: ' + (err.message || err.type)); 
-    });
-    
+    const timer = setTimeout(()=>{ if(state.peer) state.peer.destroy(); showLobby(); toast('Connection timeout'); }, 20000);
+    state.peer.on('error', (err) => { clearTimeout(timer); showLobby(); toast('Join error: ' + (err.message || err.type)); });
     state.peer.on('open', (myPid) => {
       clearTimeout(timer);
-      const hostConn = state.peer.connect(hostPid(state.roomCode), { 
-        metadata: { name: state.myName }, 
-        reliable: true 
-      });
+      const hostConn = state.peer.connect(hostPid(state.roomCode), { metadata: { name: state.myName }, reliable: true });
       state.hostConn = hostConn;
-      
-      const connTimer = setTimeout(()=>{ 
-        showLobby(); 
-        toast('Host offline or room not found. Check the code.'); 
-      }, 15000);
-      
+      const connTimer = setTimeout(()=>{ showLobby(); toast('Host offline or room not found'); }, 15000);
       hostConn.on('open', () => {
         clearTimeout(connTimer);
-        
         hostConn.on('data', (msg) => {
           if(msg.type === 'welcome'){
-            state.roomName = msg.roomName; 
-            document.getElementById('roomNameDisplay').innerText = msg.roomName; 
-            document.getElementById('roomCodeDisplay').innerText = msg.roomCode;
-            renderGrid(); 
-            showRoom();
-            
-            msg.users.forEach(u => { 
-              if(u.peerId !== myPid){ 
-                state.participants.set(u.peerId, {name:u.name}); 
-                const call = state.peer.call(u.peerId, state.localStream); 
-                state.calls.set(u.peerId, call); 
-                attachCall(call); 
-              } 
-            });
-            
-            if(msg.presentation && msg.presentation.pages){ 
-              state.presentation = msg.presentation; 
-              renderPresentationPage(state.presentation.currentPage); 
-            }
-            renderGrid(); 
-            toast('Joined successfully!');
-            
-          } else if(msg.type === 'user-joined'){ 
-            if(msg.peerId === myPid) return; 
-            state.participants.set(msg.peerId, {name:msg.name}); 
-            const call = state.peer.call(msg.peerId, state.localStream); 
-            state.calls.set(msg.peerId, call); 
-            attachCall(call); 
-            renderGrid(); 
-            toast(`${msg.name} joined`); 
-          } else if(msg.type === 'user-left'){ 
-            handleLeft(msg.peerId); 
-          } else if(msg.type === 'chat'){ 
-            appendChatMessage(msg, false); 
-          } else if(msg.type === 'pres_sync'){ 
-            state.presentation = msg; 
-            renderPresentationPage(msg.currentPage); 
-            if(state.activeUpperPanel === 'pres') renderPresentationPage(msg.currentPage); 
-          }
+            state.roomName = msg.roomName; document.getElementById('roomNameDisplay').innerText = msg.roomName; document.getElementById('roomCodeDisplay').innerText = msg.roomCode;
+            renderGrid(); showRoom();
+            msg.users.forEach(u => { if(u.peerId !== myPid){ state.participants.set(u.peerId, {name:u.name}); const call = state.peer.call(u.peerId, state.localStream); state.calls.set(u.peerId, call); attachCall(call); } });
+            if(msg.presentation && msg.presentation.pages){ state.presentation = msg.presentation; renderPresentationPage(state.presentation.currentPage); }
+            renderGrid(); toast('Joined successfully!');
+          } else if(msg.type === 'user-joined'){ if(msg.peerId === myPid) return; state.participants.set(msg.peerId, {name:msg.name}); const call = state.peer.call(msg.peerId, state.localStream); state.calls.set(msg.peerId, call); attachCall(call); renderGrid(); toast(`${msg.name} joined`); }
+          else if(msg.type === 'user-left'){ handleLeft(msg.peerId); }
+          else if(msg.type === 'chat'){ appendChatMessage(msg, false); }
+          else if(msg.type === 'pres_sync'){ state.presentation = msg; renderPresentationPage(msg.currentPage); if(state.activeUpperPanel === 'pres') renderPresentationPage(msg.currentPage); }
         });
-        
-        hostConn.on('close', () => {
-          toast('Host ended the meeting');
-          leaveRoom();
-        });
+        hostConn.on('close', () => { toast('Host ended the meeting'); leaveRoom(); });
       });
-      
-      hostConn.on('error', () => { 
-        showLobby(); 
-        toast('Failed to connect to host'); 
-      });
+      hostConn.on('error', () => { showLobby(); toast('Failed to connect to host'); });
     });
-    
-    state.peer.on('call', (call) => { 
-      if(state.localStream){
-        call.answer(state.localStream); 
-        attachCall(call);
-      }
-    });
+    state.peer.on('call', (call) => { if(state.localStream){ call.answer(state.localStream); attachCall(call); } });
   }
   
   // ========== MEDIA CONTROLS ==========
@@ -1061,13 +914,7 @@
   function leaveRoom(){ 
     if(state.isRecording) stopFullRecording();
     if(state.keepAliveInterval) clearInterval(state.keepAliveInterval);
-    state.calls.forEach(c=>c.close()); 
-    state.dataConns.forEach(c=>c.close()); 
-    if(state.hostConn) state.hostConn.close(); 
-    if(state.peer) state.peer.destroy(); 
-    if(state.localStream) state.localStream.getTracks().forEach(t=>t.stop()); 
-    state.participants.clear(); 
-    showLobby(); 
+    state.calls.forEach(c=>c.close()); state.dataConns.forEach(c=>c.close()); if(state.hostConn) state.hostConn.close(); if(state.peer) state.peer.destroy(); if(state.localStream) state.localStream.getTracks().forEach(t=>t.stop()); state.participants.clear(); showLobby(); 
   }
   document.getElementById('leaveRoomBtn').onclick = leaveRoom;
   function copyRoomCode(){ navigator.clipboard.writeText(state.roomCode); toast('Code copied'); }
@@ -1088,9 +935,7 @@
   const autoCode = urlParams.get('join');
   if(autoCode && autoCode.length===6) setTimeout(()=>{ document.getElementById('joinRoomCode').value = autoCode.toUpperCase(); document.getElementById('joinModal').classList.remove('hidden'); toast('Enter your name to join'); }, 300);
   
-  const scriptPdf = document.createElement('script'); 
-  scriptPdf.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js'; 
-  document.head.appendChild(scriptPdf);
+  const scriptPdf = document.createElement('script'); scriptPdf.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js'; document.head.appendChild(scriptPdf);
 </script>
 </body>
 </html>
