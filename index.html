@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover" />
-<title>HamoudaSpace · Mobile Compatible | Works on Phones & All OS</title>
+<title>HamoudaSpace · Firebase Signaling | Working Video & Audio</title>
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
@@ -12,7 +12,7 @@
   :root {
     --bg-dark: #05070c; --bg-card: #12161f; --bg-soft: #1a1f2c;
     --border-dim: #2a2f3e; --text-primary: #eef2ff; --text-secondary: #9ca3af;
-    --accent: #3b82f6; --accent-hover: #2563eb; --danger: #ef4444;
+    --accent: #3b82f6; --accent-hover: #2563eb; --danger: #ef4444; --success: #22c55e;
   }
   body { 
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif; 
@@ -20,7 +20,6 @@
     color: var(--text-primary); 
     height: 100vh; 
     overflow: hidden;
-    touch-action: pan-x pan-y;
   }
   .hidden { display: none !important; }
   .btn { padding: 12px 24px; border-radius: 40px; font-weight: 600; border: none; cursor: pointer; transition: 0.2s; font-size: 16px; }
@@ -46,6 +45,9 @@
   .room-info { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .room-title { font-weight: 600; font-size: 12px; }
   .room-code { font-family: monospace; background: rgba(59,130,246,0.2); padding: 4px 10px; border-radius: 40px; font-size: 11px; cursor: pointer; }
+  .status-badge { font-size: 10px; padding: 3px 8px; border-radius: 20px; }
+  .status-badge.connected { background: rgba(34,197,94,0.3); color: #22c55e; }
+  .status-badge.connecting { background: rgba(255,165,0,0.3); color: #ffa500; }
   .recording-indicator { background: var(--danger); padding: 4px 10px; border-radius: 30px; font-size: 10px; display: flex; align-items: center; gap: 6px; animation: pulseRed 1s infinite; }
   @keyframes pulseRed { 0%,100%{opacity:1}50%{opacity:0.5} }
   .upper-panel { background: rgba(16,20,28,0.96); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border-dim); height: 45%; min-height: 220px; display: flex; flex-direction: column; flex-shrink: 0; }
@@ -79,8 +81,8 @@
   .vtile-bar { position: absolute; bottom: 8px; left: 8px; right: 8px; display: flex; justify-content: space-between; }
   .vtile-name { background: rgba(0,0,0,0.7); backdrop-filter: blur(6px); padding: 3px 8px; border-radius: 30px; font-size: 9px; }
   .bottom-controls { background: rgba(8,10,16,0.98); backdrop-filter: blur(20px); border-top: 1px solid rgba(255,255,255,0.08); padding: 10px 12px; display: flex; justify-content: center; gap: 12px; flex-shrink: 0; flex-wrap: wrap; }
-  .ctrl-btn { width: 52px; height: 52px; border-radius: 50%; background: rgba(255,255,255,0.1); border: none; font-size: 22px; cursor: pointer; transition: 0.15s; -webkit-tap-highlight-color: transparent; }
-  .ctrl-btn:active { transform: scale(0.95); background: rgba(255,255,255,0.2); }
+  .ctrl-btn { width: 52px; height: 52px; border-radius: 50%; background: rgba(255,255,255,0.1); border: none; font-size: 22px; cursor: pointer; transition: 0.15s; }
+  .ctrl-btn:active { transform: scale(0.95); }
   .ctrl-btn.off { background: var(--danger); }
   .ctrl-btn.leave { background: var(--danger); }
   .ctrl-btn.recording { background: var(--danger); animation: pulse 1s infinite; }
@@ -95,7 +97,6 @@
   .modal-card { background: var(--bg-card); border-radius: 28px; padding: 24px; width: 90%; max-width: 340px; }
   .modal-card input { width: 100%; margin-bottom: 12px; background: var(--bg-soft); border: 1px solid var(--border-dim); border-radius: 14px; padding: 12px; color: white; font-size: 16px; }
   .badge { background: var(--danger); border-radius: 20px; padding: 2px 6px; font-size: 9px; margin-left: 6px; }
-  .firebase-status, .connection-status { font-size: 9px; background: rgba(0,0,0,0.5); padding: 3px 8px; border-radius: 20px; margin-left: 6px; }
   @media (max-width: 480px) {
     .ctrl-btn { width: 44px; height: 44px; font-size: 18px; }
     .bottom-controls { gap: 8px; }
@@ -107,20 +108,20 @@
 
 <div id="view-lobby">
   <div class="lobby-header">
-    <div class="logo-area"><div class="logo-icon">🎥</div><div><strong>HamoudaSpace</strong><div style="font-size:10px;">Mobile Compatible</div></div></div>
+    <div class="logo-area"><div class="logo-icon">🎥</div><div><strong>HamoudaSpace</strong><div style="font-size:10px;">Firebase Signaling · Fixed</div></div></div>
     <div class="lobby-actions">
       <button class="btn btn-secondary" id="showJoinBtn">🔗 Join</button>
-      <button class="btn btn-primary" id="showCreateBtn">✨ New</button>
+      <button class="btn btn-primary" id="showCreateBtn">✨ New Meeting</button>
     </div>
   </div>
   <div class="lobby-main">
-    <div class="hero"><h1>Video Meetings Anywhere</h1><p>Works on iPhone, Android, Windows, Mac</p></div>
+    <div class="hero"><h1>Video Meetings That Work</h1><p>Firebase signaling · Works on all devices</p></div>
     <div class="action-cards">
-      <div class="card"><h3>Start a Meeting</h3><p>Create room & share code</p><button class="btn btn-primary" id="createCardBtn">Create Room</button></div>
-      <div class="card"><h3>Join a Meeting</h3><p>Enter 6-letter code</p><button class="btn btn-secondary" id="joinCardBtn">Enter Code</button></div>
+      <div class="card"><h3>Start a Meeting</h3><p>Create room & share 6-digit code</p><button class="btn btn-primary" id="createCardBtn">Create Room</button></div>
+      <div class="card"><h3>Join a Meeting</h3><p>Enter the 6-letter code</p><button class="btn btn-secondary" id="joinCardBtn">Enter Code</button></div>
     </div>
     <div class="info-box">
-      <p>📱 <strong>Works on all devices!</strong> Allow camera/microphone access when prompted. Share the 6-digit code with others.</p>
+      <p>🔵 <strong>Firebase Signaling Active!</strong> Allow camera/microphone access. Share the 6-digit code with others.</p>
     </div>
   </div>
 </div>
@@ -128,7 +129,7 @@
 <div id="view-room">
   <div class="room-header">
     <div class="room-info"><span class="room-title" id="roomNameDisplay">Meeting</span><span class="room-code" id="roomCodeDisplay" onclick="copyRoomCode()">XXXXXX</span></div>
-    <div class="room-info"><span id="participantCount">👥 1</span><span id="connectionStatus" class="connection-status">🔗 Connecting...</span></div>
+    <div class="room-info"><span id="participantCount">👥 1</span><span id="connectionStatus" class="status-badge connecting">🟡 Connecting...</span></div>
     <div id="recIndicator" class="recording-indicator hidden">🔴 REC</div>
   </div>
   <div id="upperPanel" class="upper-panel collapsed">
@@ -152,8 +153,7 @@ const firebaseConfig = {
   projectId: "hamoudaspace-meetingapp",
   storageBucket: "hamoudaspace-meetingapp.firebasestorage.app",
   messagingSenderId: "9931981197",
-  appId: "1:9931981197:web:716e61223950d3d39c7dc4",
-  measurementId: "G-YQRM3V5CQX"
+  appId: "1:9931981197:web:716e61223950d3d39c7dc4"
 };
 
 firebase.initializeApp(firebaseConfig);
@@ -161,17 +161,27 @@ const db = firebase.firestore();
 
 // State
 const state = {
-  localStream: null, peerConnections: new Map(),
-  isHost: false, roomCode: '', myName: '', roomName: '', myPeerId: '',
-  isMuted: false, isCamOff: false,
-  isRecording: false, mediaRecorder: null, recordedChunks: [],
-  presentation: { pages: [], currentPage: 0, ownerId: null },
-  chatUnread: 0, activeUpperPanel: null,
+  localStream: null,
+  peerConnections: new Map(),
+  isHost: false,
+  roomCode: '',
+  myName: '',
+  roomName: '',
+  myPeerId: '',
+  isMuted: false,
+  isCamOff: false,
+  isRecording: false,
+  mediaRecorder: null,
+  recordedChunks: [],
+  presentation: { pages: [], currentPage: 0 },
+  chatUnread: 0,
+  activeUpperPanel: null,
   participants: new Map(),
-  unsubscribeSignals: null, unsubscribeParticipants: null
+  unsubscribeSignals: null,
+  unsubscribeParticipants: null
 };
 
-// ICE Servers for better connectivity
+// ICE Servers
 const ICE_SERVERS = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
@@ -182,12 +192,11 @@ const ICE_SERVERS = {
     { urls: 'stun:stun.stunprotocol.org:3478' },
     { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
     { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }
-  ],
-  iceCandidatePoolSize: 10
+  ]
 };
 
 function genCode() { return Math.random().toString(36).slice(2,8).toUpperCase(); }
-function genPeerId() { return 'p_' + Math.random().toString(36).slice(2,8); }
+function genPeerId() { return 'p_' + Math.random().toString(36).slice(2,10); }
 
 function toast(msg) { 
   let t = document.querySelector('.toast'); 
@@ -217,9 +226,6 @@ function showLobby() {
   state.peerConnections.forEach(pc => pc.close());
   state.peerConnections.clear();
   state.participants.clear();
-  state.isRecording = false; 
-  document.getElementById('recBtn')?.classList.remove('recording'); 
-  document.getElementById('recIndicator')?.classList.add('hidden');
 }
 
 function showRoom() { 
@@ -308,15 +314,12 @@ document.getElementById('chatInputField').addEventListener('keypress', e => { if
 // Presentation
 async function loadPresentationFile(file) {
   if(!state.isHost) { toast('Only host can share'); return null; }
-  let pages = [];
   if(file.type.startsWith('image/')) {
     const url = URL.createObjectURL(file); 
-    pages = [{ type: 'image', url }];
-  } else if(file.type === 'application/pdf') {
-    toast("PDF support coming soon");
-    return null;
-  } else { toast("Upload image only for now"); return null; }
-  return { pages, fileName: file.name };
+    return { pages: [{ type: 'image', url }], fileName: file.name };
+  }
+  toast('Please upload images only');
+  return null;
 }
 
 function renderPresentationPage(pageNum) {
@@ -334,8 +337,7 @@ function renderPresentationPage(pageNum) {
 }
 
 function broadcastPresentation() {
-  const data = { type: 'pres_sync', pages: state.presentation.pages, currentPage: state.presentation.currentPage, ownerId: 'host' };
-  broadcastToRoom(data);
+  broadcastToRoom({ type: 'pres_sync', pages: state.presentation.pages, currentPage: state.presentation.currentPage });
 }
 
 async function onFileUpload(e) {
@@ -344,12 +346,12 @@ async function onFileUpload(e) {
   toast('Loading...');
   const result = await loadPresentationFile(file);
   if(result && result.pages.length) {
-    state.presentation = { pages: result.pages, currentPage: 0, ownerId: 'host' };
+    state.presentation = { pages: result.pages, currentPage: 0 };
     renderPresentationPage(0);
     broadcastPresentation();
     toast(`Loaded ${result.pages.length} slides`);
     if(state.activeUpperPanel !== 'pres') openPresPanel();
-  } else toast('Failed to load');
+  }
   e.target.value = '';
 }
 
@@ -371,21 +373,20 @@ document.getElementById('presFileInput').addEventListener('change', onFileUpload
 document.getElementById('presPrevBtn').onclick = () => changeSlide(-1);
 document.getElementById('presNextBtn').onclick = () => changeSlide(1);
 
-// WebRTC Signaling
+// ========== FIREBASE SIGNALING ==========
 async function broadcastToRoom(data) {
   if(!state.roomCode) return;
   try {
-    const signalRef = db.collection('rooms').doc(state.roomCode).collection('signals').doc();
-    await signalRef.set({
+    await db.collection('rooms').doc(state.roomCode).collection('signals').add({
       from: state.myPeerId,
       data: data,
       timestamp: firebase.firestore.FieldValue.serverTimestamp()
     });
-    setTimeout(() => signalRef.delete().catch(()=>{}), 10000);
   } catch(e) { console.error('Broadcast error:', e); }
 }
 
 async function createPeerConnection(targetPeerId, isInitiator) {
+  console.log(`Creating connection with ${targetPeerId}, initiator: ${isInitiator}`);
   const pc = new RTCPeerConnection(ICE_SERVERS);
   state.peerConnections.set(targetPeerId, pc);
   
@@ -396,15 +397,18 @@ async function createPeerConnection(targetPeerId, isInitiator) {
     });
   }
   
-  // Handle incoming stream - FIXED for mobile
+  // Handle incoming remote stream
   pc.ontrack = (event) => {
-    console.log('Received track from', targetPeerId);
+    console.log(`Received stream from ${targetPeerId}`);
+    document.getElementById('connectionStatus').className = 'status-badge connected';
     document.getElementById('connectionStatus').innerHTML = '🟢 Connected';
+    
     if(!state.participants.has(targetPeerId)) {
-      state.participants.set(targetPeerId, { name: `User` });
+      state.participants.set(targetPeerId, { name: `User ${targetPeerId.slice(-4)}` });
       renderGrid();
       updateParticipantCount();
     }
+    
     const videoEl = document.getElementById(`vid-${targetPeerId}`);
     if(videoEl && event.streams[0]) {
       videoEl.srcObject = event.streams[0];
@@ -415,21 +419,26 @@ async function createPeerConnection(targetPeerId, isInitiator) {
     }
   };
   
+  // Handle ICE candidates
   pc.onicecandidate = (event) => {
     if(event.candidate) {
       broadcastToRoom({ type: 'candidate', candidate: event.candidate, target: targetPeerId });
     }
   };
   
+  // Monitor connection state
   pc.onconnectionstatechange = () => {
     console.log(`Connection state with ${targetPeerId}: ${pc.connectionState}`);
     if(pc.connectionState === 'connected') {
+      document.getElementById('connectionStatus').className = 'status-badge connected';
       document.getElementById('connectionStatus').innerHTML = '🟢 Connected';
     } else if(pc.connectionState === 'failed') {
-      document.getElementById('connectionStatus').innerHTML = '🔴 Failed';
+      document.getElementById('connectionStatus').className = 'status-badge connecting';
+      document.getElementById('connectionStatus').innerHTML = '🔴 Failed - retrying';
     }
   };
   
+  // Create offer if initiator
   if(isInitiator) {
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
@@ -447,6 +456,7 @@ async function handleSignal(signal) {
   
   let pc = state.peerConnections.get(from);
   
+  // Create peer connection if needed for offer
   if(data.type === 'offer' && !pc) {
     pc = await createPeerConnection(from, false);
   }
@@ -474,7 +484,6 @@ async function handleSignal(signal) {
     else if(data.type === 'pres_sync') {
       state.presentation = data;
       renderPresentationPage(data.currentPage);
-      if(state.activeUpperPanel === 'pres') renderPresentationPage(data.currentPage);
     }
   } catch(e) {
     console.error('Signal handling error:', e);
@@ -485,29 +494,31 @@ async function handleSignal(signal) {
 async function setupRoomSignaling() {
   const roomRef = db.collection('rooms').doc(state.roomCode);
   
-  const participantRef = roomRef.collection('participants').doc(state.myPeerId);
-  await participantRef.set({
+  // Register participant
+  await roomRef.collection('participants').doc(state.myPeerId).set({
     name: state.myName,
     isHost: state.isHost,
     joinedAt: firebase.firestore.FieldValue.serverTimestamp()
   });
   
+  // Listen for new participants
   state.unsubscribeParticipants = roomRef.collection('participants').onSnapshot(snapshot => {
     snapshot.docChanges().forEach(async (change) => {
       const pid = change.doc.id;
       if(pid === state.myPeerId) return;
       
-      if(change.type === 'added') {
+      if(change.type === 'added' && !state.participants.has(pid) && !state.peerConnections.has(pid)) {
         const data = change.doc.data();
-        if(!state.participants.has(pid) && !state.peerConnections.has(pid)) {
-          state.participants.set(pid, { name: data.name });
-          renderGrid();
-          updateParticipantCount();
-          await createPeerConnection(pid, true);
-          toast(`${data.name} joined`);
-        }
-      } 
+        console.log(`New participant: ${pid}, name: ${data.name}`);
+        state.participants.set(pid, { name: data.name });
+        renderGrid();
+        updateParticipantCount();
+        // Initiate connection to new participant
+        await createPeerConnection(pid, true);
+        toast(`${data.name} joined`);
+      }
       else if(change.type === 'removed') {
+        console.log(`Participant left: ${pid}`);
         const pc = state.peerConnections.get(pid);
         if(pc) pc.close();
         state.peerConnections.delete(pid);
@@ -520,19 +531,22 @@ async function setupRoomSignaling() {
     });
   });
   
+  // Listen for signals
   state.unsubscribeSignals = roomRef.collection('signals').orderBy('timestamp').onSnapshot(snapshot => {
-    snapshot.docChanges().forEach(change => {
+    snapshot.docChanges().forEach(async (change) => {
       if(change.type === 'added') {
         const signal = change.doc.data();
         if(signal.from !== state.myPeerId) {
-          handleSignal(signal);
+          await handleSignal(signal);
         }
-        change.doc.ref.delete().catch(()=>{});
+        // Clean up old signals
+        try { await change.doc.ref.delete(); } catch(e) {}
       }
     });
   });
   
-  document.getElementById('connectionStatus').innerHTML = '🟡 Waiting...';
+  document.getElementById('connectionStatus').className = 'status-badge connecting';
+  document.getElementById('connectionStatus').innerHTML = '🟡 Waiting for connections...';
 }
 
 // Create Room
@@ -560,6 +574,7 @@ async function createRoom() {
     return;
   }
   
+  // Create room in Firestore
   await db.collection('rooms').doc(state.roomCode).set({
     name: roomName,
     host: state.myPeerId,
@@ -570,7 +585,6 @@ async function createRoom() {
   document.getElementById('roomCodeDisplay').innerText = state.roomCode;
   renderGrid(); 
   showRoom(); 
-  document.getElementById('connectionStatus').innerHTML = '🟡 Host ready';
   toast(`Room created! Share code: ${state.roomCode}`);
   
   await setupRoomSignaling();
@@ -584,6 +598,7 @@ async function joinRoom() {
   closeAllModals(); 
   showOverlay('Starting camera...');
   
+  // Check if room exists
   const roomDoc = await db.collection('rooms').doc(code).get();
   if(!roomDoc.exists) {
     showLobby();
@@ -612,8 +627,7 @@ async function joinRoom() {
   document.getElementById('roomCodeDisplay').innerText = state.roomCode;
   renderGrid(); 
   showRoom();
-  document.getElementById('connectionStatus').innerHTML = '🟡 Connecting...';
-  toast(`Joining ${state.roomName}`);
+  toast(`Joined ${state.roomName}`);
   
   await setupRoomSignaling();
 }
@@ -627,8 +641,6 @@ function renderGrid() {
     container.appendChild(createTile(peerId, p.name, null, false));
   }
   updateParticipantCount();
-  const hostBadge = document.getElementById('presHostBadge'); 
-  if(hostBadge) hostBadge.style.display = state.isHost ? 'inline-block' : 'none';
 }
 
 function createTile(id, name, stream, isLocal) {
@@ -644,7 +656,6 @@ function createTile(id, name, stream, isLocal) {
   video.autoplay = true; 
   video.playsInline = true; 
   video.muted = isLocal;
-  video.setAttribute('playsinline', 'true');
   if(stream && stream.getVideoTracks().length > 0 && !state.isCamOff) { 
     video.srcObject = stream; 
     video.style.display = 'block'; 
@@ -665,11 +676,11 @@ function createTile(id, name, stream, isLocal) {
 }
 
 // Recording
-async function startFullRecording() {
+async function startRecording() {
   if(state.isRecording) return;
   toast('Recording started');
   const canvas = document.createElement('canvas');
-  canvas.width = 854; canvas.height = 480;
+  canvas.width = 640; canvas.height = 480;
   const ctx = canvas.getContext('2d');
   
   function drawFrame() {
@@ -720,7 +731,7 @@ async function startFullRecording() {
   document.getElementById('recIndicator').classList.remove('hidden');
 }
 
-function stopFullRecording() { 
+function stopRecording() { 
   if(state.isRecording && state.mediaRecorder && state.mediaRecorder.state !== 'inactive') { 
     state.mediaRecorder.stop(); 
   } 
@@ -730,13 +741,13 @@ function stopFullRecording() {
 }
 
 function toggleRecording() { 
-  if(state.isRecording) stopFullRecording(); 
-  else startFullRecording(); 
+  if(state.isRecording) stopRecording(); 
+  else startRecording(); 
 }
 
 document.getElementById('recBtn').onclick = toggleRecording;
 
-// Controls
+// Media Controls
 document.getElementById('micBtn').onclick = () => { 
   if(state.localStream) { 
     state.isMuted = !state.isMuted; 
@@ -756,7 +767,7 @@ document.getElementById('camBtn').onclick = () => {
 };
 
 function leaveRoom() { 
-  if(state.isRecording) stopFullRecording();
+  if(state.isRecording) stopRecording();
   if(state.unsubscribeSignals) state.unsubscribeSignals();
   if(state.unsubscribeParticipants) state.unsubscribeParticipants();
   if(state.roomCode && state.myPeerId) {
