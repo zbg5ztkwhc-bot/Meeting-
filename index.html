@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover" />
-<title>HamoudaSpace · Working Video | Fixed WebRTC</title>
+<title>HamoudaSpace · Full Features | Working Video + Share + Recording</title>
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
@@ -47,6 +47,30 @@
   .status-badge { font-size: 10px; padding: 3px 8px; border-radius: 20px; }
   .status-badge.connected { background: rgba(34,197,94,0.3); color: #22c55e; }
   .status-badge.connecting { background: rgba(255,165,0,0.3); color: #ffa500; }
+  .recording-indicator { background: var(--danger); padding: 4px 10px; border-radius: 30px; font-size: 10px; display: flex; align-items: center; gap: 6px; animation: pulseRed 1s infinite; }
+  @keyframes pulseRed { 0%,100%{opacity:1}50%{opacity:0.5} }
+  .upper-panel { background: rgba(16,20,28,0.96); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border-dim); height: 45%; min-height: 220px; display: flex; flex-direction: column; flex-shrink: 0; }
+  .upper-panel.collapsed { display: none; }
+  .panel-header { padding: 8px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.06); background: rgba(0,0,0,0.3); }
+  .panel-title { font-weight: 600; font-size: 12px; }
+  .close-upper-btn { background: none; border: none; color: var(--text-secondary); font-size: 18px; cursor: pointer; padding: 0 8px; }
+  .chat-container { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .chat-messages { flex: 1; overflow-y: auto; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+  .chat-bubble { max-width: 80%; padding: 8px 12px; border-radius: 18px; font-size: 12px; background: var(--bg-soft); align-self: flex-start; word-break: break-word; }
+  .chat-bubble.me { background: var(--accent); align-self: flex-end; }
+  .chat-meta { font-size: 9px; color: var(--text-secondary); margin-bottom: 3px; }
+  .chat-input-row { display: flex; gap: 8px; padding: 8px 12px; border-top: 1px solid rgba(255,255,255,0.06); background: rgba(0,0,0,0.2); }
+  .chat-input-row input { flex: 1; background: var(--bg-soft); border: none; padding: 10px 14px; border-radius: 30px; color: white; outline: none; font-size: 14px; }
+  .send-btn { background: var(--accent); border: none; width: 44px; border-radius: 30px; cursor: pointer; font-size: 18px; }
+  .pres-container { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .pres-viewer { flex: 1; background: #000000cc; display: flex; align-items: center; justify-content: center; padding: 10px; min-height: 0; overflow: auto; }
+  .pres-viewer img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 12px; }
+  .pres-controls { padding: 8px 12px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; border-top: 1px solid rgba(255,255,255,0.06); background: rgba(0,0,0,0.4); flex-shrink: 0; }
+  .pres-controls button { background: var(--bg-soft); border: none; padding: 6px 12px; border-radius: 30px; color: white; font-size: 11px; cursor: pointer; }
+  .pres-progress { flex: 1; height: 3px; background: var(--border-dim); border-radius: 2px; cursor: pointer; }
+  .pres-progress-fill { width: 0%; height: 100%; background: var(--accent); border-radius: 2px; }
+  .page-indicator { font-size: 10px; color: var(--text-secondary); min-width: 50px; text-align: center; }
+  .upload-mini { background: var(--accent) !important; }
   .video-section { flex: 1; display: flex; flex-direction: column; overflow: hidden; padding: 8px; background: #03050a; }
   .video-grid { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); overflow-y: auto; padding: 4px; height: 100%; }
   .vtile { background: #11161f; border-radius: 16px; overflow: hidden; position: relative; aspect-ratio: 9/16; border: 1px solid rgba(255,255,255,0.08); }
@@ -57,8 +81,13 @@
   .vtile-name { background: rgba(0,0,0,0.7); backdrop-filter: blur(6px); padding: 3px 8px; border-radius: 30px; font-size: 9px; }
   .bottom-controls { background: rgba(8,10,16,0.98); backdrop-filter: blur(20px); border-top: 1px solid rgba(255,255,255,0.08); padding: 10px 12px; display: flex; justify-content: center; gap: 12px; flex-shrink: 0; flex-wrap: wrap; }
   .ctrl-btn { width: 52px; height: 52px; border-radius: 50%; background: rgba(255,255,255,0.1); border: none; font-size: 22px; cursor: pointer; }
+  .ctrl-btn:active { transform: scale(0.95); }
   .ctrl-btn.off { background: var(--danger); }
   .ctrl-btn.leave { background: var(--danger); }
+  .ctrl-btn.recording { background: var(--danger); animation: pulse 1s infinite; }
+  .ctrl-btn.secondary { background: rgba(59,130,246,0.2); }
+  .divider { width: 1px; height: 30px; background: rgba(255,255,255,0.15); margin: 0 4px; }
+  @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.6} }
   .toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); background: #1e1f2c; padding: 8px 18px; border-radius: 40px; z-index: 400; font-size: 12px; white-space: nowrap; }
   .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: flex; align-items: center; justify-content: center; z-index: 500; flex-direction: column; gap: 16px; }
   .spinner { width: 40px; height: 40px; border: 3px solid #2a3048; border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
@@ -66,8 +95,10 @@
   .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; z-index: 600; padding: 20px; }
   .modal-card { background: var(--bg-card); border-radius: 28px; padding: 24px; width: 90%; max-width: 340px; }
   .modal-card input { width: 100%; margin-bottom: 12px; background: var(--bg-soft); border: 1px solid var(--border-dim); border-radius: 14px; padding: 12px; color: white; font-size: 16px; }
+  .badge { background: var(--danger); border-radius: 20px; padding: 2px 6px; font-size: 9px; margin-left: 6px; }
   @media (max-width: 480px) {
     .ctrl-btn { width: 44px; height: 44px; font-size: 18px; }
+    .bottom-controls { gap: 8px; }
     .video-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
   }
 </style>
@@ -76,20 +107,20 @@
 
 <div id="view-lobby">
   <div class="lobby-header">
-    <div class="logo-area"><div class="logo-icon">🎥</div><div><strong>HamoudaSpace</strong><div style="font-size:10px;">Fixed WebRTC</div></div></div>
+    <div class="logo-area"><div class="logo-icon">🎥</div><div><strong>HamoudaSpace</strong><div style="font-size:10px;">Full Features · Working Video</div></div></div>
     <div class="lobby-actions">
       <button class="btn btn-secondary" id="showJoinBtn">🔗 Join</button>
       <button class="btn btn-primary" id="showCreateBtn">✨ New Meeting</button>
     </div>
   </div>
   <div class="lobby-main">
-    <div class="hero"><h1>Video Meetings That Work</h1><p>Fixed WebRTC - Video & Audio working</p></div>
+    <div class="hero"><h1>Video Meetings That Work</h1><p>Share presentations · Record meetings · Chat</p></div>
     <div class="action-cards">
       <div class="card"><h3>Start a Meeting</h3><button class="btn btn-primary" id="createCardBtn">Create Room</button></div>
       <div class="card"><h3>Join a Meeting</h3><button class="btn btn-secondary" id="joinCardBtn">Enter Code</button></div>
     </div>
     <div class="info-box">
-      <p>🔵 <strong>Fixed!</strong> Allow camera/microphone access. Share the 6-digit code with others.</p>
+      <p>🔵 <strong>All Features Working!</strong> Allow camera/microphone access. Share the 6-digit code with others.</p>
     </div>
   </div>
 </div>
@@ -98,9 +129,25 @@
   <div class="room-header">
     <div class="room-info"><span class="room-title" id="roomNameDisplay">Meeting</span><span class="room-code" id="roomCodeDisplay" onclick="copyRoomCode()">XXXXXX</span></div>
     <div class="room-info"><span id="participantCount">👥 1</span><span id="connectionStatus" class="status-badge connecting">🟡 Connecting...</span></div>
+    <div id="recIndicator" class="recording-indicator hidden">🔴 REC</div>
+  </div>
+  <div id="upperPanel" class="upper-panel collapsed">
+    <div class="panel-header"><span class="panel-title" id="upperPanelTitle">Chat</span><button class="close-upper-btn" id="closeUpperBtn">✕</button></div>
+    <div id="chatView" class="chat-container hidden"><div class="chat-messages" id="chatMessagesList"></div><div class="chat-input-row"><input type="text" id="chatInputField" placeholder="Type a message..."><button class="send-btn" id="sendChatUpperBtn">➤</button></div></div>
+    <div id="presView" class="pres-container hidden"><div class="pres-viewer" id="presViewer"><div style="color:#aaa; text-align:center; padding:20px;">No presentation</div></div><div class="pres-controls"><button id="presPrevBtn" disabled>◀</button><button id="presNextBtn" disabled>▶</button><div class="pres-progress"><div class="pres-progress-fill" id="presProgressFill"></div></div><span class="page-indicator" id="presPageInfo">0/0</span><button id="presUploadBtn" class="upload-mini">📤 Upload</button><input type="file" id="presFileInput" accept=".pdf,.jpg,.jpeg,.png,.gif" style="display:none"><span id="presHostBadge" style="background:var(--accent); padding:2px 8px; border-radius:20px; font-size:9px;">👑 Host</span></div></div>
   </div>
   <div class="video-section"><div class="video-grid" id="videoGridContainer"></div></div>
-  <div class="bottom-controls"><button class="ctrl-btn" id="micBtn">🎤</button><button class="ctrl-btn" id="camBtn">📷</button><div class="divider"></div><button class="ctrl-btn leave" id="leaveRoomBtn">🚪</button></div>
+  <div class="bottom-controls">
+    <button class="ctrl-btn" id="micBtn">🎤</button>
+    <button class="ctrl-btn" id="camBtn">📷</button>
+    <button class="ctrl-btn" id="recBtn">⏺</button>
+    <div class="divider"></div>
+    <button class="ctrl-btn secondary" id="chatBottomBtn">💬 <span id="chatBadge" class="badge" style="display:none;">0</span></button>
+    <button class="ctrl-btn secondary" id="presBottomBtn">📽️</button>
+    <button class="ctrl-btn secondary" id="shareBtn">🔗</button>
+    <div class="divider"></div>
+    <button class="ctrl-btn leave" id="leaveRoomBtn">🚪</button>
+  </div>
 </div>
 
 <div id="createModal" class="modal-backdrop hidden"><div class="modal-card"><div style="font-size:20px; margin-bottom:16px;">New Meeting</div><input id="createRoomName" placeholder="Meeting name"><input id="createUserName" placeholder="Your name"><div style="display:flex; justify-content:flex-end; gap:12px; margin-top:20px;"><button id="cancelCreateModal" class="btn btn-secondary">Cancel</button><button id="confirmCreateModal" class="btn btn-primary">Create</button></div></div></div>
@@ -131,9 +178,15 @@ let roomName = '';
 let myPeerId = '';
 let isMuted = false;
 let isCamOff = false;
+let isRecording = false;
+let mediaRecorder = null;
+let recordedChunks = [];
 let participants = new Map();
 let unsubscribeParticipants = null;
 let unsubscribeSignals = null;
+let chatUnread = 0;
+let activeUpperPanel = null;
+let presentation = { pages: [], currentPage: 0 };
 
 // ICE Servers
 const ICE_SERVERS = {
@@ -180,6 +233,9 @@ function showLobby() {
   peerConnections.forEach(pc => pc.close());
   peerConnections.clear();
   participants.clear();
+  isRecording = false;
+  document.getElementById('recBtn')?.classList.remove('recording');
+  document.getElementById('recIndicator')?.classList.add('hidden');
 }
 
 function showRoom() { 
@@ -206,6 +262,191 @@ function updateParticipantCount() {
   document.getElementById('participantCount').innerHTML = `👥 ${participants.size + 1}`; 
 }
 
+// ========== UI PANELS ==========
+const upperPanel = document.getElementById('upperPanel');
+const chatView = document.getElementById('chatView');
+const presView = document.getElementById('presView');
+
+function closeUpperPanel() { upperPanel.classList.add('collapsed'); activeUpperPanel = null; }
+function openChatPanel() { 
+  if(activeUpperPanel === 'chat') { closeUpperPanel(); return; } 
+  upperPanel.classList.remove('collapsed'); 
+  chatView.classList.remove('hidden'); 
+  presView.classList.add('hidden'); 
+  activeUpperPanel = 'chat'; 
+  chatUnread = 0; 
+  document.getElementById('chatBadge').style.display = 'none'; 
+  setTimeout(() => document.getElementById('chatInputField')?.focus(), 100); 
+}
+function openPresPanel() { 
+  if(activeUpperPanel === 'pres') { closeUpperPanel(); return; } 
+  upperPanel.classList.remove('collapsed'); 
+  presView.classList.remove('hidden'); 
+  chatView.classList.add('hidden'); 
+  activeUpperPanel = 'pres'; 
+  if(presentation.pages.length) renderPresentationPage(presentation.currentPage); 
+}
+
+document.getElementById('chatBottomBtn').onclick = openChatPanel;
+document.getElementById('presBottomBtn').onclick = openPresPanel;
+document.getElementById('closeUpperBtn').onclick = closeUpperPanel;
+document.getElementById('shareBtn').onclick = () => shareMeetingLink();
+
+// ========== CHAT ==========
+function appendChatMessage(msg, isSelf) {
+  const container = document.getElementById('chatMessagesList');
+  const div = document.createElement('div'); 
+  div.className = `chat-bubble ${isSelf ? 'me' : ''}`;
+  const time = new Date(msg.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  div.innerHTML = `<div class="chat-meta">${isSelf ? 'You' : escapeHtml(msg.name)} · ${time}</div><div>${escapeHtml(msg.text)}</div>`;
+  container.appendChild(div); 
+  container.scrollTop = container.scrollHeight;
+  if(!isSelf && (activeUpperPanel !== 'chat' || upperPanel.classList.contains('collapsed'))) { 
+    chatUnread++; 
+    document.getElementById('chatBadge').innerText = chatUnread > 9 ? '9+' : chatUnread; 
+    document.getElementById('chatBadge').style.display = 'inline'; 
+  }
+}
+
+function sendChatMessage() {
+  const input = document.getElementById('chatInputField'); 
+  const text = input.value.trim(); 
+  if(!text) return;
+  input.value = ''; 
+  const msgObj = { type: 'chat', name: myName, text, ts: Date.now() };
+  appendChatMessage(msgObj, true);
+  sendSignal(msgObj);
+}
+
+document.getElementById('sendChatUpperBtn').onclick = sendChatMessage;
+document.getElementById('chatInputField').addEventListener('keypress', e => { if(e.key === 'Enter') sendChatMessage(); });
+
+// ========== PRESENTATION ==========
+function renderPresentationPage(pageNum) {
+  const viewer = document.getElementById('presViewer');
+  const pages = presentation.pages;
+  if(!pages.length) { viewer.innerHTML = '<div style="color:#aaa; text-align:center; padding:20px;">No slides</div>'; return; }
+  const page = pages[pageNum]; 
+  viewer.innerHTML = '';
+  if(page.type === 'image') { const img = document.createElement('img'); img.src = page.url; viewer.appendChild(img); }
+  document.getElementById('presPageInfo').innerText = `${pageNum+1}/${pages.length}`;
+  const fill = document.getElementById('presProgressFill'); 
+  if(fill) fill.style.width = `${((pageNum+1)/pages.length)*100}%`;
+  document.getElementById('presPrevBtn').disabled = (pageNum === 0);
+  document.getElementById('presNextBtn').disabled = (pageNum === pages.length-1);
+}
+
+function broadcastPresentation() {
+  sendSignal({ type: 'pres_sync', pages: presentation.pages, currentPage: presentation.currentPage });
+}
+
+async function onFileUpload(e) {
+  const file = e.target.files[0]; 
+  if(!file) return;
+  if(!isHost) { toast('Only host can share'); return; }
+  if(file.type.startsWith('image/')) {
+    const url = URL.createObjectURL(file); 
+    presentation = { pages: [{ type: 'image', url }], currentPage: 0 };
+    renderPresentationPage(0);
+    broadcastPresentation();
+    toast(`Loaded presentation`);
+    if(activeUpperPanel !== 'pres') openPresPanel();
+  } else {
+    toast('Please upload images only');
+  }
+  e.target.value = '';
+}
+
+function changeSlide(delta) {
+  if(!isHost) { toast('Only host controls slides'); return; }
+  const newPage = presentation.currentPage + delta;
+  if(newPage >= 0 && newPage < presentation.pages.length) {
+    presentation.currentPage = newPage;
+    renderPresentationPage(newPage);
+    broadcastPresentation();
+  }
+}
+
+document.getElementById('presUploadBtn').onclick = () => { 
+  if(isHost) document.getElementById('presFileInput').click(); 
+  else toast('Only host can upload'); 
+};
+document.getElementById('presFileInput').addEventListener('change', onFileUpload);
+document.getElementById('presPrevBtn').onclick = () => changeSlide(-1);
+document.getElementById('presNextBtn').onclick = () => changeSlide(1);
+
+// ========== RECORDING ==========
+async function startRecording() {
+  if(isRecording) return;
+  toast('Recording started...');
+  const canvas = document.createElement('canvas');
+  canvas.width = 640; canvas.height = 480;
+  const ctx = canvas.getContext('2d');
+  
+  function drawFrame() {
+    if(!isRecording) return;
+    ctx.fillStyle = '#05070c'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const tiles = document.querySelectorAll('.vtile');
+    const cols = Math.min(Math.ceil(Math.sqrt(tiles.length)), 2);
+    const rows = Math.ceil(tiles.length / cols);
+    const tileW = canvas.width / cols;
+    const tileH = canvas.height / rows;
+    tiles.forEach((tile, idx) => {
+      const col = idx % cols; const row = Math.floor(idx / cols);
+      const video = tile.querySelector('video');
+      if(video && video.srcObject && video.readyState >= 2) {
+        try { ctx.drawImage(video, col * tileW, row * tileH, tileW, tileH); } catch(e) {}
+      }
+    });
+    requestAnimationFrame(drawFrame);
+  }
+  drawFrame();
+  
+  const canvasStream = canvas.captureStream(15);
+  const audioContext = new AudioContext();
+  const destination = audioContext.createMediaStreamDestination();
+  if(localStream && localStream.getAudioTracks().length) {
+    const source = audioContext.createMediaStreamSource(localStream);
+    source.connect(destination);
+  }
+  const combinedStream = new MediaStream([...canvasStream.getVideoTracks(), ...destination.stream.getAudioTracks()]);
+  const recorder = new MediaRecorder(combinedStream, { mimeType: 'video/webm' });
+  recordedChunks = [];
+  recorder.ondataavailable = (e) => { if(e.data.size) recordedChunks.push(e.data); };
+  recorder.onstop = () => {
+    const blob = new Blob(recordedChunks, { type: 'video/webm' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); 
+    a.href = url; 
+    a.download = `meeting-${roomCode}.webm`; 
+    a.click();
+    URL.revokeObjectURL(url);
+    toast('Recording saved!');
+    audioContext.close();
+  };
+  recorder.start(1000);
+  mediaRecorder = recorder;
+  isRecording = true;
+  document.getElementById('recBtn').classList.add('recording');
+  document.getElementById('recIndicator').classList.remove('hidden');
+}
+
+function stopRecording() { 
+  if(isRecording && mediaRecorder && mediaRecorder.state !== 'inactive') { 
+    mediaRecorder.stop(); 
+  } 
+  isRecording = false; 
+  document.getElementById('recBtn').classList.remove('recording'); 
+  document.getElementById('recIndicator').classList.add('hidden');
+}
+
+function toggleRecording() { 
+  if(isRecording) stopRecording(); 
+  else startRecording(); 
+}
+
+document.getElementById('recBtn').onclick = toggleRecording;
+
 // ========== FIREBASE SIGNALING ==========
 async function sendSignal(data) {
   if(!roomCode) return;
@@ -225,7 +466,7 @@ async function createPeerConnection(targetPeerId, isInitiator) {
   const pc = new RTCPeerConnection(ICE_SERVERS);
   peerConnections.set(targetPeerId, pc);
   
-  // Add local tracks to the connection
+  // Add local tracks
   if(localStream) {
     localStream.getTracks().forEach(track => {
       pc.addTrack(track, localStream);
@@ -238,10 +479,8 @@ async function createPeerConnection(targetPeerId, isInitiator) {
     document.getElementById('connectionStatus').className = 'status-badge connected';
     document.getElementById('connectionStatus').innerHTML = '🟢 Connected';
     
-    // Create video element for this peer if not exists
     let videoEl = document.getElementById(`vid-${targetPeerId}`);
     if(!videoEl) {
-      // Force grid refresh
       renderGrid();
       videoEl = document.getElementById(`vid-${targetPeerId}`);
     }
@@ -251,7 +490,6 @@ async function createPeerConnection(targetPeerId, isInitiator) {
       videoEl.setAttribute('playsinline', 'true');
       videoEl.play().catch(e => console.log('Play error:', e));
       
-      // Hide placeholder
       const ph = document.getElementById(`ph-${targetPeerId}`);
       if(ph) ph.style.display = 'none';
       if(videoEl) videoEl.style.display = 'block';
@@ -271,13 +509,10 @@ async function createPeerConnection(targetPeerId, isInitiator) {
     if(pc.connectionState === 'connected') {
       document.getElementById('connectionStatus').className = 'status-badge connected';
       document.getElementById('connectionStatus').innerHTML = '🟢 Connected';
-    } else if(pc.connectionState === 'failed') {
-      document.getElementById('connectionStatus').className = 'status-badge connecting';
-      document.getElementById('connectionStatus').innerHTML = '🔴 Failed - retrying';
     }
   };
   
-  // Create offer if we are the initiator
+  // Create offer if initiator
   if(isInitiator) {
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
@@ -291,12 +526,10 @@ async function handleSignal(signal) {
   const from = signal.from;
   const data = signal.data;
   
-  // Ignore signals not meant for us
   if(data.target && data.target !== myPeerId) return;
   
   let pc = peerConnections.get(from);
   
-  // Create peer connection if needed for offer
   if(data.type === 'offer' && !pc) {
     pc = await createPeerConnection(from, false);
   }
@@ -317,6 +550,14 @@ async function handleSignal(signal) {
       if(data.candidate) {
         await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
       }
+    } 
+    else if(data.type === 'chat') {
+      appendChatMessage(data, false);
+    } 
+    else if(data.type === 'pres_sync') {
+      presentation = data;
+      renderPresentationPage(data.currentPage);
+      if(activeUpperPanel === 'pres') renderPresentationPage(data.currentPage);
     }
   } catch(e) {
     console.error('Signal handling error:', e);
@@ -327,14 +568,12 @@ async function handleSignal(signal) {
 async function setupRoomSignaling() {
   const roomRef = db.collection('rooms').doc(roomCode);
   
-  // Register this participant
   await roomRef.collection('participants').doc(myPeerId).set({
     name: myName,
     isHost: isHost,
     joinedAt: firebase.firestore.FieldValue.serverTimestamp()
   });
   
-  // Listen for new participants
   unsubscribeParticipants = roomRef.collection('participants').onSnapshot(async (snapshot) => {
     for (const change of snapshot.docChanges()) {
       const pid = change.doc.id;
@@ -349,8 +588,6 @@ async function setupRoomSignaling() {
           renderGrid();
           updateParticipantCount();
           toast(`${data.name} joined`);
-          
-          // Initiate connection to new participant
           await createPeerConnection(pid, true);
         }
       }
@@ -368,7 +605,6 @@ async function setupRoomSignaling() {
     }
   });
   
-  // Listen for signals
   unsubscribeSignals = roomRef.collection('signals').orderBy('timestamp').onSnapshot(async (snapshot) => {
     for (const change of snapshot.docChanges()) {
       if(change.type === 'added') {
@@ -376,7 +612,6 @@ async function setupRoomSignaling() {
         if(signal.from !== myPeerId) {
           await handleSignal(signal);
         }
-        // Clean up
         try { await change.doc.ref.delete(); } catch(e) {}
       }
     }
@@ -412,7 +647,6 @@ async function createRoom() {
     return;
   }
   
-  // Create room in Firestore
   await db.collection('rooms').doc(roomCode).set({
     name: roomName,
     host: myPeerId,
@@ -436,7 +670,6 @@ async function joinRoom() {
   closeAllModals(); 
   showOverlay('Starting camera...');
   
-  // Check if room exists
   const roomDoc = await db.collection('rooms').doc(code).get();
   if(!roomDoc.exists) {
     showLobby();
@@ -475,16 +708,13 @@ async function joinRoom() {
 function renderGrid() {
   const container = document.getElementById('videoGridContainer');
   container.innerHTML = '';
-  
-  // Add local video
   container.appendChild(createTile('local', `${myName} (you)`, localStream, true));
-  
-  // Add remote participants
   for(let [peerId, p] of participants.entries()) {
     container.appendChild(createTile(peerId, p.name, null, false));
   }
-  
   updateParticipantCount();
+  const hostBadge = document.getElementById('presHostBadge'); 
+  if(hostBadge) hostBadge.style.display = isHost ? 'inline-block' : 'none';
 }
 
 function createTile(id, name, stream, isLocal) {
@@ -531,6 +761,7 @@ document.getElementById('micBtn').onclick = () => {
     isMuted = !isMuted; 
     localStream.getAudioTracks().forEach(t => t.enabled = !isMuted); 
     document.getElementById('micBtn').classList.toggle('off', isMuted);
+    renderGrid();
   } 
 };
 
@@ -544,6 +775,7 @@ document.getElementById('camBtn').onclick = () => {
 };
 
 function leaveRoom() { 
+  if(isRecording) stopRecording();
   if(unsubscribeParticipants) unsubscribeParticipants();
   if(unsubscribeSignals) unsubscribeSignals();
   if(roomCode && myPeerId) {
@@ -558,6 +790,11 @@ function leaveRoom() {
 
 document.getElementById('leaveRoomBtn').onclick = leaveRoom;
 function copyRoomCode() { navigator.clipboard.writeText(roomCode); toast('Code copied'); }
+function shareMeetingLink() { 
+  const url = window.location.origin + window.location.pathname + '?join=' + roomCode; 
+  navigator.clipboard.writeText(url); 
+  toast('Link copied'); 
+}
 
 // Modal triggers
 document.getElementById('showCreateBtn').onclick = () => document.getElementById('createModal').classList.remove('hidden');
