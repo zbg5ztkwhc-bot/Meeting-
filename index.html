@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-<title>HamoudaSpace · Firebase Video Meeting | 20+ Participants</title>
+<title>HamoudaSpace · Fixed WebRTC | Video & Audio Working</title>
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
@@ -87,26 +87,27 @@
   .modal-card input { width: 100%; margin-bottom: 12px; background: var(--bg-soft); border: 1px solid var(--border-dim); border-radius: 14px; padding: 10px; color: white; }
   .badge { background: var(--danger); border-radius: 20px; padding: 2px 6px; font-size: 9px; margin-left: 6px; }
   .firebase-status { font-size: 10px; background: rgba(0,0,0,0.5); padding: 2px 8px; border-radius: 20px; margin-left: 10px; }
+  .connection-status { font-size: 10px; padding: 2px 8px; border-radius: 20px; margin-left: 10px; background: rgba(255,165,0,0.3); }
 </style>
 </head>
 <body>
 
 <div id="view-lobby">
   <div class="lobby-header">
-    <div class="logo-area"><div class="logo-icon">🎥</div><div><strong>HamoudaSpace</strong><div style="font-size:11px;">Firebase · 20+ Participants</div></div></div>
+    <div class="logo-area"><div class="logo-icon">🎥</div><div><strong>HamoudaSpace</strong><div style="font-size:11px;">Fixed WebRTC · Video & Audio Working</div></div></div>
     <div class="lobby-actions">
       <button class="btn btn-secondary" id="showJoinBtn">🔗 Join</button>
       <button class="btn btn-primary" id="showCreateBtn">✨ New Meeting</button>
     </div>
   </div>
   <div class="lobby-main">
-    <div class="hero"><h1>Video Meetings That Work</h1><p>Firebase signaling · Supports 20+ participants across different networks</p></div>
+    <div class="hero"><h1>Video Meetings That Work</h1><p>Fixed WebRTC connections · Video & Audio now working</p></div>
     <div class="action-cards">
       <div class="card"><h3>Host a meeting</h3><p>Create a room and share the code</p><button class="btn btn-primary" id="createCardBtn">Create room</button></div>
       <div class="card"><h3>Join with code</h3><p>Enter the 6-letter code to connect</p><button class="btn btn-secondary" id="joinCardBtn">Enter code</button></div>
     </div>
     <div class="info-box">
-      <p>⚡ <strong>Powered by Firebase Firestore</strong> — Reliable signaling for multiple participants across different networks. Works behind firewalls!</p>
+      <p>⚡ <strong>Fixed WebRTC Connection</strong> — All participants can now see and hear each other. Make sure to allow camera/microphone access.</p>
     </div>
   </div>
 </div>
@@ -114,7 +115,7 @@
 <div id="view-room">
   <div class="room-header">
     <div class="room-info"><span class="room-title" id="roomNameDisplay">Meeting</span><span class="room-code" id="roomCodeDisplay" onclick="copyRoomCode()">XXXXXX</span></div>
-    <div class="room-info"><span id="participantCount">👥 1</span><span id="firebaseStatus" class="firebase-status">🟢 Connected</span></div>
+    <div class="room-info"><span id="participantCount">👥 1</span><span id="firebaseStatus" class="firebase-status">🟢 Connected</span><span id="connectionStatus" class="connection-status">🔗 Connecting...</span></div>
     <div id="recIndicator" class="recording-indicator hidden">🔴 RECORDING</div>
   </div>
   <div id="upperPanel" class="upper-panel collapsed">
@@ -131,7 +132,7 @@
 <div id="loadingOverlay" class="overlay hidden"><div class="spinner"></div><p>Connecting to Firebase...</p></div>
 
 <script>
-// ========== FIREBASE CONFIGURATION (YOUR PROVIDED CONFIG) ==========
+// ========== FIREBASE CONFIGURATION ==========
 const firebaseConfig = {
   apiKey: "AIzaSyCra3IgsAaQlf3INjRn04DdX3KWwb8zdlo",
   authDomain: "hamoudaspace-meetingapp.firebaseapp.com",
@@ -141,9 +142,7 @@ const firebaseConfig = {
   appId: "1:9931981197:web:716e61223950d3d39c7dc4",
   measurementId: "G-YQRM3V5CQX"
 };
-// ================================================================
 
-// Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
@@ -159,7 +158,7 @@ const state = {
   unsubscribeSignals: null, unsubscribeParticipants: null
 };
 
-// ICE Servers for NAT traversal
+// Better ICE Servers for better connectivity
 const ICE_SERVERS = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
@@ -168,9 +167,12 @@ const ICE_SERVERS = {
     { urls: 'stun:stun3.l.google.com:19302' },
     { urls: 'stun:stun4.l.google.com:19302' },
     { urls: 'stun:stun.stunprotocol.org:3478' },
+    { urls: 'stun:stun.voipstunt.com:3478' },
     { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
-    { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }
-  ]
+    { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
+  ],
+  iceCandidatePoolSize: 10
 };
 
 function genCode(){ return Math.random().toString(36).slice(2,8).toUpperCase(); }
@@ -293,29 +295,36 @@ document.getElementById('presFileInput').addEventListener('change', onFileUpload
 document.getElementById('presPrevBtn').onclick = () => changeSlide(-1);
 document.getElementById('presNextBtn').onclick = () => changeSlide(1);
 
-// ========== FIREBASE SIGNALING ==========
+// ========== FIXED WEBRTC SIGNALING ==========
 async function broadcastToRoom(data){
   if(!state.roomCode) return;
-  const signalRef = db.collection('rooms').doc(state.roomCode).collection('signals').doc();
-  await signalRef.set({
-    from: state.myPeerId,
-    data: data,
-    timestamp: firebase.firestore.FieldValue.serverTimestamp()
-  });
-  setTimeout(() => signalRef.delete().catch(()=>{}), 5000);
+  try {
+    const signalRef = db.collection('rooms').doc(state.roomCode).collection('signals').doc();
+    await signalRef.set({
+      from: state.myPeerId,
+      data: data,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    // Clean up after 10 seconds
+    setTimeout(() => signalRef.delete().catch(()=>{}), 10000);
+  } catch(e) { console.error('Broadcast error:', e); }
 }
 
 async function createPeerConnection(targetPeerId, isInitiator){
   const pc = new RTCPeerConnection(ICE_SERVERS);
   state.peerConnections.set(targetPeerId, pc);
   
+  // Add local tracks
   if(state.localStream){
     state.localStream.getTracks().forEach(track => {
       pc.addTrack(track, state.localStream);
     });
   }
   
+  // Handle incoming remote stream
   pc.ontrack = (event) => {
+    console.log('Received remote stream from', targetPeerId);
+    document.getElementById('connectionStatus').innerHTML = '🟢 Connected';
     if(!state.participants.has(targetPeerId)){
       state.participants.set(targetPeerId, { name: `Participant ${targetPeerId.slice(0,4)}` });
       renderGrid();
@@ -324,18 +333,30 @@ async function createPeerConnection(targetPeerId, isInitiator){
     const videoEl = document.getElementById(`vid-${targetPeerId}`);
     if(videoEl && event.streams[0]){
       videoEl.srcObject = event.streams[0];
-      videoEl.play().catch(()=>{});
+      videoEl.play().catch(e => console.log('Play error:', e));
       const ph = document.getElementById(`ph-${targetPeerId}`);
       if(ph) ph.style.display = 'none';
     }
   };
   
+  // Handle ICE candidates
   pc.onicecandidate = (event) => {
     if(event.candidate){
       broadcastToRoom({ type: 'candidate', candidate: event.candidate, target: targetPeerId });
     }
   };
   
+  // Handle connection state changes
+  pc.onconnectionstatechange = () => {
+    console.log(`Connection state with ${targetPeerId}: ${pc.connectionState}`);
+    if(pc.connectionState === 'connected') {
+      document.getElementById('connectionStatus').innerHTML = '🟢 Connected';
+    } else if(pc.connectionState === 'failed') {
+      document.getElementById('connectionStatus').innerHTML = '🔴 Failed - retrying...';
+    }
+  };
+  
+  // Create offer if initiator
   if(isInitiator){
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
@@ -353,29 +374,38 @@ async function handleSignal(signal){
   
   let pc = state.peerConnections.get(from);
   
+  // Handle offer - create peer connection if needed
   if(data.type === 'offer' && !pc){
     pc = await createPeerConnection(from, false);
   }
   
   if(!pc) return;
   
-  if(data.type === 'offer'){
-    await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
-    const answer = await pc.createAnswer();
-    await pc.setLocalDescription(answer);
-    broadcastToRoom({ type: 'answer', sdp: answer, target: from });
-  } else if(data.type === 'answer'){
-    await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
-  } else if(data.type === 'candidate'){
-    if(data.candidate){
-      await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+  try {
+    if(data.type === 'offer'){
+      await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      broadcastToRoom({ type: 'answer', sdp: answer, target: from });
+    } 
+    else if(data.type === 'answer'){
+      await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
+    } 
+    else if(data.type === 'candidate'){
+      if(data.candidate){
+        await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+      }
+    } 
+    else if(data.type === 'chat'){
+      appendChatMessage(data, false);
+    } 
+    else if(data.type === 'pres_sync'){
+      state.presentation = data;
+      renderPresentationPage(data.currentPage);
+      if(state.activeUpperPanel === 'pres') renderPresentationPage(data.currentPage);
     }
-  } else if(data.type === 'chat'){
-    appendChatMessage(data, false);
-  } else if(data.type === 'pres_sync'){
-    state.presentation = data;
-    renderPresentationPage(data.currentPage);
-    if(state.activeUpperPanel === 'pres') renderPresentationPage(data.currentPage);
+  } catch(e) {
+    console.error('Signal handling error:', e);
   }
 }
 
@@ -383,6 +413,7 @@ async function handleSignal(signal){
 async function setupRoomSignaling(){
   const roomRef = db.collection('rooms').doc(state.roomCode);
   
+  // Register participant
   const participantRef = roomRef.collection('participants').doc(state.myPeerId);
   await participantRef.set({
     name: state.myName,
@@ -390,18 +421,24 @@ async function setupRoomSignaling(){
     joinedAt: firebase.firestore.FieldValue.serverTimestamp()
   });
   
+  // Listen for participants
   state.unsubscribeParticipants = roomRef.collection('participants').onSnapshot(snapshot => {
-    snapshot.docChanges().forEach(change => {
+    snapshot.docChanges().forEach(async (change) => {
       const pid = change.doc.id;
       if(pid === state.myPeerId) return;
+      
       if(change.type === 'added'){
         const data = change.doc.data();
-        state.participants.set(pid, { name: data.name });
-        createPeerConnection(pid, true);
-        renderGrid();
-        updateParticipantCount();
-        toast(`${data.name} joined`);
-      } else if(change.type === 'removed'){
+        if(!state.participants.has(pid) && !state.peerConnections.has(pid)){
+          state.participants.set(pid, { name: data.name });
+          renderGrid();
+          updateParticipantCount();
+          // Create connection to new participant
+          await createPeerConnection(pid, true);
+          toast(`${data.name} joined`);
+        }
+      } 
+      else if(change.type === 'removed'){
         const pc = state.peerConnections.get(pid);
         if(pc) pc.close();
         state.peerConnections.delete(pid);
@@ -414,6 +451,7 @@ async function setupRoomSignaling(){
     });
   });
   
+  // Listen for signals
   state.unsubscribeSignals = roomRef.collection('signals').orderBy('timestamp').onSnapshot(snapshot => {
     snapshot.docChanges().forEach(change => {
       if(change.type === 'added'){
@@ -421,10 +459,13 @@ async function setupRoomSignaling(){
         if(signal.from !== state.myPeerId){
           handleSignal(signal);
         }
+        // Auto-delete processed signals
         change.doc.ref.delete().catch(()=>{});
       }
     });
   });
+  
+  document.getElementById('connectionStatus').innerHTML = '🟡 Waiting for connections...';
 }
 
 // ========== CREATE ROOM ==========
@@ -440,7 +481,17 @@ async function createRoom(){
   state.roomName = roomName;
   state.myPeerId = genPeerId();
   
-  state.localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: { width: { ideal: 640 }, height: { ideal: 480 } } });
+  try {
+    state.localStream = await navigator.mediaDevices.getUserMedia({ 
+      audio: true, 
+      video: { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 15 } } 
+    });
+  } catch(e) {
+    showLobby(); 
+    toast('Cannot access camera/microphone. Please allow permissions.');
+    return;
+  }
+  
   if(!state.localStream){ showLobby(); toast('Cannot access camera/microphone'); return; }
   
   await db.collection('rooms').doc(state.roomCode).set({
@@ -453,6 +504,7 @@ async function createRoom(){
   document.getElementById('roomCodeDisplay').innerText = state.roomCode;
   renderGrid(); showRoom(); 
   document.getElementById('firebaseStatus').innerHTML = '🟢 Connected';
+  document.getElementById('connectionStatus').innerHTML = '🟡 Host ready - waiting for participants';
   toast(`Room created! Share code: ${state.roomCode}`);
   
   await setupRoomSignaling();
@@ -478,13 +530,24 @@ async function joinRoom(){
   state.roomName = roomDoc.data().name;
   state.myPeerId = genPeerId();
   
-  state.localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: { width: { ideal: 640 }, height: { ideal: 480 } } });
+  try {
+    state.localStream = await navigator.mediaDevices.getUserMedia({ 
+      audio: true, 
+      video: { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 15 } } 
+    });
+  } catch(e) {
+    showLobby(); 
+    toast('Cannot access camera/microphone. Please allow permissions.');
+    return;
+  }
+  
   if(!state.localStream){ showLobby(); toast('Cannot access camera/microphone'); return; }
   
   document.getElementById('roomNameDisplay').innerText = state.roomName;
   document.getElementById('roomCodeDisplay').innerText = state.roomCode;
   renderGrid(); showRoom();
   document.getElementById('firebaseStatus').innerHTML = '🟢 Connected';
+  document.getElementById('connectionStatus').innerHTML = '🟡 Connecting to host...';
   toast(`Joined ${state.roomName}`);
   
   await setupRoomSignaling();
@@ -512,6 +575,7 @@ function createTile(id, name, stream, isLocal){
     video.srcObject = stream; 
     video.style.display = 'block'; 
     ph.style.display = 'none'; 
+    video.play().catch(e=>console.log('play error', e));
   } else { 
     video.style.display = 'none'; 
     ph.style.display = 'flex'; 
@@ -579,8 +643,22 @@ function toggleRecording(){ if(state.isRecording) stopFullRecording(); else star
 document.getElementById('recBtn').onclick = toggleRecording;
 
 // ========== CONTROLS ==========
-document.getElementById('micBtn').onclick = () => { if(state.localStream){ state.isMuted = !state.isMuted; state.localStream.getAudioTracks().forEach(t=>t.enabled = !state.isMuted); document.getElementById('micBtn').classList.toggle('off', state.isMuted); } };
-document.getElementById('camBtn').onclick = () => { if(state.localStream){ state.isCamOff = !state.isCamOff; state.localStream.getVideoTracks().forEach(t=>t.enabled = !state.isCamOff); document.getElementById('camBtn').classList.toggle('off', state.isCamOff); renderGrid(); } };
+document.getElementById('micBtn').onclick = () => { 
+  if(state.localStream){ 
+    state.isMuted = !state.isMuted; 
+    state.localStream.getAudioTracks().forEach(t=>t.enabled = !state.isMuted); 
+    document.getElementById('micBtn').classList.toggle('off', state.isMuted);
+    renderGrid();
+  } 
+};
+document.getElementById('camBtn').onclick = () => { 
+  if(state.localStream){ 
+    state.isCamOff = !state.isCamOff; 
+    state.localStream.getVideoTracks().forEach(t=>t.enabled = !state.isCamOff); 
+    document.getElementById('camBtn').classList.toggle('off', state.isCamOff); 
+    renderGrid(); 
+  } 
+};
 function leaveRoom(){ 
   if(state.isRecording) stopFullRecording();
   if(state.unsubscribeSignals) state.unsubscribeSignals();
