@@ -3,8 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover" />
-<title>HamoudaSpace · Full Features | Working Video + Share + Recording</title>
-<!-- Firebase SDK -->
+<title>HamoudaSpace · Video Meetings</title>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 <style>
@@ -14,17 +13,13 @@
     --border-dim: #2a2f3e; --text-primary: #eef2ff; --text-secondary: #9ca3af;
     --accent: #3b82f6; --accent-hover: #2563eb; --danger: #ef4444; --success: #22c55e;
   }
-  body { 
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
-    background: var(--bg-dark); 
-    color: var(--text-primary); 
-    height: 100vh; 
-    overflow: hidden;
-  }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-dark); color: var(--text-primary); height: 100vh; overflow: hidden; }
   .hidden { display: none !important; }
   .btn { padding: 12px 24px; border-radius: 40px; font-weight: 600; border: none; cursor: pointer; font-size: 16px; }
   .btn-primary { background: var(--accent); color: white; }
   .btn-secondary { background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-dim); }
+
+  /* LOBBY */
   #view-lobby { display: flex; flex-direction: column; height: 100vh; overflow-y: auto; background: radial-gradient(circle at 20% 30%, #0f121c, #020408); }
   .lobby-header { padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; background: rgba(10,12,18,0.7); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border-dim); flex-wrap: wrap; gap: 10px; }
   .logo-area { display: flex; gap: 12px; align-items: center; }
@@ -39,6 +34,8 @@
   .card p { font-size: 12px; color: var(--text-secondary); margin-bottom: 16px; }
   .card button { width: 100%; padding: 10px; font-size: 14px; }
   .info-box { margin-top: 30px; padding: 16px; background: rgba(59,130,246,0.1); border-radius: 20px; font-size: 12px; }
+
+  /* ROOM */
   #view-room { display: none; flex-direction: column; height: 100vh; background: #05070c; }
   .room-header { background: rgba(8,10,16,0.95); padding: 8px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.06); flex-shrink: 0; flex-wrap: wrap; gap: 8px; }
   .room-info { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
@@ -49,6 +46,8 @@
   .status-badge.connecting { background: rgba(255,165,0,0.3); color: #ffa500; }
   .recording-indicator { background: var(--danger); padding: 4px 10px; border-radius: 30px; font-size: 10px; display: flex; align-items: center; gap: 6px; animation: pulseRed 1s infinite; }
   @keyframes pulseRed { 0%,100%{opacity:1}50%{opacity:0.5} }
+
+  /* UPPER PANEL */
   .upper-panel { background: rgba(16,20,28,0.96); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border-dim); height: 45%; min-height: 220px; display: flex; flex-direction: column; flex-shrink: 0; }
   .upper-panel.collapsed { display: none; }
   .panel-header { padding: 8px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.06); background: rgba(0,0,0,0.3); }
@@ -71,14 +70,18 @@
   .pres-progress-fill { width: 0%; height: 100%; background: var(--accent); border-radius: 2px; }
   .page-indicator { font-size: 10px; color: var(--text-secondary); min-width: 50px; text-align: center; }
   .upload-mini { background: var(--accent) !important; }
+
+  /* VIDEO GRID */
   .video-section { flex: 1; display: flex; flex-direction: column; overflow: hidden; padding: 8px; background: #03050a; }
   .video-grid { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); overflow-y: auto; padding: 4px; height: 100%; }
   .vtile { background: #11161f; border-radius: 16px; overflow: hidden; position: relative; aspect-ratio: 9/16; border: 1px solid rgba(255,255,255,0.08); }
-  .vtile video { width: 100%; height: 100%; object-fit: cover; }
+  .vtile video { width: 100%; height: 100%; object-fit: cover; display: none; }
   .vtile .ph { display: flex; align-items: center; justify-content: center; height: 100%; background: #0a0e16; }
   .avatar-big { width: 50px; height: 50px; background: var(--accent); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: bold; }
   .vtile-bar { position: absolute; bottom: 8px; left: 8px; right: 8px; display: flex; justify-content: space-between; }
   .vtile-name { background: rgba(0,0,0,0.7); backdrop-filter: blur(6px); padding: 3px 8px; border-radius: 30px; font-size: 9px; }
+
+  /* CONTROLS */
   .bottom-controls { background: rgba(8,10,16,0.98); backdrop-filter: blur(20px); border-top: 1px solid rgba(255,255,255,0.08); padding: 10px 12px; display: flex; justify-content: center; gap: 12px; flex-shrink: 0; flex-wrap: wrap; }
   .ctrl-btn { width: 52px; height: 52px; border-radius: 50%; background: rgba(255,255,255,0.1); border: none; font-size: 22px; cursor: pointer; }
   .ctrl-btn:active { transform: scale(0.95); }
@@ -88,13 +91,15 @@
   .ctrl-btn.secondary { background: rgba(59,130,246,0.2); }
   .divider { width: 1px; height: 30px; background: rgba(255,255,255,0.15); margin: 0 4px; }
   @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.6} }
-  .toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); background: #1e1f2c; padding: 8px 18px; border-radius: 40px; z-index: 400; font-size: 12px; white-space: nowrap; }
+
+  /* MISC */
+  .toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); background: #1e1f2c; padding: 8px 18px; border-radius: 40px; z-index: 400; font-size: 12px; white-space: nowrap; border: 1px solid var(--border-dim); }
   .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: flex; align-items: center; justify-content: center; z-index: 500; flex-direction: column; gap: 16px; }
   .spinner { width: 40px; height: 40px; border: 3px solid #2a3048; border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
   .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; z-index: 600; padding: 20px; }
   .modal-card { background: var(--bg-card); border-radius: 28px; padding: 24px; width: 90%; max-width: 340px; }
-  .modal-card input { width: 100%; margin-bottom: 12px; background: var(--bg-soft); border: 1px solid var(--border-dim); border-radius: 14px; padding: 12px; color: white; font-size: 16px; }
+  .modal-card input { width: 100%; margin-bottom: 12px; background: var(--bg-soft); border: 1px solid var(--border-dim); border-radius: 14px; padding: 12px; color: white; font-size: 16px; outline: none; }
   .badge { background: var(--danger); border-radius: 20px; padding: 2px 6px; font-size: 9px; margin-left: 6px; }
   @media (max-width: 480px) {
     .ctrl-btn { width: 44px; height: 44px; font-size: 18px; }
@@ -105,57 +110,117 @@
 </head>
 <body>
 
+<!-- LOBBY -->
 <div id="view-lobby">
   <div class="lobby-header">
-    <div class="logo-area"><div class="logo-icon">🎥</div><div><strong>HamoudaSpace</strong><div style="font-size:10px;">Full Features · Working Video</div></div></div>
+    <div class="logo-area">
+      <div class="logo-icon">🎥</div>
+      <div><strong>HamoudaSpace</strong><div style="font-size:10px;">Video · Share · Record</div></div>
+    </div>
     <div class="lobby-actions">
       <button class="btn btn-secondary" id="showJoinBtn">🔗 Join</button>
       <button class="btn btn-primary" id="showCreateBtn">✨ New Meeting</button>
     </div>
   </div>
   <div class="lobby-main">
-    <div class="hero"><h1>Video Meetings That Work</h1><p>Share presentations · Record meetings · Chat</p></div>
+    <div class="hero"><h1>Video Meetings That Work</h1><p>Share presentations · Record meetings · Live chat</p></div>
     <div class="action-cards">
-      <div class="card"><h3>Start a Meeting</h3><button class="btn btn-primary" id="createCardBtn">Create Room</button></div>
-      <div class="card"><h3>Join a Meeting</h3><button class="btn btn-secondary" id="joinCardBtn">Enter Code</button></div>
+      <div class="card"><h3>Start a Meeting</h3><p>Create a new room and invite others</p><button class="btn btn-primary" id="createCardBtn">Create Room</button></div>
+      <div class="card"><h3>Join a Meeting</h3><p>Enter a 6-digit code to join</p><button class="btn btn-secondary" id="joinCardBtn">Enter Code</button></div>
     </div>
-    <div class="info-box">
-      <p>🔵 <strong>All Features Working!</strong> Allow camera/microphone access. Share the 6-digit code with others.</p>
-    </div>
+    <div class="info-box"><p>🔵 Allow camera/microphone when prompted. Share the 6-digit code with participants.</p></div>
   </div>
 </div>
 
+<!-- ROOM -->
 <div id="view-room">
   <div class="room-header">
-    <div class="room-info"><span class="room-title" id="roomNameDisplay">Meeting</span><span class="room-code" id="roomCodeDisplay" onclick="copyRoomCode()">XXXXXX</span></div>
-    <div class="room-info"><span id="participantCount">👥 1</span><span id="connectionStatus" class="status-badge connecting">🟡 Connecting...</span></div>
-    <div id="recIndicator" class="recording-indicator hidden">🔴 REC</div>
+    <div class="room-info">
+      <span class="room-title" id="roomNameDisplay">Meeting</span>
+      <span class="room-code" id="roomCodeDisplay" onclick="copyRoomCode()">XXXXXX</span>
+    </div>
+    <div class="room-info">
+      <span id="participantCount">👥 1</span>
+      <span id="connectionStatus" class="status-badge connecting">🟡 Waiting...</span>
+      <div id="recIndicator" class="recording-indicator hidden">🔴 REC</div>
+    </div>
   </div>
+
   <div id="upperPanel" class="upper-panel collapsed">
-    <div class="panel-header"><span class="panel-title" id="upperPanelTitle">Chat</span><button class="close-upper-btn" id="closeUpperBtn">✕</button></div>
-    <div id="chatView" class="chat-container hidden"><div class="chat-messages" id="chatMessagesList"></div><div class="chat-input-row"><input type="text" id="chatInputField" placeholder="Type a message..."><button class="send-btn" id="sendChatUpperBtn">➤</button></div></div>
-    <div id="presView" class="pres-container hidden"><div class="pres-viewer" id="presViewer"><div style="color:#aaa; text-align:center; padding:20px;">No presentation</div></div><div class="pres-controls"><button id="presPrevBtn" disabled>◀</button><button id="presNextBtn" disabled>▶</button><div class="pres-progress"><div class="pres-progress-fill" id="presProgressFill"></div></div><span class="page-indicator" id="presPageInfo">0/0</span><button id="presUploadBtn" class="upload-mini">📤 Upload</button><input type="file" id="presFileInput" accept=".pdf,.jpg,.jpeg,.png,.gif" style="display:none"><span id="presHostBadge" style="background:var(--accent); padding:2px 8px; border-radius:20px; font-size:9px;">👑 Host</span></div></div>
+    <div class="panel-header">
+      <span class="panel-title" id="upperPanelTitle">Chat</span>
+      <button class="close-upper-btn" id="closeUpperBtn">✕</button>
+    </div>
+    <div id="chatView" class="chat-container hidden">
+      <div class="chat-messages" id="chatMessagesList"></div>
+      <div class="chat-input-row">
+        <input type="text" id="chatInputField" placeholder="Type a message...">
+        <button class="send-btn" id="sendChatBtn">➤</button>
+      </div>
+    </div>
+    <div id="presView" class="pres-container hidden">
+      <div class="pres-viewer" id="presViewer"><div style="color:#aaa;text-align:center;padding:20px;">No presentation loaded</div></div>
+      <div class="pres-controls">
+        <button id="presPrevBtn" disabled>◀</button>
+        <button id="presNextBtn" disabled>▶</button>
+        <div class="pres-progress"><div class="pres-progress-fill" id="presProgressFill"></div></div>
+        <span class="page-indicator" id="presPageInfo">0/0</span>
+        <button id="presUploadBtn" class="upload-mini">📤 Upload</button>
+        <input type="file" id="presFileInput" accept=".jpg,.jpeg,.png,.gif" style="display:none">
+        <span id="presHostBadge" style="background:var(--accent);padding:2px 8px;border-radius:20px;font-size:9px;display:none;">👑 Host</span>
+      </div>
+    </div>
   </div>
-  <div class="video-section"><div class="video-grid" id="videoGridContainer"></div></div>
+
+  <div class="video-section">
+    <div class="video-grid" id="videoGridContainer"></div>
+  </div>
+
   <div class="bottom-controls">
-    <button class="ctrl-btn" id="micBtn">🎤</button>
-    <button class="ctrl-btn" id="camBtn">📷</button>
-    <button class="ctrl-btn" id="recBtn">⏺</button>
+    <button class="ctrl-btn" id="micBtn" title="Mute/Unmute">🎤</button>
+    <button class="ctrl-btn" id="camBtn" title="Camera On/Off">📷</button>
+    <button class="ctrl-btn" id="recBtn" title="Record">⏺</button>
     <div class="divider"></div>
-    <button class="ctrl-btn secondary" id="chatBottomBtn">💬 <span id="chatBadge" class="badge" style="display:none;">0</span></button>
-    <button class="ctrl-btn secondary" id="presBottomBtn">📽️</button>
-    <button class="ctrl-btn secondary" id="shareBtn">🔗</button>
+    <button class="ctrl-btn secondary" id="chatBottomBtn" title="Chat">💬<span id="chatBadge" class="badge" style="display:none">0</span></button>
+    <button class="ctrl-btn secondary" id="presBottomBtn" title="Presentation">📽️</button>
+    <button class="ctrl-btn secondary" id="shareBtn" title="Share Link">🔗</button>
     <div class="divider"></div>
-    <button class="ctrl-btn leave" id="leaveRoomBtn">🚪</button>
+    <button class="ctrl-btn leave" id="leaveRoomBtn" title="Leave">🚪</button>
   </div>
 </div>
 
-<div id="createModal" class="modal-backdrop hidden"><div class="modal-card"><div style="font-size:20px; margin-bottom:16px;">New Meeting</div><input id="createRoomName" placeholder="Meeting name"><input id="createUserName" placeholder="Your name"><div style="display:flex; justify-content:flex-end; gap:12px; margin-top:20px;"><button id="cancelCreateModal" class="btn btn-secondary">Cancel</button><button id="confirmCreateModal" class="btn btn-primary">Create</button></div></div></div>
-<div id="joinModal" class="modal-backdrop hidden"><div class="modal-card"><div style="font-size:20px; margin-bottom:16px;">Join Meeting</div><input id="joinRoomCode" maxlength="6" placeholder="6-letter code" style="text-transform:uppercase"><input id="joinUserName" placeholder="Your name"><div style="display:flex; justify-content:flex-end; gap:12px; margin-top:20px;"><button id="cancelJoinModal" class="btn btn-secondary">Cancel</button><button id="confirmJoinModal" class="btn btn-primary">Join</button></div></div></div>
-<div id="loadingOverlay" class="overlay hidden"><div class="spinner"></div><p>Starting camera...</p></div>
+<!-- MODALS -->
+<div id="createModal" class="modal-backdrop hidden">
+  <div class="modal-card">
+    <div style="font-size:20px;font-weight:700;margin-bottom:16px;">New Meeting</div>
+    <input id="createRoomName" placeholder="Meeting name" autocomplete="off">
+    <input id="createUserName" placeholder="Your name" autocomplete="off">
+    <div style="display:flex;justify-content:flex-end;gap:12px;margin-top:8px;">
+      <button id="cancelCreateModal" class="btn btn-secondary">Cancel</button>
+      <button id="confirmCreateModal" class="btn btn-primary">Create</button>
+    </div>
+  </div>
+</div>
+
+<div id="joinModal" class="modal-backdrop hidden">
+  <div class="modal-card">
+    <div style="font-size:20px;font-weight:700;margin-bottom:16px;">Join Meeting</div>
+    <input id="joinRoomCode" maxlength="6" placeholder="6-letter code" style="text-transform:uppercase" autocomplete="off">
+    <input id="joinUserName" placeholder="Your name" autocomplete="off">
+    <div style="display:flex;justify-content:flex-end;gap:12px;margin-top:8px;">
+      <button id="cancelJoinModal" class="btn btn-secondary">Cancel</button>
+      <button id="confirmJoinModal" class="btn btn-primary">Join</button>
+    </div>
+  </div>
+</div>
+
+<div id="loadingOverlay" class="overlay hidden">
+  <div class="spinner"></div>
+  <p id="loadingText">Starting camera...</p>
+</div>
 
 <script>
-// Firebase Config
+// ─── FIREBASE ───────────────────────────────────────────────────────────────
 const firebaseConfig = {
   apiKey: "AIzaSyCra3IgsAaQlf3INjRn04DdX3KWwb8zdlo",
   authDomain: "hamoudaspace-meetingapp.firebaseapp.com",
@@ -164,13 +229,13 @@ const firebaseConfig = {
   messagingSenderId: "9931981197",
   appId: "1:9931981197:web:716e61223950d3d39c7dc4"
 };
-
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-// State
+// ─── STATE ───────────────────────────────────────────────────────────────────
 let localStream = null;
-let peerConnections = new Map();
+let peerConnections = new Map();   // peerId → RTCPeerConnection
+let pendingCandidates = new Map(); // peerId → [RTCIceCandidate, ...]
 let isHost = false;
 let roomCode = '';
 let myName = '';
@@ -181,640 +246,726 @@ let isCamOff = false;
 let isRecording = false;
 let mediaRecorder = null;
 let recordedChunks = [];
-let participants = new Map();
+let participants = new Map();      // peerId → { name }
 let unsubscribeParticipants = null;
 let unsubscribeSignals = null;
 let chatUnread = 0;
 let activeUpperPanel = null;
 let presentation = { pages: [], currentPage: 0 };
+let processedSignalIds = new Set(); // avoid duplicate processing
 
-// ICE Servers
+// ─── ICE SERVERS ─────────────────────────────────────────────────────────────
 const ICE_SERVERS = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
     { urls: 'stun:stun2.l.google.com:19302' },
-    { urls: 'stun:stun3.l.google.com:19302' },
-    { urls: 'stun:stun4.l.google.com:19302' },
-    { urls: 'stun:stun.stunprotocol.org:3478' },
-    { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
-    { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }
+    { urls: 'turn:openrelay.metered.ca:80',  username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
   ]
 };
 
-function genCode() { return Math.random().toString(36).slice(2,8).toUpperCase(); }
-function genPeerId() { return 'p_' + Math.random().toString(36).slice(2,10); }
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+const genCode   = () => Math.random().toString(36).slice(2, 8).toUpperCase();
+const genPeerId = () => 'p_' + Math.random().toString(36).slice(2, 10) + '_' + Date.now();
 
-function toast(msg) { 
-  let t = document.querySelector('.toast'); 
-  if(t) t.remove(); 
-  t = document.createElement('div'); 
-  t.className = 'toast'; 
-  t.innerText = msg; 
-  document.body.appendChild(t); 
-  setTimeout(() => t.remove(), 3000); 
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"]/g, m =>
+    ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[m]));
 }
 
-function showOverlay(msg) { 
-  let ov = document.getElementById('loadingOverlay'); 
-  ov.classList.remove('hidden'); 
-  ov.querySelector('p').innerText = msg; 
+function toast(msg) {
+  let t = document.querySelector('.toast');
+  if (t) t.remove();
+  t = document.createElement('div');
+  t.className = 'toast';
+  t.innerText = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
 }
-function hideOverlay() { document.getElementById('loadingOverlay').classList.add('hidden'); }
 
-function showLobby() { 
-  document.getElementById('view-lobby').style.display = 'flex'; 
-  document.getElementById('view-room').style.display = 'none'; 
-  hideOverlay(); 
-  closeAllModals(); 
-  if(localStream) localStream.getTracks().forEach(t => t.stop());
-  if(unsubscribeParticipants) unsubscribeParticipants();
-  if(unsubscribeSignals) unsubscribeSignals();
+function setStatus(text, type) {
+  const el = document.getElementById('connectionStatus');
+  el.className = 'status-badge ' + (type || '');
+  el.innerHTML = text;
+}
+
+function showOverlay(msg) {
+  document.getElementById('loadingOverlay').classList.remove('hidden');
+  document.getElementById('loadingText').innerText = msg;
+}
+function hideOverlay() {
+  document.getElementById('loadingOverlay').classList.add('hidden');
+}
+
+function updateParticipantCount() {
+  document.getElementById('participantCount').innerHTML = `👥 ${participants.size + 1}`;
+}
+
+// ─── VIEW SWITCHING ──────────────────────────────────────────────────────────
+function showLobby() {
+  if (isRecording) stopRecording();
+  if (unsubscribeParticipants) { unsubscribeParticipants(); unsubscribeParticipants = null; }
+  if (unsubscribeSignals)      { unsubscribeSignals();      unsubscribeSignals = null; }
+  if (roomCode && myPeerId) {
+    db.collection('rooms').doc(roomCode).collection('participants').doc(myPeerId).delete().catch(() => {});
+  }
   peerConnections.forEach(pc => pc.close());
   peerConnections.clear();
+  pendingCandidates.clear();
+  processedSignalIds.clear();
   participants.clear();
-  isRecording = false;
-  document.getElementById('recBtn')?.classList.remove('recording');
-  document.getElementById('recIndicator')?.classList.add('hidden');
+  if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
+  roomCode = myPeerId = myName = roomName = '';
+  isHost = isMuted = isCamOff = false;
+  chatUnread = 0; activeUpperPanel = null;
+  presentation = { pages: [], currentPage: 0 };
+  document.getElementById('chatMessagesList').innerHTML = '';
+  document.getElementById('videoGridContainer').innerHTML = '';
+  document.getElementById('view-lobby').style.display = 'flex';
+  document.getElementById('view-room').style.display = 'none';
+  closeAllModals();
+  hideOverlay();
 }
 
-function showRoom() { 
-  document.getElementById('view-lobby').style.display = 'none'; 
-  document.getElementById('view-room').style.display = 'flex'; 
-  hideOverlay(); 
+function showRoom() {
+  document.getElementById('view-lobby').style.display = 'none';
+  document.getElementById('view-room').style.display = 'flex';
+  hideOverlay();
 }
 
-function closeAllModals() { 
-  document.getElementById('createModal').classList.add('hidden'); 
-  document.getElementById('joinModal').classList.add('hidden'); 
+function closeAllModals() {
+  document.getElementById('createModal').classList.add('hidden');
+  document.getElementById('joinModal').classList.add('hidden');
 }
 
-function escapeHtml(s) { 
-  return String(s).replace(/[&<>]/g, function(m) { 
-    if(m === '&') return '&amp;'; 
-    if(m === '<') return '&lt;'; 
-    if(m === '>') return '&gt;'; 
-    return m; 
-  }); 
-}
-
-function updateParticipantCount() { 
-  document.getElementById('participantCount').innerHTML = `👥 ${participants.size + 1}`; 
-}
-
-// ========== UI PANELS ==========
+// ─── PANELS ──────────────────────────────────────────────────────────────────
 const upperPanel = document.getElementById('upperPanel');
-const chatView = document.getElementById('chatView');
-const presView = document.getElementById('presView');
+const chatView   = document.getElementById('chatView');
+const presView   = document.getElementById('presView');
 
 function closeUpperPanel() { upperPanel.classList.add('collapsed'); activeUpperPanel = null; }
-function openChatPanel() { 
-  if(activeUpperPanel === 'chat') { closeUpperPanel(); return; } 
-  upperPanel.classList.remove('collapsed'); 
-  chatView.classList.remove('hidden'); 
-  presView.classList.add('hidden'); 
-  activeUpperPanel = 'chat'; 
-  chatUnread = 0; 
-  document.getElementById('chatBadge').style.display = 'none'; 
-  setTimeout(() => document.getElementById('chatInputField')?.focus(), 100); 
-}
-function openPresPanel() { 
-  if(activeUpperPanel === 'pres') { closeUpperPanel(); return; } 
-  upperPanel.classList.remove('collapsed'); 
-  presView.classList.remove('hidden'); 
-  chatView.classList.add('hidden'); 
-  activeUpperPanel = 'pres'; 
-  if(presentation.pages.length) renderPresentationPage(presentation.currentPage); 
+
+function openChatPanel() {
+  if (activeUpperPanel === 'chat') { closeUpperPanel(); return; }
+  upperPanel.classList.remove('collapsed');
+  chatView.classList.remove('hidden');
+  presView.classList.add('hidden');
+  document.getElementById('upperPanelTitle').innerText = 'Chat';
+  activeUpperPanel = 'chat';
+  chatUnread = 0;
+  document.getElementById('chatBadge').style.display = 'none';
+  setTimeout(() => document.getElementById('chatInputField')?.focus(), 100);
 }
 
-document.getElementById('chatBottomBtn').onclick = openChatPanel;
-document.getElementById('presBottomBtn').onclick = openPresPanel;
-document.getElementById('closeUpperBtn').onclick = closeUpperPanel;
-document.getElementById('shareBtn').onclick = () => shareMeetingLink();
+function openPresPanel() {
+  if (activeUpperPanel === 'pres') { closeUpperPanel(); return; }
+  upperPanel.classList.remove('collapsed');
+  presView.classList.remove('hidden');
+  chatView.classList.add('hidden');
+  document.getElementById('upperPanelTitle').innerText = 'Presentation';
+  activeUpperPanel = 'pres';
+  if (presentation.pages.length) renderPresentationPage(presentation.currentPage);
+}
 
-// ========== CHAT ==========
+document.getElementById('chatBottomBtn').onclick  = openChatPanel;
+document.getElementById('presBottomBtn').onclick  = openPresPanel;
+document.getElementById('closeUpperBtn').onclick  = closeUpperPanel;
+document.getElementById('shareBtn').onclick       = shareMeetingLink;
+
+// ─── CHAT ─────────────────────────────────────────────────────────────────────
 function appendChatMessage(msg, isSelf) {
   const container = document.getElementById('chatMessagesList');
-  const div = document.createElement('div'); 
-  div.className = `chat-bubble ${isSelf ? 'me' : ''}`;
+  const div = document.createElement('div');
+  div.className = 'chat-bubble' + (isSelf ? ' me' : '');
   const time = new Date(msg.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   div.innerHTML = `<div class="chat-meta">${isSelf ? 'You' : escapeHtml(msg.name)} · ${time}</div><div>${escapeHtml(msg.text)}</div>`;
-  container.appendChild(div); 
+  container.appendChild(div);
   container.scrollTop = container.scrollHeight;
-  if(!isSelf && (activeUpperPanel !== 'chat' || upperPanel.classList.contains('collapsed'))) { 
-    chatUnread++; 
-    document.getElementById('chatBadge').innerText = chatUnread > 9 ? '9+' : chatUnread; 
-    document.getElementById('chatBadge').style.display = 'inline'; 
+  if (!isSelf && (activeUpperPanel !== 'chat' || upperPanel.classList.contains('collapsed'))) {
+    chatUnread++;
+    const badge = document.getElementById('chatBadge');
+    badge.innerText = chatUnread > 9 ? '9+' : chatUnread;
+    badge.style.display = 'inline';
   }
 }
 
 function sendChatMessage() {
-  const input = document.getElementById('chatInputField'); 
-  const text = input.value.trim(); 
-  if(!text) return;
-  input.value = ''; 
-  const msgObj = { type: 'chat', name: myName, text, ts: Date.now() };
-  appendChatMessage(msgObj, true);
-  sendSignal(msgObj);
+  const input = document.getElementById('chatInputField');
+  const text  = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  const msg = { type: 'chat', name: myName, text, ts: Date.now() };
+  appendChatMessage(msg, true);
+  broadcastData(msg);
 }
 
-document.getElementById('sendChatUpperBtn').onclick = sendChatMessage;
-document.getElementById('chatInputField').addEventListener('keypress', e => { if(e.key === 'Enter') sendChatMessage(); });
+document.getElementById('sendChatBtn').onclick = sendChatMessage;
+document.getElementById('chatInputField').addEventListener('keypress', e => { if (e.key === 'Enter') sendChatMessage(); });
 
-// ========== PRESENTATION ==========
+// ─── PRESENTATION ─────────────────────────────────────────────────────────────
 function renderPresentationPage(pageNum) {
   const viewer = document.getElementById('presViewer');
-  const pages = presentation.pages;
-  if(!pages.length) { viewer.innerHTML = '<div style="color:#aaa; text-align:center; padding:20px;">No slides</div>'; return; }
-  const page = pages[pageNum]; 
+  const { pages } = presentation;
+  if (!pages.length) { viewer.innerHTML = '<div style="color:#aaa;text-align:center;padding:20px;">No slides</div>'; return; }
   viewer.innerHTML = '';
-  if(page.type === 'image') { const img = document.createElement('img'); img.src = page.url; viewer.appendChild(img); }
-  document.getElementById('presPageInfo').innerText = `${pageNum+1}/${pages.length}`;
-  const fill = document.getElementById('presProgressFill'); 
-  if(fill) fill.style.width = `${((pageNum+1)/pages.length)*100}%`;
-  document.getElementById('presPrevBtn').disabled = (pageNum === 0);
-  document.getElementById('presNextBtn').disabled = (pageNum === pages.length-1);
-}
-
-function broadcastPresentation() {
-  sendSignal({ type: 'pres_sync', pages: presentation.pages, currentPage: presentation.currentPage });
+  const page = pages[pageNum];
+  if (page.type === 'image') { const img = document.createElement('img'); img.src = page.url; viewer.appendChild(img); }
+  document.getElementById('presPageInfo').innerText = `${pageNum + 1}/${pages.length}`;
+  document.getElementById('presProgressFill').style.width = `${((pageNum + 1) / pages.length) * 100}%`;
+  document.getElementById('presPrevBtn').disabled = pageNum === 0;
+  document.getElementById('presNextBtn').disabled = pageNum === pages.length - 1;
 }
 
 async function onFileUpload(e) {
-  const file = e.target.files[0]; 
-  if(!file) return;
-  if(!isHost) { toast('Only host can share'); return; }
-  if(file.type.startsWith('image/')) {
-    const url = URL.createObjectURL(file); 
-    presentation = { pages: [{ type: 'image', url }], currentPage: 0 };
-    renderPresentationPage(0);
-    broadcastPresentation();
-    toast(`Loaded presentation`);
-    if(activeUpperPanel !== 'pres') openPresPanel();
-  } else {
-    toast('Please upload images only');
-  }
+  const file = e.target.files[0];
+  if (!file) return;
+  if (!isHost) { toast('Only host can share slides'); return; }
+  if (!file.type.startsWith('image/')) { toast('Please upload image files'); return; }
+  const url = URL.createObjectURL(file);
+  presentation = { pages: [{ type: 'image', url }], currentPage: 0 };
+  renderPresentationPage(0);
+  broadcastData({ type: 'pres_sync', pages: presentation.pages, currentPage: 0 });
+  toast('Presentation loaded');
+  if (activeUpperPanel !== 'pres') openPresPanel();
   e.target.value = '';
 }
 
 function changeSlide(delta) {
-  if(!isHost) { toast('Only host controls slides'); return; }
+  if (!isHost) { toast('Only host controls slides'); return; }
   const newPage = presentation.currentPage + delta;
-  if(newPage >= 0 && newPage < presentation.pages.length) {
+  if (newPage >= 0 && newPage < presentation.pages.length) {
     presentation.currentPage = newPage;
     renderPresentationPage(newPage);
-    broadcastPresentation();
+    broadcastData({ type: 'pres_sync', pages: presentation.pages, currentPage: newPage });
   }
 }
 
-document.getElementById('presUploadBtn').onclick = () => { 
-  if(isHost) document.getElementById('presFileInput').click(); 
-  else toast('Only host can upload'); 
-};
+document.getElementById('presUploadBtn').onclick = () => isHost ? document.getElementById('presFileInput').click() : toast('Only host can upload');
 document.getElementById('presFileInput').addEventListener('change', onFileUpload);
 document.getElementById('presPrevBtn').onclick = () => changeSlide(-1);
 document.getElementById('presNextBtn').onclick = () => changeSlide(1);
 
-// ========== RECORDING ==========
+// ─── RECORDING ───────────────────────────────────────────────────────────────
 async function startRecording() {
-  if(isRecording) return;
-  toast('Recording started...');
+  if (isRecording) return;
   const canvas = document.createElement('canvas');
   canvas.width = 640; canvas.height = 480;
   const ctx = canvas.getContext('2d');
-  
+
   function drawFrame() {
-    if(!isRecording) return;
-    ctx.fillStyle = '#05070c'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-    const tiles = document.querySelectorAll('.vtile');
-    const cols = Math.min(Math.ceil(Math.sqrt(tiles.length)), 2);
-    const rows = Math.ceil(tiles.length / cols);
-    const tileW = canvas.width / cols;
-    const tileH = canvas.height / rows;
-    tiles.forEach((tile, idx) => {
-      const col = idx % cols; const row = Math.floor(idx / cols);
-      const video = tile.querySelector('video');
-      if(video && video.srcObject && video.readyState >= 2) {
-        try { ctx.drawImage(video, col * tileW, row * tileH, tileW, tileH); } catch(e) {}
+    if (!isRecording) return;
+    ctx.fillStyle = '#05070c';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const tiles = document.querySelectorAll('.vtile video');
+    const cols = Math.min(Math.ceil(Math.sqrt(tiles.length + 1)), 2);
+    const rows = Math.ceil((tiles.length) / cols);
+    const w = canvas.width / cols, h = canvas.height / rows;
+    tiles.forEach((vid, i) => {
+      if (vid.readyState >= 2) {
+        try { ctx.drawImage(vid, (i % cols) * w, Math.floor(i / cols) * h, w, h); } catch {}
       }
     });
     requestAnimationFrame(drawFrame);
   }
+
+  isRecording = true;
   drawFrame();
-  
+
   const canvasStream = canvas.captureStream(15);
-  const audioContext = new AudioContext();
-  const destination = audioContext.createMediaStreamDestination();
-  if(localStream && localStream.getAudioTracks().length) {
-    const source = audioContext.createMediaStreamSource(localStream);
-    source.connect(destination);
-  }
-  const combinedStream = new MediaStream([...canvasStream.getVideoTracks(), ...destination.stream.getAudioTracks()]);
-  const recorder = new MediaRecorder(combinedStream, { mimeType: 'video/webm' });
+  const audioCtx = new AudioContext();
+  const dest = audioCtx.createMediaStreamDestination();
+  if (localStream?.getAudioTracks().length) audioCtx.createMediaStreamSource(localStream).connect(dest);
+
+  const combined = new MediaStream([...canvasStream.getVideoTracks(), ...dest.stream.getAudioTracks()]);
+  const recorder = new MediaRecorder(combined, { mimeType: 'video/webm' });
   recordedChunks = [];
-  recorder.ondataavailable = (e) => { if(e.data.size) recordedChunks.push(e.data); };
+  recorder.ondataavailable = e => { if (e.data.size) recordedChunks.push(e.data); };
   recorder.onstop = () => {
     const blob = new Blob(recordedChunks, { type: 'video/webm' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); 
-    a.href = url; 
-    a.download = `meeting-${roomCode}.webm`; 
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `meeting-${roomCode}.webm`;
     a.click();
-    URL.revokeObjectURL(url);
     toast('Recording saved!');
-    audioContext.close();
+    audioCtx.close();
   };
   recorder.start(1000);
   mediaRecorder = recorder;
-  isRecording = true;
   document.getElementById('recBtn').classList.add('recording');
   document.getElementById('recIndicator').classList.remove('hidden');
+  toast('Recording started');
 }
 
-function stopRecording() { 
-  if(isRecording && mediaRecorder && mediaRecorder.state !== 'inactive') { 
-    mediaRecorder.stop(); 
-  } 
-  isRecording = false; 
-  document.getElementById('recBtn').classList.remove('recording'); 
+function stopRecording() {
+  isRecording = false;
+  if (mediaRecorder?.state !== 'inactive') mediaRecorder?.stop();
+  document.getElementById('recBtn').classList.remove('recording');
   document.getElementById('recIndicator').classList.add('hidden');
 }
 
-function toggleRecording() { 
-  if(isRecording) stopRecording(); 
-  else startRecording(); 
-}
+document.getElementById('recBtn').onclick = () => isRecording ? stopRecording() : startRecording();
 
-document.getElementById('recBtn').onclick = toggleRecording;
-
-// ========== FIREBASE SIGNALING ==========
-async function sendSignal(data) {
-  if(!roomCode) return;
+// ─── FIREBASE SIGNALING ───────────────────────────────────────────────────────
+// FIX: Signals are written to a dedicated subcollection per target peer.
+// This avoids all peers receiving every signal — each peer only reads its own mailbox.
+async function sendSignal(targetPeerId, data) {
+  if (!roomCode) return;
   try {
-    await db.collection('rooms').doc(roomCode).collection('signals').add({
-      from: myPeerId,
-      data: data,
-      timestamp: firebase.firestore.FieldValue.serverTimestamp()
-    });
-  } catch(e) { console.error('Send signal error:', e); }
+    await db.collection('rooms').doc(roomCode)
+      .collection('signals').add({
+        from:      myPeerId,
+        to:        targetPeerId,
+        data:      data,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+      });
+  } catch (e) { console.error('sendSignal error:', e); }
 }
 
-// ========== WEBRTC PEER CONNECTION ==========
-async function createPeerConnection(targetPeerId, isInitiator) {
-  console.log(`Creating connection with ${targetPeerId}, initiator: ${isInitiator}`);
-  
+// Broadcast non-WebRTC data (chat, pres) via all open data channels or Firestore
+function broadcastData(msg) {
+  // Use Firestore signals with to='*' for broadcast messages
+  if (!roomCode) return;
+  db.collection('rooms').doc(roomCode).collection('signals').add({
+    from: myPeerId, to: '*', data: msg,
+    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+  }).catch(() => {});
+}
+
+// ─── WEBRTC ──────────────────────────────────────────────────────────────────
+// FIX: Use polite/impolite peer pattern to resolve offer collisions.
+// The peer with the lexicographically smaller peerId is "polite" (will rollback on collision).
+// Only ONE side initiates: the peer who JOINED sees the existing participant and creates the offer.
+
+async function getOrCreatePeerConnection(remotePeerId) {
+  if (peerConnections.has(remotePeerId)) return peerConnections.get(remotePeerId);
+
+  console.log(`[WebRTC] Creating PC for ${remotePeerId}`);
   const pc = new RTCPeerConnection(ICE_SERVERS);
-  peerConnections.set(targetPeerId, pc);
-  
-  // Add local tracks
-  if(localStream) {
+  peerConnections.set(remotePeerId, pc);
+  pendingCandidates.set(remotePeerId, []);
+
+  // Add all local tracks
+  if (localStream) {
     localStream.getTracks().forEach(track => {
+      console.log(`[WebRTC] Adding ${track.kind} track to PC for ${remotePeerId}`);
       pc.addTrack(track, localStream);
     });
   }
-  
-  // Handle incoming remote tracks
+
+  // ── ontrack: remote stream arrived ──
+  // FIX: Do NOT call renderGrid() here — that destroys existing video elements.
+  // Instead, wire the stream directly to the existing (or newly created) video element.
   pc.ontrack = (event) => {
-    console.log(`Received track from ${targetPeerId}, kind: ${event.track.kind}`);
-    document.getElementById('connectionStatus').className = 'status-badge connected';
-    document.getElementById('connectionStatus').innerHTML = '🟢 Connected';
-    
-    let videoEl = document.getElementById(`vid-${targetPeerId}`);
-    if(!videoEl) {
-      renderGrid();
-      videoEl = document.getElementById(`vid-${targetPeerId}`);
+    console.log(`[WebRTC] ontrack from ${remotePeerId}: ${event.track.kind}, streams: ${event.streams.length}`);
+    setStatus('🟢 Connected', 'connected');
+
+    // Ensure the tile exists in the DOM
+    if (!document.getElementById(`tile-${remotePeerId}`)) {
+      const name = participants.get(remotePeerId)?.name || remotePeerId;
+      addRemoteTile(remotePeerId, name);
     }
-    
-    if(videoEl && event.streams[0]) {
+
+    const videoEl = document.getElementById(`vid-${remotePeerId}`);
+    if (!videoEl) return;
+
+    if (event.streams && event.streams[0]) {
+      // FIX: Attach the MediaStream directly — never recreate the element
       videoEl.srcObject = event.streams[0];
-      videoEl.setAttribute('playsinline', 'true');
-      videoEl.play().catch(e => console.log('Play error:', e));
-      
-      const ph = document.getElementById(`ph-${targetPeerId}`);
-      if(ph) ph.style.display = 'none';
-      if(videoEl) videoEl.style.display = 'block';
+    } else {
+      // Fallback: build a stream from the track
+      if (!videoEl.srcObject) videoEl.srcObject = new MediaStream();
+      videoEl.srcObject.addTrack(event.track);
     }
+    videoEl.style.display = 'block';
+    const ph = document.getElementById(`ph-${remotePeerId}`);
+    if (ph) ph.style.display = 'none';
+    videoEl.play().catch(e => console.warn('play() error:', e));
   };
-  
-  // Handle ICE candidates
+
+  // ── onicecandidate ──
   pc.onicecandidate = (event) => {
-    if(event.candidate) {
-      sendSignal({ type: 'candidate', candidate: event.candidate, target: targetPeerId });
+    if (event.candidate) {
+      console.log(`[WebRTC] Sending ICE candidate to ${remotePeerId}`);
+      sendSignal(remotePeerId, { type: 'candidate', candidate: event.candidate.toJSON() });
     }
   };
-  
-  // Monitor connection state
+
+  pc.oniceconnectionstatechange = () => {
+    console.log(`[WebRTC] ICE state with ${remotePeerId}: ${pc.iceConnectionState}`);
+    if (pc.iceConnectionState === 'failed') {
+      console.warn(`[WebRTC] ICE failed with ${remotePeerId}, restarting ICE...`);
+      pc.restartIce();
+    }
+  };
+
   pc.onconnectionstatechange = () => {
-    console.log(`Connection state with ${targetPeerId}: ${pc.connectionState}`);
-    if(pc.connectionState === 'connected') {
-      document.getElementById('connectionStatus').className = 'status-badge connected';
-      document.getElementById('connectionStatus').innerHTML = '🟢 Connected';
+    console.log(`[WebRTC] Connection state with ${remotePeerId}: ${pc.connectionState}`);
+    if (pc.connectionState === 'connected')   setStatus('🟢 Connected', 'connected');
+    if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
+      setStatus('🔴 Disconnected', '');
     }
   };
-  
-  // Create offer if initiator
-  if(isInitiator) {
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
-    sendSignal({ type: 'offer', sdp: offer, target: targetPeerId });
-  }
-  
+
   return pc;
 }
 
-async function handleSignal(signal) {
-  const from = signal.from;
-  const data = signal.data;
-  
-  if(data.target && data.target !== myPeerId) return;
-  
-  let pc = peerConnections.get(from);
-  
-  if(data.type === 'offer' && !pc) {
-    pc = await createPeerConnection(from, false);
+// FIX: Flush queued ICE candidates after remote description is set
+async function flushPendingCandidates(remotePeerId) {
+  const queue = pendingCandidates.get(remotePeerId) || [];
+  console.log(`[WebRTC] Flushing ${queue.length} queued candidates for ${remotePeerId}`);
+  for (const candidate of queue) {
+    try { await peerConnections.get(remotePeerId)?.addIceCandidate(candidate); } catch (e) { console.warn('addIceCandidate error:', e); }
   }
-  
-  if(!pc) return;
-  
-  try {
-    if(data.type === 'offer') {
+  pendingCandidates.set(remotePeerId, []);
+}
+
+// ─── SIGNAL HANDLER ──────────────────────────────────────────────────────────
+async function handleSignal(docId, from, to, data) {
+  // FIX: Skip already-processed signals (Firestore can re-deliver on reconnect)
+  if (processedSignalIds.has(docId)) return;
+  processedSignalIds.add(docId);
+
+  // Drop signals not meant for us (unless broadcast)
+  if (to !== myPeerId && to !== '*') return;
+  // Drop our own signals
+  if (from === myPeerId) return;
+
+  // ── Broadcast messages (chat, pres) ──
+  if (to === '*') {
+    if (data.type === 'chat')      { appendChatMessage(data, false); return; }
+    if (data.type === 'pres_sync') { presentation = { pages: data.pages, currentPage: data.currentPage }; renderPresentationPage(data.currentPage); return; }
+    return;
+  }
+
+  // ── WebRTC signaling ──
+  if (data.type === 'offer') {
+    console.log(`[Signal] offer from ${from}`);
+    const pc = await getOrCreatePeerConnection(from);
+
+    // FIX: Handle glare (simultaneous offers) with rollback
+    if (pc.signalingState !== 'stable') {
+      const polite = myPeerId < from; // lexicographic: polite peer rolls back
+      if (!polite) {
+        console.warn('[Signal] Glare: impolite peer ignoring incoming offer');
+        return;
+      }
+      console.warn('[Signal] Glare: polite peer rolling back');
+      await Promise.all([
+        pc.setLocalDescription({ type: 'rollback' }),
+        pc.setRemoteDescription(new RTCSessionDescription(data.sdp))
+      ]);
+    } else {
       await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
-      const answer = await pc.createAnswer();
-      await pc.setLocalDescription(answer);
-      sendSignal({ type: 'answer', sdp: answer, target: from });
-    } 
-    else if(data.type === 'answer') {
-      await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
-    } 
-    else if(data.type === 'candidate') {
-      if(data.candidate) {
-        await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
-      }
-    } 
-    else if(data.type === 'chat') {
-      appendChatMessage(data, false);
-    } 
-    else if(data.type === 'pres_sync') {
-      presentation = data;
-      renderPresentationPage(data.currentPage);
-      if(activeUpperPanel === 'pres') renderPresentationPage(data.currentPage);
     }
-  } catch(e) {
-    console.error('Signal handling error:', e);
-  }
-}
 
-// ========== ROOM MANAGEMENT ==========
-async function setupRoomSignaling() {
-  const roomRef = db.collection('rooms').doc(roomCode);
-  
-  await roomRef.collection('participants').doc(myPeerId).set({
-    name: myName,
-    isHost: isHost,
-    joinedAt: firebase.firestore.FieldValue.serverTimestamp()
-  });
-  
-  unsubscribeParticipants = roomRef.collection('participants').onSnapshot(async (snapshot) => {
-    for (const change of snapshot.docChanges()) {
-      const pid = change.doc.id;
-      if(pid === myPeerId) continue;
-      
-      if(change.type === 'added') {
-        const data = change.doc.data();
-        console.log(`New participant: ${pid}, name: ${data.name}`);
-        
-        if(!participants.has(pid) && !peerConnections.has(pid)) {
-          participants.set(pid, { name: data.name });
-          renderGrid();
-          updateParticipantCount();
-          toast(`${data.name} joined`);
-          await createPeerConnection(pid, true);
-        }
-      }
-      else if(change.type === 'removed') {
-        console.log(`Participant left: ${pid}`);
-        const pc = peerConnections.get(pid);
-        if(pc) pc.close();
-        peerConnections.delete(pid);
-        participants.delete(pid);
-        const tile = document.getElementById(`tile-${pid}`);
-        if(tile) tile.remove();
-        renderGrid();
-        updateParticipantCount();
-      }
+    await flushPendingCandidates(from);
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    sendSignal(from, { type: 'answer', sdp: pc.localDescription });
+  }
+
+  else if (data.type === 'answer') {
+    console.log(`[Signal] answer from ${from}`);
+    const pc = peerConnections.get(from);
+    if (!pc) return;
+    if (pc.signalingState !== 'have-local-offer') {
+      console.warn(`[Signal] Unexpected answer in state: ${pc.signalingState}`);
+      return;
     }
-  });
-  
-  unsubscribeSignals = roomRef.collection('signals').orderBy('timestamp').onSnapshot(async (snapshot) => {
-    for (const change of snapshot.docChanges()) {
-      if(change.type === 'added') {
-        const signal = change.doc.data();
-        if(signal.from !== myPeerId) {
-          await handleSignal(signal);
-        }
-        try { await change.doc.ref.delete(); } catch(e) {}
-      }
+    await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
+    await flushPendingCandidates(from);
+  }
+
+  else if (data.type === 'candidate') {
+    console.log(`[Signal] ICE candidate from ${from}`);
+    const pc = peerConnections.get(from);
+    const candidate = new RTCIceCandidate(data.candidate);
+
+    if (!pc || !pc.remoteDescription) {
+      // FIX: Queue candidates that arrive before remote description is set
+      const queue = pendingCandidates.get(from) || [];
+      queue.push(candidate);
+      pendingCandidates.set(from, queue);
+      console.log(`[Signal] Queued ICE candidate for ${from} (no remote desc yet)`);
+      return;
     }
-  });
-  
-  document.getElementById('connectionStatus').className = 'status-badge connecting';
-  document.getElementById('connectionStatus').innerHTML = '🟡 Waiting...';
+    try { await pc.addIceCandidate(candidate); } catch (e) { console.warn('addIceCandidate error:', e); }
+  }
 }
 
-// ========== CREATE ROOM ==========
-async function createRoom() {
-  const roomNameInput = document.getElementById('createRoomName').value.trim();
-  const userName = document.getElementById('createUserName').value.trim();
-  if(!roomNameInput || !userName) { toast('Fill all fields'); return; }
-  closeAllModals(); 
-  showOverlay('Starting camera...');
-  
-  isHost = true;
-  roomCode = genCode();
-  myName = userName;
-  roomName = roomNameInput;
-  myPeerId = genPeerId();
-  
-  try {
-    localStream = await navigator.mediaDevices.getUserMedia({ 
-      audio: true, 
-      video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } } 
-    });
-    console.log('Local stream acquired:', localStream.getTracks().length, 'tracks');
-  } catch(e) {
-    showLobby(); 
-    toast('Camera/microphone access required');
-    return;
-  }
-  
-  await db.collection('rooms').doc(roomCode).set({
-    name: roomName,
-    host: myPeerId,
-    createdAt: firebase.firestore.FieldValue.serverTimestamp()
-  });
-  
-  document.getElementById('roomNameDisplay').innerText = roomName;
-  document.getElementById('roomCodeDisplay').innerText = roomCode;
-  renderGrid(); 
-  showRoom(); 
-  toast(`Room created! Share code: ${roomCode}`);
-  
-  await setupRoomSignaling();
-}
+// ─── VIDEO GRID MANAGEMENT ───────────────────────────────────────────────────
+// FIX: Instead of rebuilding the whole grid (which destroys video srcObject),
+// we ADD / REMOVE individual tiles surgically.
 
-// ========== JOIN ROOM ==========
-async function joinRoom() {
-  const code = document.getElementById('joinRoomCode').value.trim().toUpperCase();
-  const userName = document.getElementById('joinUserName').value.trim();
-  if(!code || !userName || code.length !== 6) { toast('Valid 6-character code required'); return; }
-  closeAllModals(); 
-  showOverlay('Starting camera...');
-  
-  const roomDoc = await db.collection('rooms').doc(code).get();
-  if(!roomDoc.exists) {
-    showLobby();
-    toast('Room not found');
-    return;
-  }
-  
-  isHost = false;
-  roomCode = code;
-  myName = userName;
-  roomName = roomDoc.data().name;
-  myPeerId = genPeerId();
-  
-  try {
-    localStream = await navigator.mediaDevices.getUserMedia({ 
-      audio: true, 
-      video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } } 
-    });
-    console.log('Local stream acquired:', localStream.getTracks().length, 'tracks');
-  } catch(e) {
-    showLobby(); 
-    toast('Camera/microphone access required');
-    return;
-  }
-  
-  document.getElementById('roomNameDisplay').innerText = roomName;
-  document.getElementById('roomCodeDisplay').innerText = roomCode;
-  renderGrid(); 
-  showRoom();
-  toast(`Joined ${roomName}`);
-  
-  await setupRoomSignaling();
-}
-
-// ========== VIDEO GRID ==========
-function renderGrid() {
+function renderLocalTile() {
   const container = document.getElementById('videoGridContainer');
-  container.innerHTML = '';
-  container.appendChild(createTile('local', `${myName} (you)`, localStream, true));
-  for(let [peerId, p] of participants.entries()) {
-    container.appendChild(createTile(peerId, p.name, null, false));
+  let tile = document.getElementById('tile-local');
+  if (tile) {
+    // Update video if stream changed
+    const video = document.getElementById('vid-local');
+    if (video && video.srcObject !== localStream) {
+      video.srcObject = localStream;
+      video.play().catch(() => {});
+    }
+    return;
   }
-  updateParticipantCount();
-  const hostBadge = document.getElementById('presHostBadge'); 
-  if(hostBadge) hostBadge.style.display = isHost ? 'inline-block' : 'none';
+  tile = buildTile('local', `${myName} (you)`, localStream, true);
+  container.prepend(tile);
 }
 
-function createTile(id, name, stream, isLocal) {
-  const tile = document.createElement('div'); 
-  tile.className = 'vtile'; 
+function addRemoteTile(peerId, name) {
+  if (document.getElementById(`tile-${peerId}`)) return; // already exists
+  const tile = buildTile(peerId, name, null, false);
+  document.getElementById('videoGridContainer').appendChild(tile);
+  updateParticipantCount();
+}
+
+function removeRemoteTile(peerId) {
+  document.getElementById(`tile-${peerId}`)?.remove();
+  updateParticipantCount();
+}
+
+function buildTile(id, name, stream, isLocal) {
+  const tile = document.createElement('div');
+  tile.className = 'vtile';
   tile.id = `tile-${id}`;
-  
-  const ph = document.createElement('div'); 
-  ph.className = 'ph'; 
+
+  const ph = document.createElement('div');
+  ph.className = 'ph';
   ph.id = `ph-${id}`;
   ph.innerHTML = `<div class="avatar-big">${(name[0] || '?').toUpperCase()}</div>`;
-  
-  const video = document.createElement('video'); 
-  video.id = `vid-${id}`; 
-  video.autoplay = true; 
-  video.playsInline = true; 
-  video.muted = isLocal;
-  video.setAttribute('playsinline', 'true');
-  
-  if(stream && stream.getVideoTracks().length > 0 && !isCamOff) { 
-    video.srcObject = stream; 
-    video.style.display = 'block'; 
-    ph.style.display = 'none'; 
-    video.play().catch(e => console.log('play error', e));
-  } else { 
-    video.style.display = 'none'; 
-    ph.style.display = 'flex'; 
+
+  const video = document.createElement('video');
+  video.id     = `vid-${id}`;
+  video.autoplay  = true;
+  video.playsInline = true;
+  video.muted   = isLocal; // local video muted to avoid echo
+
+  if (stream) {
+    video.srcObject  = stream;
+    video.style.display = 'block';
+    ph.style.display = 'none';
+    video.play().catch(() => {});
   }
-  
-  const bar = document.createElement('div'); 
+
+  const bar = document.createElement('div');
   bar.className = 'vtile-bar';
   bar.innerHTML = `<div class="vtile-name">${escapeHtml(name)}</div>`;
-  if(isLocal && isMuted) bar.innerHTML += `<div style="background:#ef4444; border-radius:20px; padding:2px 6px; font-size:9px;">🔇</div>`;
-  
-  tile.appendChild(ph); 
-  tile.appendChild(video); 
+
+  tile.appendChild(ph);
+  tile.appendChild(video);
   tile.appendChild(bar);
   return tile;
 }
 
-// ========== MEDIA CONTROLS ==========
-document.getElementById('micBtn').onclick = () => { 
-  if(localStream) { 
-    isMuted = !isMuted; 
-    localStream.getAudioTracks().forEach(t => t.enabled = !isMuted); 
-    document.getElementById('micBtn').classList.toggle('off', isMuted);
-    renderGrid();
-  } 
-};
+// ─── ROOM SETUP ───────────────────────────────────────────────────────────────
+async function setupRoomSignaling() {
+  const roomRef = db.collection('rooms').doc(roomCode);
 
-document.getElementById('camBtn').onclick = () => { 
-  if(localStream) { 
-    isCamOff = !isCamOff; 
-    localStream.getVideoTracks().forEach(t => t.enabled = !isCamOff); 
-    document.getElementById('camBtn').classList.toggle('off', isCamOff); 
-    renderGrid(); 
-  } 
-};
+  // Register ourselves
+  await roomRef.collection('participants').doc(myPeerId).set({
+    name: myName, isHost, joinedAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
 
-function leaveRoom() { 
-  if(isRecording) stopRecording();
-  if(unsubscribeParticipants) unsubscribeParticipants();
-  if(unsubscribeSignals) unsubscribeSignals();
-  if(roomCode && myPeerId) {
-    db.collection('rooms').doc(roomCode).collection('participants').doc(myPeerId).delete().catch(()=>{});
+  // Watch participants
+  // FIX: Only the NEWLY JOINING peer creates the offer.
+  // When participant A sees participant B arrive, A creates an offer to B.
+  // This means whoever joined LATER initiates all connections to existing peers.
+  unsubscribeParticipants = roomRef.collection('participants').onSnapshot(async snapshot => {
+    for (const change of snapshot.docChanges()) {
+      const pid  = change.doc.id;
+      if (pid === myPeerId) continue;
+
+      if (change.type === 'added') {
+        const data = change.doc.data();
+        if (!participants.has(pid)) {
+          participants.set(pid, { name: data.name });
+          addRemoteTile(pid, data.name);
+          toast(`${data.name} joined`);
+
+          // FIX: Only initiate if we joined BEFORE this peer (we are the existing participant).
+          // We compare join timestamps: if we're already set up, we must have joined earlier.
+          // The simpler rule: whoever has the lexicographically LARGER peerId sends the offer.
+          // This guarantees exactly one offer per pair (no glare).
+          if (myPeerId > pid) {
+            console.log(`[Room] I'm initiator to ${pid}`);
+            const pc = await getOrCreatePeerConnection(pid);
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+            sendSignal(pid, { type: 'offer', sdp: pc.localDescription });
+          } else {
+            console.log(`[Room] I'm receiver for ${pid}, waiting for offer...`);
+            // Still create the PC so ICE candidates can be received
+            await getOrCreatePeerConnection(pid);
+          }
+        }
+      }
+
+      else if (change.type === 'removed') {
+        const pc = peerConnections.get(pid);
+        if (pc) pc.close();
+        peerConnections.delete(pid);
+        pendingCandidates.delete(pid);
+        participants.delete(pid);
+        removeRemoteTile(pid);
+        toast('A participant left');
+        if (participants.size === 0) setStatus('🟡 Waiting...', 'connecting');
+      }
+    }
+  });
+
+  // Watch signals addressed to us (or broadcast)
+  // FIX: Do NOT delete signals immediately — let all peers read them.
+  // Use a timestamp cutoff: only read signals created AFTER we joined.
+  const joinTime = firebase.firestore.Timestamp.now();
+  unsubscribeSignals = roomRef.collection('signals')
+    .where('timestamp', '>', joinTime)
+    .orderBy('timestamp')
+    .onSnapshot(async snapshot => {
+      for (const change of snapshot.docChanges()) {
+        if (change.type === 'added') {
+          const d = change.doc.data();
+          await handleSignal(change.doc.id, d.from, d.to, d.data);
+          // Clean up old signals after a delay (so both peers can read)
+          setTimeout(() => change.doc.ref.delete().catch(() => {}), 8000);
+        }
+      }
+    });
+}
+
+// ─── CREATE / JOIN ────────────────────────────────────────────────────────────
+async function createRoom() {
+  const rName = document.getElementById('createRoomName').value.trim();
+  const uName = document.getElementById('createUserName').value.trim();
+  if (!rName || !uName) { toast('Please fill all fields'); return; }
+  closeAllModals();
+  showOverlay('Starting camera...');
+
+  isHost  = true;
+  roomCode = genCode();
+  myName  = uName;
+  roomName = rName;
+  myPeerId = genPeerId();
+
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } } });
+    console.log('[Media] Local stream:', localStream.getTracks().map(t => t.kind));
+  } catch (e) {
+    console.error('[Media] getUserMedia failed:', e);
+    showLobby();
+    toast('Camera/microphone access required');
+    return;
   }
-  peerConnections.forEach(pc => pc.close());
-  if(localStream) localStream.getTracks().forEach(t => t.stop());
-  participants.clear();
-  peerConnections.clear();
-  showLobby(); 
+
+  await db.collection('rooms').doc(roomCode).set({
+    name: roomName, host: myPeerId, createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+
+  document.getElementById('roomNameDisplay').innerText = roomName;
+  document.getElementById('roomCodeDisplay').innerText = roomCode;
+  document.getElementById('presHostBadge').style.display = 'inline-block';
+  renderLocalTile();
+  showRoom();
+  toast(`Room created! Code: ${roomCode}`);
+  await setupRoomSignaling();
 }
 
+async function joinRoom() {
+  const code  = document.getElementById('joinRoomCode').value.trim().toUpperCase();
+  const uName = document.getElementById('joinUserName').value.trim();
+  if (!code || !uName || code.length !== 6) { toast('Enter a valid 6-character code'); return; }
+  closeAllModals();
+  showOverlay('Checking room...');
+
+  const roomDoc = await db.collection('rooms').doc(code).get();
+  if (!roomDoc.exists) { showLobby(); toast('Room not found'); return; }
+
+  isHost   = false;
+  roomCode  = code;
+  myName   = uName;
+  roomName  = roomDoc.data().name;
+  myPeerId  = genPeerId();
+
+  showOverlay('Starting camera...');
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } } });
+    console.log('[Media] Local stream:', localStream.getTracks().map(t => t.kind));
+  } catch (e) {
+    console.error('[Media] getUserMedia failed:', e);
+    showLobby();
+    toast('Camera/microphone access required');
+    return;
+  }
+
+  document.getElementById('roomNameDisplay').innerText = roomName;
+  document.getElementById('roomCodeDisplay').innerText = roomCode;
+  document.getElementById('presHostBadge').style.display = 'none';
+  renderLocalTile();
+  showRoom();
+  toast(`Joined ${roomName}`);
+  await setupRoomSignaling();
+}
+
+// ─── MEDIA CONTROLS ───────────────────────────────────────────────────────────
+document.getElementById('micBtn').onclick = () => {
+  if (!localStream) return;
+  isMuted = !isMuted;
+  localStream.getAudioTracks().forEach(t => { t.enabled = !isMuted; });
+  document.getElementById('micBtn').classList.toggle('off', isMuted);
+  document.getElementById('micBtn').innerText = isMuted ? '🔇' : '🎤';
+};
+
+document.getElementById('camBtn').onclick = () => {
+  if (!localStream) return;
+  isCamOff = !isCamOff;
+  localStream.getVideoTracks().forEach(t => { t.enabled = !isCamOff; });
+  document.getElementById('camBtn').classList.toggle('off', isCamOff);
+  document.getElementById('camBtn').innerText = isCamOff ? '🚫' : '📷';
+  const localVideo = document.getElementById('vid-local');
+  const localPh    = document.getElementById('ph-local');
+  if (localVideo && localPh) {
+    localVideo.style.display = isCamOff ? 'none' : 'block';
+    localPh.style.display    = isCamOff ? 'flex' : 'none';
+  }
+};
+
+function leaveRoom() {
+  showLobby();
+  toast('Left the meeting');
+}
 document.getElementById('leaveRoomBtn').onclick = leaveRoom;
-function copyRoomCode() { navigator.clipboard.writeText(roomCode); toast('Code copied'); }
-function shareMeetingLink() { 
-  const url = window.location.origin + window.location.pathname + '?join=' + roomCode; 
-  navigator.clipboard.writeText(url); 
-  toast('Link copied'); 
+
+function copyRoomCode() { navigator.clipboard.writeText(roomCode).then(() => toast('Code copied!')); }
+
+function shareMeetingLink() {
+  const url = `${location.origin}${location.pathname}?join=${roomCode}`;
+  navigator.clipboard.writeText(url).then(() => toast('Invite link copied!'));
 }
 
-// Modal triggers
-document.getElementById('showCreateBtn').onclick = () => document.getElementById('createModal').classList.remove('hidden');
-document.getElementById('showJoinBtn').onclick = () => document.getElementById('joinModal').classList.remove('hidden');
-document.getElementById('createCardBtn').onclick = () => document.getElementById('createModal').classList.remove('hidden');
-document.getElementById('joinCardBtn').onclick = () => document.getElementById('joinModal').classList.remove('hidden');
+// ─── MODAL WIRING ─────────────────────────────────────────────────────────────
+document.getElementById('showCreateBtn').onclick    = () => document.getElementById('createModal').classList.remove('hidden');
+document.getElementById('showJoinBtn').onclick      = () => document.getElementById('joinModal').classList.remove('hidden');
+document.getElementById('createCardBtn').onclick    = () => document.getElementById('createModal').classList.remove('hidden');
+document.getElementById('joinCardBtn').onclick      = () => document.getElementById('joinModal').classList.remove('hidden');
 document.getElementById('cancelCreateModal').onclick = closeAllModals;
-document.getElementById('cancelJoinModal').onclick = closeAllModals;
+document.getElementById('cancelJoinModal').onclick   = closeAllModals;
 document.getElementById('confirmCreateModal').onclick = createRoom;
-document.getElementById('confirmJoinModal').onclick = joinRoom;
-document.getElementById('joinRoomCode').addEventListener('input', e => e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''));
+document.getElementById('confirmJoinModal').onclick   = joinRoom;
+document.getElementById('joinRoomCode').addEventListener('input', e => {
+  e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+});
 
-// Auto-join from URL
-const urlParams = new URLSearchParams(window.location.search);
-const autoCode = urlParams.get('join');
-if(autoCode && autoCode.length === 6) setTimeout(() => { 
-  document.getElementById('joinRoomCode').value = autoCode.toUpperCase(); 
-  document.getElementById('joinModal').classList.remove('hidden'); 
-  toast('Enter your name to join'); 
-}, 300);
+// ─── AUTO-JOIN FROM URL ──────────────────────────────────────────────────────
+const autoCode = new URLSearchParams(location.search).get('join');
+if (autoCode?.length === 6) {
+  setTimeout(() => {
+    document.getElementById('joinRoomCode').value = autoCode.toUpperCase();
+    document.getElementById('joinModal').classList.remove('hidden');
+    toast('Enter your name to join');
+  }, 300);
+}
 </script>
 </body>
 </html>
