@@ -11,22 +11,19 @@
 :root {
   --bg-dark: #05070c; --bg-card: #12161f; --bg-soft: #1a1f2c;
   --border-dim: #2a2f3e; --text-primary: #eef2ff; --text-secondary: #9ca3af;
-  --accent: #3b82f6; --accent-hover: #2563eb; --danger: #ef4444; --success: #22c55e;
+  --accent: #3b82f6; --accent-hover: #2563eb; --danger: #ef4444;
 }
 html, body { height: 100%; overflow: hidden; }
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: var(--bg-dark); color: var(--text-primary);
-}
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-dark); color: var(--text-primary); }
 .hidden { display: none !important; }
 .btn { padding: 12px 24px; border-radius: 40px; font-weight: 600; border: none; cursor: pointer; font-size: 16px; transition: opacity .15s; }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
-.btn-primary { background: var(--accent); color: white; }
+.btn-primary { background: var(--accent); color: #fff; }
 .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
 .btn-secondary { background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-dim); }
 .btn-secondary:hover:not(:disabled) { background: #1c2030; }
 
-/* ── Lobby ── */
+/* Lobby */
 #view-lobby { display: flex; flex-direction: column; height: 100vh; overflow-y: auto; background: radial-gradient(circle at 20% 30%, #0f121c, #020408); }
 .lobby-header { padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; background: rgba(10,12,18,.7); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border-dim); flex-wrap: wrap; gap: 10px; }
 .logo-area { display: flex; gap: 12px; align-items: center; }
@@ -42,36 +39,36 @@ body {
 .info-box { margin-top: 30px; padding: 16px; background: rgba(59,130,246,.1); border-radius: 20px; font-size: 12px; text-align: left; color: var(--text-secondary); }
 .error-box { margin-top: 20px; padding: 14px 18px; background: rgba(239,68,68,.12); border: 1px solid rgba(239,68,68,.3); border-radius: 16px; font-size: 13px; color: #f87171; }
 
-/* ── Modal ── */
+/* Modals */
 .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.85); backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; z-index: 600; padding: 20px; }
 .modal-card { background: var(--bg-card); border-radius: 28px; padding: 28px; width: 90%; max-width: 350px; }
 .modal-title { font-size: 20px; font-weight: 600; margin-bottom: 20px; }
 .modal-card input { width: 100%; margin-bottom: 12px; background: var(--bg-soft); border: 1px solid var(--border-dim); border-radius: 14px; padding: 12px 14px; color: white; font-size: 15px; outline: none; transition: border-color .2s; }
 .modal-card input:focus { border-color: var(--accent); }
-.modal-error { color: #f87171; font-size: 12px; margin-bottom: 10px; }
+.modal-error { color: #f87171; font-size: 12px; margin-bottom: 10px; min-height: 16px; }
 .modal-footer { display: flex; justify-content: flex-end; gap: 12px; margin-top: 8px; }
 
-/* ── Loading overlay ── */
+/* Loading */
 .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.92); display: flex; align-items: center; justify-content: center; z-index: 700; flex-direction: column; gap: 16px; }
 .spinner { width: 40px; height: 40px; border: 3px solid #2a3048; border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; }
 .overlay-msg { color: var(--text-secondary); font-size: 14px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ── Room ── */
+/* Room */
 #view-room { display: flex; flex-direction: column; height: 100vh; background: #05070c; overflow: hidden; }
 .room-header { background: rgba(8,10,16,.95); padding: 8px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,.06); flex-shrink: 0; flex-wrap: wrap; gap: 8px; }
 .room-info { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .room-title { font-weight: 600; font-size: 12px; }
 .room-code { font-family: monospace; background: rgba(59,130,246,.2); padding: 4px 10px; border-radius: 40px; font-size: 11px; cursor: pointer; user-select: none; letter-spacing: 1px; }
-.room-code:hover { background: rgba(59,130,246,.35); }
+.room-code:hover { background: rgba(59,130,246,.38); }
 .host-badge { background: rgba(59,130,246,.3); color: #93c5fd; padding: 3px 8px; border-radius: 20px; font-size: 10px; }
 .status-badge { font-size: 10px; padding: 3px 8px; border-radius: 20px; }
-.status-badge.connected { background: rgba(34,197,94,.3); color: #22c55e; }
-.status-badge.connecting { background: rgba(255,165,0,.3); color: #ffa500; }
-.recording-indicator { background: var(--danger); padding: 4px 10px; border-radius: 30px; font-size: 10px; display: flex; align-items: center; gap: 6px; animation: pulseRed 1s infinite; }
+.status-connected  { background: rgba(34,197,94,.3); color: #22c55e; }
+.status-connecting { background: rgba(255,165,0,.3);  color: #ffa500; }
+.rec-indicator { background: var(--danger); padding: 4px 10px; border-radius: 30px; font-size: 10px; display: flex; align-items: center; gap: 6px; animation: pulseRed 1s infinite; }
 @keyframes pulseRed { 0%,100%{opacity:1} 50%{opacity:.5} }
 
-/* ── Chat panel ── */
+/* Chat panel */
 .upper-panel { background: rgba(16,20,28,.96); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border-dim); height: 42%; min-height: 200px; display: flex; flex-direction: column; flex-shrink: 0; }
 .upper-panel.collapsed { display: none; }
 .panel-header { padding: 8px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,.06); background: rgba(0,0,0,.3); }
@@ -87,7 +84,7 @@ body {
 .chat-input-row input:focus { outline: 1px solid var(--accent); }
 .send-btn { background: var(--accent); border: none; width: 44px; border-radius: 30px; cursor: pointer; font-size: 18px; color: white; flex-shrink: 0; }
 
-/* ── Video grid ── */
+/* Video grid */
 .video-section { flex: 1; overflow: hidden; padding: 8px; background: #03050a; }
 .video-grid { display: grid; gap: 8px; height: 100%; overflow-y: auto; padding: 4px; align-content: start; }
 .vtile { background: #11161f; border-radius: 16px; overflow: hidden; position: relative; aspect-ratio: 4/3; border: 1px solid rgba(255,255,255,.08); }
@@ -95,26 +92,26 @@ body {
 .vtile .ph { display: flex; align-items: center; justify-content: center; height: 100%; background: #0a0e16; }
 .avatar-big { width: 52px; height: 52px; background: var(--accent); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: bold; }
 .vtile-bar { position: absolute; bottom: 8px; left: 8px; right: 8px; display: flex; justify-content: space-between; align-items: center; }
-.vtile-name { background: rgba(0,0,0,.72); backdrop-filter: blur(6px); padding: 3px 8px; border-radius: 30px; font-size: 9px; max-width: 72%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vtile-name { background: rgba(0,0,0,.72); backdrop-filter: blur(6px); padding: 3px 8px; border-radius: 30px; font-size: 9px; max-width: 75%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .vtile-badges { display: flex; gap: 3px; }
 .vbadge { padding: 2px 6px; border-radius: 12px; font-size: 9px; }
-.vbadge.muted { background: var(--danger); }
-.vbadge.camoff { background: #4b5563; }
-.vbadge.pending { background: rgba(255,165,0,.4); color: #ffa500; }
+.vbadge-muted  { background: var(--danger); }
+.vbadge-camoff { background: #4b5563; }
+.vbadge-wait   { background: rgba(255,165,0,.4); color: #ffa500; font-size: 8px; }
 
-/* ── Bottom controls ── */
+/* Bottom controls */
 .bottom-controls { background: rgba(8,10,16,.98); backdrop-filter: blur(20px); border-top: 1px solid rgba(255,255,255,.08); padding: 10px 12px; display: flex; justify-content: center; align-items: center; gap: 12px; flex-shrink: 0; flex-wrap: wrap; }
 .ctrl-btn { width: 52px; height: 52px; border-radius: 50%; background: rgba(255,255,255,.1); border: none; font-size: 22px; cursor: pointer; position: relative; transition: background .15s, transform .1s; }
 .ctrl-btn:active { transform: scale(.93); }
-.ctrl-btn.off { background: var(--danger); }
-.ctrl-btn.leave { background: var(--danger); }
-.ctrl-btn.secondary { background: rgba(59,130,246,.2); }
-.ctrl-btn.rec-active { background: var(--danger); animation: pulsebtn 1s infinite; }
+.ctrl-off   { background: var(--danger) !important; }
+.ctrl-leave { background: var(--danger) !important; }
+.ctrl-sec   { background: rgba(59,130,246,.2); }
+.ctrl-rec   { background: var(--danger) !important; animation: pulsebtn 1s infinite; }
 @keyframes pulsebtn { 0%,100%{opacity:1} 50%{opacity:.6} }
 .ctrl-badge { position: absolute; top: -4px; right: -4px; background: var(--danger); border-radius: 20px; padding: 2px 5px; font-size: 9px; font-weight: bold; color: white; pointer-events: none; }
-.divider { width: 1px; height: 30px; background: rgba(255,255,255,.15); align-self: center; }
+.ctrl-divider { width: 1px; height: 30px; background: rgba(255,255,255,.15); align-self: center; }
 
-/* ── Toast ── */
+/* Toast */
 .toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); background: #1e2030; border: 1px solid var(--border-dim); padding: 8px 20px; border-radius: 40px; z-index: 400; font-size: 12px; white-space: nowrap; pointer-events: none; animation: toastAnim 2.8s ease forwards; }
 @keyframes toastAnim { 0%{opacity:0;transform:translateX(-50%) translateY(8px)} 12%{opacity:1;transform:translateX(-50%) translateY(0)} 80%{opacity:1} 100%{opacity:0} }
 
@@ -126,48 +123,33 @@ body {
 </head>
 <body>
 
-<!-- ══════════════════════════════════════
-     LOBBY
-══════════════════════════════════════ -->
+<!-- ══ LOBBY ══ -->
 <div id="view-lobby">
   <div class="lobby-header">
     <div class="logo-area">
       <div class="logo-icon">🎥</div>
-      <div>
-        <strong>HamoudaSpace</strong>
-        <div style="font-size:10px;color:var(--text-secondary);">Up to 20 participants</div>
-      </div>
+      <div><strong>HamoudaSpace</strong><div style="font-size:10px;color:var(--text-secondary)">Up to 20 participants</div></div>
     </div>
     <div class="lobby-actions">
       <button class="btn btn-secondary" onclick="openModal('join')">🔗 Join</button>
-      <button class="btn btn-primary" onclick="openModal('create')">✨ New Meeting</button>
+      <button class="btn btn-primary"   onclick="openModal('create')">✨ New Meeting</button>
     </div>
   </div>
   <div class="lobby-main">
     <div class="hero">
       <h1>Video Meetings That Work</h1>
-      <p>Reliable WebRTC with Firestore signaling · up to 20 participants · screen recording</p>
+      <p>Reliable WebRTC · Firestore signaling · up to 20 participants · recording</p>
     </div>
     <div class="action-cards">
-      <div class="card">
-        <h3>Start a Meeting</h3>
-        <button class="btn btn-primary" onclick="openModal('create')">Create Room</button>
-      </div>
-      <div class="card">
-        <h3>Join a Meeting</h3>
-        <button class="btn btn-secondary" onclick="openModal('join')">Enter Code</button>
-      </div>
+      <div class="card"><h3>Start a Meeting</h3><button class="btn btn-primary"   onclick="openModal('create')">Create Room</button></div>
+      <div class="card"><h3>Join a Meeting</h3> <button class="btn btn-secondary" onclick="openModal('join')">Enter Code</button></div>
     </div>
     <div id="lobbyError" class="error-box hidden"></div>
-    <div class="info-box">
-      <strong>How it works:</strong> Create a room and share the 6-letter code. Participants connect via encrypted WebRTC peer-to-peer video. Firestore handles signaling — no server required.
-    </div>
+    <div class="info-box"><strong>How it works:</strong> Create a room and share the 6-letter code. All participants connect directly via encrypted WebRTC — Firestore is only used for signaling.</div>
   </div>
 </div>
 
-<!-- ══════════════════════════════════════
-     ROOM
-══════════════════════════════════════ -->
+<!-- ══ ROOM ══ -->
 <div id="view-room" class="hidden">
   <div class="room-header">
     <div class="room-info">
@@ -176,10 +158,10 @@ body {
       <span id="hostBadge" class="host-badge hidden">👑 Host</span>
     </div>
     <div class="room-info">
-      <span id="participantCount" style="font-size:12px;color:var(--text-secondary)">👥 1</span>
-      <span id="connStatus" class="status-badge connecting">🟡 Connecting…</span>
+      <span id="pCount" style="font-size:12px;color:var(--text-secondary)">👥 1</span>
+      <span id="connStatus" class="status-badge status-connecting">🟡 Connecting…</span>
     </div>
-    <div id="recIndicator" class="recording-indicator hidden">🔴 REC</div>
+    <div id="recIndicator" class="rec-indicator hidden">🔴 REC</div>
   </div>
 
   <div id="chatPanel" class="upper-panel collapsed">
@@ -191,38 +173,34 @@ body {
       <div class="chat-empty" id="chatEmpty">No messages yet</div>
     </div>
     <div class="chat-input-row">
-      <input type="text" id="chatInput" placeholder="Type a message…" />
-      <button class="send-btn" id="sendBtn">➤</button>
+      <input id="chatInput" type="text" placeholder="Type a message…" />
+      <button class="send-btn" onclick="sendChat()">➤</button>
     </div>
   </div>
 
-  <div class="video-section">
-    <div class="video-grid" id="videoGrid"></div>
-  </div>
+  <div class="video-section"><div class="video-grid" id="videoGrid"></div></div>
 
   <div class="bottom-controls">
-    <button class="ctrl-btn" id="micBtn" title="Toggle microphone" onclick="toggleMic()">🎤</button>
-    <button class="ctrl-btn" id="camBtn" title="Toggle camera" onclick="toggleCam()">📷</button>
-    <button class="ctrl-btn" id="recBtn" title="Start / stop recording" onclick="toggleRecording()">⏺</button>
-    <div class="divider"></div>
-    <button class="ctrl-btn secondary" id="chatBtn" title="Chat" onclick="toggleChat()" style="position:relative">
+    <button class="ctrl-btn" id="micBtn" onclick="toggleMic()" title="Mute (M)">🎤</button>
+    <button class="ctrl-btn" id="camBtn" onclick="toggleCam()" title="Camera (V)">📷</button>
+    <button class="ctrl-btn" id="recBtn" onclick="toggleRec()" title="Record">⏺</button>
+    <div class="ctrl-divider"></div>
+    <button class="ctrl-btn ctrl-sec" id="chatBtn" onclick="toggleChat()" title="Chat (C)" style="position:relative">
       💬<span id="chatBadge" class="ctrl-badge hidden">0</span>
     </button>
-    <button class="ctrl-btn secondary" title="Copy invite link" onclick="copyLink()">🔗</button>
-    <div class="divider"></div>
-    <button class="ctrl-btn leave" title="Leave meeting" onclick="leaveRoom()">🚪</button>
+    <button class="ctrl-btn ctrl-sec" onclick="copyLink()" title="Copy invite link">🔗</button>
+    <div class="ctrl-divider"></div>
+    <button class="ctrl-btn ctrl-leave" onclick="leaveRoom()" title="Leave">🚪</button>
   </div>
 </div>
 
-<!-- ══════════════════════════════════════
-     MODALS
-══════════════════════════════════════ -->
+<!-- ══ CREATE MODAL ══ -->
 <div id="createModal" class="modal-backdrop hidden">
   <div class="modal-card">
     <div class="modal-title">New Meeting</div>
-    <input id="createRoomName" placeholder="Meeting name (e.g. Weekly Sync)" maxlength="50" />
+    <input id="createRoomName" placeholder="Meeting name" maxlength="50" />
     <input id="createUserName" placeholder="Your display name" maxlength="30" />
-    <div id="createError" class="modal-error hidden"></div>
+    <div id="createError" class="modal-error"></div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModals()">Cancel</button>
       <button class="btn btn-primary" id="createBtn" onclick="doCreate()">Create</button>
@@ -230,12 +208,13 @@ body {
   </div>
 </div>
 
+<!-- ══ JOIN MODAL ══ -->
 <div id="joinModal" class="modal-backdrop hidden">
   <div class="modal-card">
     <div class="modal-title">Join Meeting</div>
     <input id="joinCode" placeholder="6-letter room code" maxlength="6" style="text-transform:uppercase;letter-spacing:3px" />
     <input id="joinUserName" placeholder="Your display name" maxlength="30" />
-    <div id="joinError" class="modal-error hidden"></div>
+    <div id="joinError" class="modal-error"></div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModals()">Cancel</button>
       <button class="btn btn-primary" id="joinBtn" onclick="doJoin()">Join</button>
@@ -243,6 +222,7 @@ body {
   </div>
 </div>
 
+<!-- ══ LOADING ══ -->
 <div id="loadingOverlay" class="overlay hidden">
   <div class="spinner"></div>
   <div class="overlay-msg" id="overlayMsg">Starting camera…</div>
@@ -252,58 +232,66 @@ body {
 'use strict';
 
 // ─── Firebase ────────────────────────────────────────────────────────────────
-const FIREBASE_CONFIG = {
-  apiKey:            "AIzaSyCra3IgsAaQlf3INjRn04DdX3KWwb8zdlo",
-  authDomain:        "hamoudaspace-meetingapp.firebaseapp.com",
-  projectId:         "hamoudaspace-meetingapp",
-  storageBucket:     "hamoudaspace-meetingapp.firebasestorage.app",
-  messagingSenderId: "9931981197",
-  appId:             "1:9931981197:web:716e61223950d3d39c7dc4"
-};
-
-if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+if (!firebase.apps.length) {
+  firebase.initializeApp({
+    apiKey:            'AIzaSyCra3IgsAaQlf3INjRn04DdX3KWwb8zdlo',
+    authDomain:        'hamoudaspace-meetingapp.firebaseapp.com',
+    projectId:         'hamoudaspace-meetingapp',
+    storageBucket:     'hamoudaspace-meetingapp.firebasestorage.app',
+    messagingSenderId: '9931981197',
+    appId:             '1:9931981197:web:716e61223950d3d39c7dc4'
+  });
+}
 const db = firebase.firestore();
 
-// ─── ICE config ──────────────────────────────────────────────────────────────
-const ICE_CONFIG = {
+// ─── ICE servers ─────────────────────────────────────────────────────────────
+const ICE_CFG = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
     { urls: 'stun:stun2.l.google.com:19302' },
-    { urls: 'turn:openrelay.metered.ca:80',          username: 'openrelayproject', credential: 'openrelayproject' },
-    { urls: 'turn:openrelay.metered.ca:443',         username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:80',              username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443',             username: 'openrelayproject', credential: 'openrelayproject' },
     { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
   ],
   iceCandidatePoolSize: 10
 };
 
 // ─── State ───────────────────────────────────────────────────────────────────
-let localStream       = null;
-let myPeerId          = '';
-let myName            = '';
-let roomCode          = '';
-let roomName          = '';
-let isHost            = false;
-let isMuted           = false;
-let isCamOff          = false;
-let isRecording       = false;
-let mediaRecorder     = null;
-let recordedChunks    = [];
-let chatUnread        = 0;
-let chatOpen          = false;
+let localStream     = null;
+let myPeerId        = '';
+let myName          = '';
+let roomCode        = '';
+let roomName        = '';
+let isHost          = false;
+let isMuted         = false;
+let isCamOff        = false;
+let isRecording     = false;
+let mediaRecorder   = null;
+let recordedChunks  = [];
+let chatOpen        = false;
+let chatUnread      = 0;
 
-const peers            = new Map();   // peerId → RTCPeerConnection
-const pendingCandidates = new Map();  // peerId → RTCIceCandidateInit[]
-const participants     = new Map();   // peerId → { name, stream }
-const processedSignals = new Set();   // Firestore doc IDs already handled
-const unsubscribers    = [];          // Firestore listener cleanup fns
+// peerId → RTCPeerConnection
+const peers             = new Map();
+// peerId → RTCIceCandidateInit[]  (queued before remoteDescription is set)
+const pendingCandidates = new Map();
+// peerId → MediaStream  (built track-by-track for cross-browser compat)
+const remoteStreams     = new Map();
+// participant info
+const participants      = new Map();   // peerId → { name }
+// Firestore listener unsubscribers
+const unsubscribers     = [];
+// Signal doc IDs we've already processed
+const processedSigs     = new Set();
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Utilities ────────────────────────────────────────────────────────────────
 function esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 function genCode()   { return Math.random().toString(36).slice(2,8).toUpperCase(); }
 function genPeerId() { return 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+
 function toast(msg) {
   document.querySelectorAll('.toast').forEach(t => t.remove());
   const t = document.createElement('div');
@@ -311,33 +299,33 @@ function toast(msg) {
   document.body.appendChild(t);
   setTimeout(() => t.remove(), 3000);
 }
+
 function showLoading(msg) {
   document.getElementById('overlayMsg').textContent = msg || 'Please wait…';
   document.getElementById('loadingOverlay').classList.remove('hidden');
 }
 function hideLoading() { document.getElementById('loadingOverlay').classList.add('hidden'); }
 
-// ─── Modal helpers ────────────────────────────────────────────────────────────
+function setConnStatus(state) {
+  const el = document.getElementById('connStatus');
+  const labels = { connected: '🟢 Connected', waiting: '🟡 Waiting for others…', connecting: '🟡 Connecting…' };
+  el.textContent  = labels[state] || labels.connecting;
+  el.className    = 'status-badge ' + (state === 'connected' ? 'status-connected' : 'status-connecting');
+}
+
+// ─── Modals ───────────────────────────────────────────────────────────────────
 function openModal(type) {
-  clearError('create'); clearError('join');
+  document.getElementById('createError').textContent = '';
+  document.getElementById('joinError').textContent   = '';
   document.getElementById('createModal').classList.toggle('hidden', type !== 'create');
-  document.getElementById('joinModal').classList.toggle('hidden', type !== 'join');
+  document.getElementById('joinModal').classList.toggle('hidden',   type !== 'join');
   setTimeout(() => {
-    const f = type === 'create' ? document.getElementById('createRoomName') : document.getElementById('joinCode');
-    f && f.focus();
-  }, 50);
+    (type === 'create' ? document.getElementById('createRoomName') : document.getElementById('joinCode'))?.focus();
+  }, 60);
 }
 function closeModals() {
   document.getElementById('createModal').classList.add('hidden');
   document.getElementById('joinModal').classList.add('hidden');
-}
-function showError(id, msg) {
-  const el = document.getElementById(id + 'Error');
-  el.textContent = msg; el.classList.remove('hidden');
-}
-function clearError(id) {
-  const el = document.getElementById(id + 'Error');
-  el.textContent = ''; el.classList.add('hidden');
 }
 
 // ─── Media ───────────────────────────────────────────────────────────────────
@@ -348,59 +336,60 @@ async function getMedia() {
   });
 }
 
-// ─── Grid layout ─────────────────────────────────────────────────────────────
-function gridColumns(n) {
+// ─── Video grid helpers ───────────────────────────────────────────────────────
+function gridCols(n) {
   if (n <= 1)  return '1fr';
-  if (n <= 4)  return 'repeat(2, 1fr)';
-  if (n <= 9)  return 'repeat(3, 1fr)';
-  if (n <= 16) return 'repeat(4, 1fr)';
-  return 'repeat(5, 1fr)';
+  if (n <= 4)  return 'repeat(2,1fr)';
+  if (n <= 9)  return 'repeat(3,1fr)';
+  if (n <= 16) return 'repeat(4,1fr)';
+  return 'repeat(5,1fr)';
 }
 
 function updateGrid() {
-  const total = participants.size + 1;
-  document.getElementById('videoGrid').style.gridTemplateColumns = gridColumns(total);
-  document.getElementById('participantCount').textContent = '👥 ' + total;
+  const n = participants.size + 1;
+  document.getElementById('videoGrid').style.gridTemplateColumns = gridCols(n);
+  document.getElementById('pCount').textContent = '👥 ' + n;
 }
 
 function createTile(id, name, isLocal) {
-  const initials = name.trim().split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase() || '?';
-  const tile = document.createElement('div');
+  const init = (name.trim().split(' ').map(w => w[0]).join('').slice(0,2) || '?').toUpperCase();
+  const tile  = document.createElement('div');
   tile.className = 'vtile'; tile.id = 'tile-' + id;
   tile.innerHTML = `
-    <div class="ph" id="ph-${id}"><div class="avatar-big">${esc(initials)}</div></div>
+    <div class="ph" id="ph-${id}"><div class="avatar-big">${esc(init)}</div></div>
     <video id="vid-${id}" autoplay playsinline ${isLocal ? 'muted' : ''} style="display:none"></video>
     <div class="vtile-bar">
-      <div class="vtile-name" id="name-${id}">${esc(name)}${isLocal ? ' (you)' : ''}</div>
+      <div class="vtile-name">${esc(name)}${isLocal ? ' (you)' : ''}</div>
       <div class="vtile-badges" id="badges-${id}"></div>
     </div>`;
   return tile;
 }
 
-function attachStream(id, stream) {
+function showVideo(id, stream) {
   const vid = document.getElementById('vid-' + id);
   const ph  = document.getElementById('ph-'  + id);
   if (!vid || !ph) return;
-  if (stream) {
-    vid.srcObject = stream;
-    vid.play().catch(() => {});
+  if (stream && stream.getVideoTracks().length > 0) {
+    if (vid.srcObject !== stream) {
+      vid.srcObject = stream;
+      vid.play().catch(() => {});
+    }
     vid.style.display = 'block';
     ph.style.display  = 'none';
   } else {
-    vid.srcObject     = null;
     vid.style.display = 'none';
     ph.style.display  = 'flex';
   }
 }
 
-function setLocalBadges() {
-  const b = document.getElementById('badges-local');
+function setBadges(id, muted, camOff) {
+  const b = document.getElementById('badges-' + id);
   if (!b) return;
-  b.innerHTML = (isMuted ? '<span class="vbadge muted">🔇</span>' : '') +
-                (isCamOff ? '<span class="vbadge camoff">📵</span>' : '');
+  b.innerHTML = (muted  ? '<span class="vbadge vbadge-muted">🔇</span>'  : '') +
+                (camOff ? '<span class="vbadge vbadge-camoff">📵</span>' : '');
 }
 
-// ─── Signaling ────────────────────────────────────────────────────────────────
+// ─── Firestore signaling ──────────────────────────────────────────────────────
 async function sendSignal(data) {
   if (!roomCode) return;
   try {
@@ -410,102 +399,108 @@ async function sendSignal(data) {
   } catch(e) { console.error('sendSignal:', e); }
 }
 
-// ─── WebRTC ───────────────────────────────────────────────────────────────────
-function makePeer(targetId, isInitiator) {
-  if (peers.has(targetId)) return peers.get(targetId);
-
-  const pc = new RTCPeerConnection(ICE_CONFIG);
-  peers.set(targetId, pc);
-  pendingCandidates.set(targetId, []);
-
-  // Add local tracks
-  if (localStream) localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
-
-  // Remote track → display
-  pc.ontrack = (ev) => {
-    const stream = ev.streams[0];            // ← FIXED: use [0] not the array
-    if (!stream) return;
-    const p = participants.get(targetId);
-    if (p) { p.stream = stream; attachStream(targetId, stream); }
-    setStatus('connected');
-    const b = document.getElementById('badges-' + targetId);
-    if (b) b.innerHTML = '';
-  };
-
-  // ICE candidate
-  pc.onicecandidate = (ev) => {
-    if (ev.candidate)
-      sendSignal({ type: 'candidate', candidate: ev.candidate.toJSON(), target: targetId });
-  };
-
-  pc.onconnectionstatechange = () => {
-    const s = pc.connectionState;
-    if (s === 'connected') setStatus('connected');
-    if (s === 'failed' || s === 'disconnected') {
-      const p = participants.get(targetId);
-      if (p) { p.stream = null; attachStream(targetId, null); }
-      const b = document.getElementById('badges-' + targetId);
-      if (b) b.innerHTML = '<span class="vbadge pending">⏳</span>';
-    }
-  };
-
-  // Only initiator triggers negotiation
-  if (isInitiator) {
-    pc.onnegotiationneeded = async () => {
-      try {
-        const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
-        await pc.setLocalDescription(offer);
-        sendSignal({ type: 'offer', sdp: pc.localDescription, target: targetId });
-      } catch(e) { console.error('offer error:', e); }
-    };
-  }
-
-  return pc;
-}
-
+// ─── ICE candidate queue ──────────────────────────────────────────────────────
 async function flushCandidates(peerId, pc) {
   const list = pendingCandidates.get(peerId) || [];
   for (const c of list) {
     try { await pc.addIceCandidate(new RTCIceCandidate(c)); }
-    catch(e) { console.warn('flush candidate:', e); }
+    catch(e) { console.warn('addIceCandidate (queued):', e); }
   }
   pendingCandidates.set(peerId, []);
 }
 
+// ─── Build/get remote MediaStream (cross-browser) ─────────────────────────────
+// Firefox and some mobile browsers leave ev.streams empty.
+// We always build the stream ourselves from individual tracks.
+function getOrCreateRemoteStream(peerId) {
+  if (!remoteStreams.has(peerId)) remoteStreams.set(peerId, new MediaStream());
+  return remoteStreams.get(peerId);
+}
+
+// ─── Create peer connection ───────────────────────────────────────────────────
+function createPeer(targetId) {
+  if (peers.has(targetId)) return peers.get(targetId);
+
+  const pc = new RTCPeerConnection(ICE_CFG);
+  peers.set(targetId, pc);
+  pendingCandidates.set(targetId, []);
+
+  // Add local tracks BEFORE creating any offer
+  if (localStream) localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+
+  // Remote track handler — build MediaStream from individual tracks.
+  // This works on Chrome, Firefox, Safari, Edge, and mobile browsers.
+  pc.ontrack = (ev) => {
+    const stream = getOrCreateRemoteStream(targetId);
+    // Avoid duplicates
+    if (!stream.getTracks().find(t => t.id === ev.track.id)) {
+      stream.addTrack(ev.track);
+    }
+    // Show video as soon as we have a video track
+    if (stream.getVideoTracks().length > 0 || stream.getAudioTracks().length > 0) {
+      showVideo(targetId, stream);
+      setConnStatus('connected');
+      const b = document.getElementById('badges-' + targetId);
+      if (b) b.innerHTML = ''; // clear "waiting" badge
+    }
+  };
+
+  // ICE candidates
+  pc.onicecandidate = ev => {
+    if (ev.candidate) sendSignal({ type: 'candidate', candidate: ev.candidate.toJSON(), target: targetId });
+  };
+
+  pc.onconnectionstatechange = () => {
+    if (pc.connectionState === 'connected') setConnStatus('connected');
+  };
+
+  return pc;
+}
+
+// ─── Explicit offer (called after createPeer, avoids onnegotiationneeded race) ─
+async function sendOffer(targetId, pc) {
+  try {
+    const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
+    await pc.setLocalDescription(offer);
+    sendSignal({ type: 'offer', sdp: pc.localDescription, target: targetId });
+  } catch(e) { console.error('sendOffer:', e); }
+}
+
+// ─── Signal handler ───────────────────────────────────────────────────────────
 async function handleSignal(from, data) {
-  // Chat messages are broadcast (no target)
+
+  // Broadcast chat — no target field
   if (data.type === 'chat') {
     appendChat({ name: data.name, text: data.text, ts: data.ts }, false);
     return;
   }
 
-  // All other signals are directed; ignore if not for us
+  // All other signals are directed
   if (data.target !== myPeerId) return;
 
   if (data.type === 'offer') {
     let pc = peers.get(from);
-    if (!pc) pc = makePeer(from, false);
+    if (!pc) pc = createPeer(from);
 
-    // Guard against duplicate / late offers
-    if (pc.signalingState !== 'stable' && pc.signalingState !== 'have-local-pranswer') {
-      // Glare: roll back if we also sent an offer and we are the "loser"
-      if (myPeerId > from) {
-        try { await pc.setLocalDescription({ type: 'rollback' }); }
-        catch(_) {}
-      } else { return; }
+    // Rollback if we're in a conflicting state (shouldn't happen with
+    // deterministic initiator but guard anyway)
+    if (pc.signalingState !== 'stable') {
+      try { await pc.setLocalDescription({ type: 'rollback' }); } catch(_) {}
     }
 
     try {
       await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
+      await flushCandidates(from, pc);
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
       sendSignal({ type: 'answer', sdp: pc.localDescription, target: from });
-      await flushCandidates(from, pc);
     } catch(e) { console.error('handle offer:', e); }
 
   } else if (data.type === 'answer') {
     const pc = peers.get(from);
-    if (!pc || pc.signalingState === 'stable') return;
+    if (!pc) return;
+    // Only accept when we sent an offer and are waiting for an answer
+    if (pc.signalingState !== 'have-local-offer') return;
     try {
       await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
       await flushCandidates(from, pc);
@@ -513,33 +508,30 @@ async function handleSignal(from, data) {
 
   } else if (data.type === 'candidate') {
     const pc = peers.get(from);
-    if (!pc) {
-      // Store for when the peer connection exists
+    const candidate = data.candidate;
+    if (!pc || !pc.remoteDescription) {
+      // Queue until remote description is set
       if (!pendingCandidates.has(from)) pendingCandidates.set(from, []);
-      pendingCandidates.get(from).push(data.candidate);
+      pendingCandidates.get(from).push(candidate);
       return;
     }
-    if (pc.remoteDescription) {
-      try { await pc.addIceCandidate(new RTCIceCandidate(data.candidate)); }
-      catch(e) { console.warn('addIceCandidate:', e); }
-    } else {
-      pendingCandidates.get(from).push(data.candidate);
-    }
+    try { await pc.addIceCandidate(new RTCIceCandidate(candidate)); }
+    catch(e) { console.warn('addIceCandidate:', e); }
   }
 }
 
 // ─── Room setup ───────────────────────────────────────────────────────────────
 async function setupRoom() {
-  const roomRef    = db.collection('rooms').doc(roomCode);
-  const partCol    = roomRef.collection('participants');
-  const signalCol  = roomRef.collection('signals');
+  const roomRef   = db.collection('rooms').doc(roomCode);
+  const partCol   = roomRef.collection('participants');
+  const sigCol    = roomRef.collection('signals');
 
-  // Register self
+  // Register self in participants
   await partCol.doc(myPeerId).set({
     name: myName, isHost, joinedAt: firebase.firestore.FieldValue.serverTimestamp()
   });
 
-  // Participants listener
+  // ── Participants presence ──
   const unsubP = partCol.onSnapshot(snap => {
     const live = new Set();
     snap.docs.forEach(d => {
@@ -549,17 +541,23 @@ async function setupRoom() {
 
       if (!participants.has(pid)) {
         const { name } = d.data();
-        participants.set(pid, { name, stream: null });
+        participants.set(pid, { name });
 
-        // Add tile
+        // Add tile immediately
+        const grid = document.getElementById('videoGrid');
         const tile = createTile(pid, name, false);
-        document.getElementById('videoGrid').appendChild(tile);
+        // Show "connecting" badge
+        const b = document.getElementById('badges-' + pid);
+        if (b) b.innerHTML = '<span class="vbadge vbadge-wait">⏳ connecting</span>';
+        grid.appendChild(tile);
         updateGrid();
         toast(esc(name) + ' joined');
 
-        // Deterministic offer direction: lower id initiates
-        const isInitiator = myPeerId < pid;
-        makePeer(pid, isInitiator);
+        // Deterministic: lower peerId initiates the offer
+        if (myPeerId < pid) {
+          const pc = createPeer(pid);
+          sendOffer(pid, pc);   // explicit — no onnegotiationneeded needed
+        }
       }
     });
 
@@ -570,88 +568,65 @@ async function setupRoom() {
         const pc = peers.get(pid);
         if (pc) { pc.close(); peers.delete(pid); }
         pendingCandidates.delete(pid);
-        const tile = document.getElementById('tile-' + pid);
-        if (tile) tile.remove();
+        remoteStreams.delete(pid);
+        document.getElementById('tile-' + pid)?.remove();
         updateGrid();
       }
     }
   });
 
-  // Signals listener (ordered, deduped)
-  const signalQ = signalCol.orderBy('ts');
-  const unsubS = signalQ.onSnapshot(snap => {
+  // ── Signals ──
+  const unsubS = sigCol.orderBy('ts').onSnapshot(snap => {
     snap.docChanges().forEach(async change => {
       if (change.type !== 'added') return;
       const docId = change.doc.id;
-      if (processedSignals.has(docId)) return;
-      processedSignals.add(docId);
+      if (processedSigs.has(docId)) return;
 
       const { from, data } = change.doc.data();
-      if (from === myPeerId) return;                          // our own signal
+      if (from === myPeerId) return;                              // own signal
       if (data.target && data.target !== myPeerId && data.type !== 'chat') return; // not for us
 
+      processedSigs.add(docId);
       await handleSignal(from, data);
 
-      // Delete signals addressed to us (or chat) so Firestore stays tidy
-      if (!data.target || data.target === myPeerId || data.type === 'chat') {
-        change.doc.ref.delete().catch(() => {});
-      }
+      // Delete after processing to keep Firestore tidy
+      change.doc.ref.delete().catch(() => {});
     });
   });
 
   unsubscribers.push(unsubP, unsubS);
-  setStatus('waiting');
-}
-
-// ─── Status indicator ─────────────────────────────────────────────────────────
-function setStatus(state) {
-  const el = document.getElementById('connStatus');
-  if (state === 'connected') {
-    el.className = 'status-badge connected'; el.textContent = '🟢 Connected';
-  } else if (state === 'waiting') {
-    el.className = 'status-badge connecting'; el.textContent = '🟡 Waiting for others…';
-  } else {
-    el.className = 'status-badge connecting'; el.textContent = '🟡 Connecting…';
-  }
+  setConnStatus('waiting');
 }
 
 // ─── Create room ──────────────────────────────────────────────────────────────
 async function doCreate() {
-  clearError('create');
-  const rn  = document.getElementById('createRoomName').value.trim();
-  const un  = document.getElementById('createUserName').value.trim();
-  if (!rn || !un) { showError('create', 'Please fill in both fields.'); return; }
+  const rn = document.getElementById('createRoomName').value.trim();
+  const un = document.getElementById('createUserName').value.trim();
+  document.getElementById('createError').textContent = '';
+  if (!rn || !un) { document.getElementById('createError').textContent = 'Please fill in both fields.'; return; }
 
-  setBtn('createBtn', true);
+  document.getElementById('createBtn').disabled = true;
   closeModals();
   showLoading('Starting camera and microphone…');
 
-  try {
-    localStream = await getMedia();
-  } catch(e) {
+  try { localStream = await getMedia(); }
+  catch(e) {
     hideLoading();
-    showLobbyError(e.name === 'NotAllowedError'
-      ? 'Camera/microphone permission denied. Allow access in your browser and retry.'
-      : 'Could not access camera/microphone: ' + e.message);
-    setBtn('createBtn', false);
+    showLobbyErr(e.name === 'NotAllowedError' ? 'Camera/microphone permission denied.' : 'Cannot access camera: ' + e.message);
+    document.getElementById('createBtn').disabled = false;
     return;
   }
 
-  isHost   = true;
-  roomCode = genCode();
-  myPeerId = genPeerId();
-  myName   = un;
-  roomName = rn;
+  isHost = true; roomCode = genCode(); myPeerId = genPeerId(); myName = un; roomName = rn;
 
   try {
     await db.collection('rooms').doc(roomCode).set({
       name: rn, host: myPeerId, createdAt: firebase.firestore.FieldValue.serverTimestamp(), maxParticipants: 20
     });
   } catch(e) {
-    localStream.getTracks().forEach(t => t.stop());
-    hideLoading();
-    showLobbyError('Could not create room. Check your connection.');
-    setBtn('createBtn', false);
+    localStream.getTracks().forEach(t => t.stop()); hideLoading();
+    showLobbyErr('Could not create room. Check your connection.');
+    document.getElementById('createBtn').disabled = false;
     return;
   }
 
@@ -662,118 +637,71 @@ async function doCreate() {
 
 // ─── Join room ────────────────────────────────────────────────────────────────
 async function doJoin() {
-  clearError('join');
-  const code = document.getElementById('joinCode').value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const code = document.getElementById('joinCode').value.toUpperCase().replace(/[^A-Z0-9]/g,'');
   const un   = document.getElementById('joinUserName').value.trim();
-  if (!code || code.length !== 6 || !un) {
-    showError('join', 'Enter a valid 6-letter code and your name.'); return;
-  }
+  document.getElementById('joinError').textContent = '';
+  if (!code || code.length !== 6 || !un) { document.getElementById('joinError').textContent = 'Enter a valid 6-letter code and your name.'; return; }
 
-  setBtn('joinBtn', true);
+  document.getElementById('joinBtn').disabled = true;
   closeModals();
   showLoading('Looking up room…');
 
   let roomDoc;
-  try {
-    roomDoc = await db.collection('rooms').doc(code).get();
-  } catch(e) {
-    hideLoading();
-    showLobbyError('Connection error. Check your internet and retry.');
-    setBtn('joinBtn', false);
-    return;
-  }
+  try { roomDoc = await db.collection('rooms').doc(code).get(); }
+  catch(e) { hideLoading(); showLobbyErr('Connection error. Retry.'); document.getElementById('joinBtn').disabled = false; return; }
 
-  if (!roomDoc.exists) {
-    hideLoading();
-    showLobbyError('Room not found. Double-check the code.');
-    setBtn('joinBtn', false);
-    return;
-  }
+  if (!roomDoc.exists) { hideLoading(); showLobbyErr('Room not found. Double-check the code.'); document.getElementById('joinBtn').disabled = false; return; }
 
   showLoading('Starting camera and microphone…');
-
-  try {
-    localStream = await getMedia();
-  } catch(e) {
+  try { localStream = await getMedia(); }
+  catch(e) {
     hideLoading();
-    showLobbyError(e.name === 'NotAllowedError'
-      ? 'Camera/microphone permission denied.'
-      : 'Could not access camera/microphone: ' + e.message);
-    setBtn('joinBtn', false);
+    showLobbyErr(e.name === 'NotAllowedError' ? 'Camera/microphone permission denied.' : 'Cannot access camera: ' + e.message);
+    document.getElementById('joinBtn').disabled = false;
     return;
   }
 
-  isHost   = false;
-  roomCode = code;
-  myPeerId = genPeerId();
-  myName   = un;
-  roomName = roomDoc.data().name;
+  isHost = false; roomCode = code; myPeerId = genPeerId(); myName = un; roomName = roomDoc.data().name;
 
   enterRoom();
   await setupRoom();
   toast('Joined ' + roomName);
 }
 
-function setBtn(id, disabled) {
-  const el = document.getElementById(id);
-  if (el) el.disabled = disabled;
-}
-
-function showLobbyError(msg) {
+function showLobbyErr(msg) {
   const el = document.getElementById('lobbyError');
   el.textContent = '⚠️ ' + msg; el.classList.remove('hidden');
 }
 
-// ─── Enter / leave room ───────────────────────────────────────────────────────
+// ─── Enter room ───────────────────────────────────────────────────────────────
 function enterRoom() {
   hideLoading();
   document.getElementById('view-lobby').classList.add('hidden');
-  const room = document.getElementById('view-room');
-  room.classList.remove('hidden');
-
+  document.getElementById('view-room').classList.remove('hidden');
   document.getElementById('roomNameDisplay').textContent = roomName;
   document.getElementById('roomCodeDisplay').textContent = roomCode;
   document.getElementById('hostBadge').classList.toggle('hidden', !isHost);
+  document.getElementById('lobbyError').classList.add('hidden');
 
   // Render own tile
   const grid = document.getElementById('videoGrid');
   grid.innerHTML = '';
   grid.appendChild(createTile('local', myName, true));
-  attachStream('local', localStream);
+  showVideo('local', localStream);
   updateGrid();
-  setStatus('waiting');
-  setBtn('createBtn', false);
-  setBtn('joinBtn', false);
+  setConnStatus('waiting');
+  document.getElementById('createBtn').disabled = false;
+  document.getElementById('joinBtn').disabled   = false;
 }
 
+// ─── Leave room ───────────────────────────────────────────────────────────────
 async function leaveRoom() {
-  // Stop recording if active
-  if (isRecording && mediaRecorder && mediaRecorder.state !== 'inactive') {
-    mediaRecorder.stop();
-    isRecording = false;
-  }
-
-  // Unsubscribe Firestore listeners
-  unsubscribers.forEach(u => u());
-  unsubscribers.length = 0;
-
-  // Remove self from participants collection
-  if (roomCode && myPeerId) {
-    db.collection('rooms').doc(roomCode).collection('participants').doc(myPeerId)
-      .delete().catch(() => {});
-  }
-
-  // Close all peer connections
-  peers.forEach(pc => pc.close());
-  peers.clear();
-  pendingCandidates.clear();
-  participants.clear();
-  processedSignals.clear();
-
-  // Stop local tracks
+  if (isRecording && mediaRecorder && mediaRecorder.state !== 'inactive') { mediaRecorder.stop(); isRecording = false; }
+  unsubscribers.forEach(u => u()); unsubscribers.length = 0;
+  if (roomCode && myPeerId) db.collection('rooms').doc(roomCode).collection('participants').doc(myPeerId).delete().catch(()=>{});
+  peers.forEach(pc => pc.close()); peers.clear();
+  pendingCandidates.clear(); remoteStreams.clear(); participants.clear(); processedSigs.clear();
   if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
-
-  // Reset state
   isMuted = false; isCamOff = false; chatOpen = false; chatUnread = 0;
   roomCode = ''; myPeerId = ''; myName = ''; roomName = '';
 
@@ -783,11 +711,9 @@ async function leaveRoom() {
   document.getElementById('chatPanel').classList.add('collapsed');
   document.getElementById('chatBadge').classList.add('hidden');
   document.getElementById('recIndicator').classList.add('hidden');
-  document.getElementById('micBtn').classList.remove('off');
-  document.getElementById('camBtn').classList.remove('off');
-  document.getElementById('recBtn').classList.remove('rec-active');
-  document.getElementById('lobbyError').classList.add('hidden');
-
+  document.getElementById('micBtn').classList.remove('ctrl-off'); document.getElementById('micBtn').textContent = '🎤';
+  document.getElementById('camBtn').classList.remove('ctrl-off'); document.getElementById('camBtn').textContent = '📷';
+  document.getElementById('recBtn').classList.remove('ctrl-rec'); document.getElementById('recBtn').textContent = '⏺';
   document.getElementById('view-room').classList.add('hidden');
   document.getElementById('view-lobby').classList.remove('hidden');
 }
@@ -797,73 +723,59 @@ function toggleMic() {
   if (!localStream) return;
   isMuted = !isMuted;
   localStream.getAudioTracks().forEach(t => t.enabled = !isMuted);
-  document.getElementById('micBtn').classList.toggle('off', isMuted);
+  document.getElementById('micBtn').classList.toggle('ctrl-off', isMuted);
   document.getElementById('micBtn').textContent = isMuted ? '🔇' : '🎤';
-  setLocalBadges();
+  setBadges('local', isMuted, isCamOff);
 }
 
 function toggleCam() {
   if (!localStream) return;
   isCamOff = !isCamOff;
   localStream.getVideoTracks().forEach(t => t.enabled = !isCamOff);
-  document.getElementById('camBtn').classList.toggle('off', isCamOff);
+  document.getElementById('camBtn').classList.toggle('ctrl-off', isCamOff);
   document.getElementById('camBtn').textContent = isCamOff ? '📵' : '📷';
-  // Show/hide own video
+  // Update own tile
   const vid = document.getElementById('vid-local');
   const ph  = document.getElementById('ph-local');
-  if (vid && ph) {
-    vid.style.display = isCamOff ? 'none' : 'block';
-    ph.style.display  = isCamOff ? 'flex'  : 'none';
-  }
-  setLocalBadges();
+  if (vid && ph) { vid.style.display = isCamOff ? 'none' : 'block'; ph.style.display = isCamOff ? 'flex' : 'none'; }
+  setBadges('local', isMuted, isCamOff);
 }
 
 // ─── Recording ────────────────────────────────────────────────────────────────
-async function toggleRecording() {
-  if (isRecording) { stopRecording(); return; }
+async function toggleRec() {
+  if (isRecording) { stopRec(); return; }
 
   let captureStream = null;
-  try {
-    if (navigator.mediaDevices.getDisplayMedia)
-      captureStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
-  } catch(_) { /* user cancelled */ }
+  try { if (navigator.mediaDevices.getDisplayMedia) captureStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true }); }
+  catch(_) {}
 
   const source = captureStream || localStream;
   if (!source) return;
 
-  const types = ['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm','video/mp4'];
+  const types    = ['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm','video/mp4'];
   const mimeType = types.find(t => MediaRecorder.isTypeSupported(t)) || '';
-
   recordedChunks = [];
-  mediaRecorder = new MediaRecorder(source, mimeType ? { mimeType } : {});
+  mediaRecorder  = new MediaRecorder(source, mimeType ? { mimeType } : {});
   mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
   mediaRecorder.onstop = () => {
     const ext  = mimeType.includes('mp4') ? 'mp4' : 'webm';
     const blob = new Blob(recordedChunks, { type: mimeType || 'video/webm' });
     const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href = url; a.download = 'HamoudaSpace-' + roomCode + '.' + ext; a.click();
-    URL.revokeObjectURL(url);
-    toast('Recording saved!');
+    const a    = document.createElement('a'); a.href = url; a.download = 'HamoudaSpace-' + roomCode + '.' + ext; a.click();
+    URL.revokeObjectURL(url); toast('Recording saved!');
   };
   mediaRecorder.start(1000);
   isRecording = true;
-
-  document.getElementById('recBtn').classList.add('rec-active');
-  document.getElementById('recBtn').textContent = '⏹';
+  document.getElementById('recBtn').classList.add('ctrl-rec'); document.getElementById('recBtn').textContent = '⏹';
   document.getElementById('recIndicator').classList.remove('hidden');
   toast(captureStream ? 'Screen recording started' : 'Camera recording started');
-
-  if (captureStream) {
-    captureStream.getVideoTracks()[0].onended = () => stopRecording();
-  }
+  if (captureStream) captureStream.getVideoTracks()[0].onended = () => stopRec();
 }
 
-function stopRecording() {
+function stopRec() {
   if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
   isRecording = false;
-  document.getElementById('recBtn').classList.remove('rec-active');
-  document.getElementById('recBtn').textContent = '⏺';
+  document.getElementById('recBtn').classList.remove('ctrl-rec'); document.getElementById('recBtn').textContent = '⏺';
   document.getElementById('recIndicator').classList.add('hidden');
 }
 
@@ -871,42 +783,9 @@ function stopRecording() {
 function toggleChat() {
   chatOpen = !chatOpen;
   document.getElementById('chatPanel').classList.toggle('collapsed', !chatOpen);
-  if (chatOpen) {
-    chatUnread = 0;
-    document.getElementById('chatBadge').classList.add('hidden');
-    setTimeout(() => document.getElementById('chatInput').focus(), 80);
-    scrollChat();
-  }
+  if (chatOpen) { chatUnread = 0; document.getElementById('chatBadge').classList.add('hidden'); document.getElementById('chatMessages').scrollTop = 99999; setTimeout(() => document.getElementById('chatInput').focus(), 80); }
 }
-
-function closeChat() {
-  chatOpen = false;
-  document.getElementById('chatPanel').classList.add('collapsed');
-}
-
-function appendChat(msg, isSelf) {
-  const empty = document.getElementById('chatEmpty');
-  if (empty) empty.remove();
-
-  const time = new Date(msg.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  const div  = document.createElement('div');
-  div.className = 'chat-bubble' + (isSelf ? ' me' : '');
-  div.innerHTML = `<div class="chat-meta">${isSelf ? 'You' : esc(msg.name)} · ${time}</div><div>${esc(msg.text)}</div>`;
-  document.getElementById('chatMessages').appendChild(div);
-  scrollChat();
-
-  if (!isSelf && !chatOpen) {
-    chatUnread++;
-    const badge = document.getElementById('chatBadge');
-    badge.textContent = chatUnread > 9 ? '9+' : chatUnread;
-    badge.classList.remove('hidden');
-  }
-}
-
-function scrollChat() {
-  const c = document.getElementById('chatMessages');
-  c.scrollTop = c.scrollHeight;
-}
+function closeChat() { chatOpen = false; document.getElementById('chatPanel').classList.add('collapsed'); }
 
 async function sendChat() {
   const input = document.getElementById('chatInput');
@@ -918,48 +797,51 @@ async function sendChat() {
   await sendSignal(msg);
 }
 
-// ─── Share helpers ────────────────────────────────────────────────────────────
-function copyCode() {
-  navigator.clipboard.writeText(roomCode).then(() => toast('Code copied!'));
+function appendChat(msg, isSelf) {
+  document.getElementById('chatEmpty')?.remove();
+  const time = new Date(msg.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const div  = document.createElement('div');
+  div.className = 'chat-bubble' + (isSelf ? ' me' : '');
+  div.innerHTML = `<div class="chat-meta">${isSelf ? 'You' : esc(msg.name)} · ${time}</div><div>${esc(msg.text)}</div>`;
+  const c = document.getElementById('chatMessages');
+  c.appendChild(div); c.scrollTop = c.scrollHeight;
+  if (!isSelf && !chatOpen) {
+    chatUnread++;
+    const b = document.getElementById('chatBadge');
+    b.textContent = chatUnread > 9 ? '9+' : chatUnread; b.classList.remove('hidden');
+  }
 }
 
-function copyLink() {
-  const url = location.origin + location.pathname + '?join=' + roomCode;
-  navigator.clipboard.writeText(url).then(() => toast('Invite link copied!'));
-}
+// ─── Clipboard helpers ────────────────────────────────────────────────────────
+function copyCode() { navigator.clipboard.writeText(roomCode).then(() => toast('Code copied!')); }
+function copyLink() { navigator.clipboard.writeText(location.origin + location.pathname + '?join=' + roomCode).then(() => toast('Invite link copied!')); }
 
-// ─── Event listeners ──────────────────────────────────────────────────────────
-document.getElementById('sendBtn').onclick  = sendChat;
-document.getElementById('chatInput').onkeydown = e => { if (e.key === 'Enter') sendChat(); };
-document.getElementById('joinCode').oninput = e => {
-  e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-};
-
-// Keyboard shortcuts
+// ─── Keyboard shortcuts ───────────────────────────────────────────────────────
 document.addEventListener('keydown', e => {
-  if (e.target.tagName === 'INPUT') return;
-  if (!roomCode) return;
+  if (e.target.tagName === 'INPUT' || !roomCode) return;
   if (e.key === 'm') toggleMic();
   if (e.key === 'v') toggleCam();
   if (e.key === 'c') toggleChat();
 });
 
-// Auto-join from URL ?join=XXXXXX
-window.addEventListener('DOMContentLoaded', () => {
-  const code = new URLSearchParams(location.search).get('join');
-  if (code && code.length === 6) {
-    document.getElementById('joinCode').value = code.toUpperCase();
-    openModal('join');
-    toast('Enter your name to join');
-  }
-});
+document.getElementById('chatInput').addEventListener('keydown', e => { if (e.key === 'Enter') sendChat(); });
+document.getElementById('joinCode').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,''); });
 
-// Cleanup on page close
+// Enter modal fields with Enter key
+['createRoomName','createUserName'].forEach(id => document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') doCreate(); }));
+['joinCode','joinUserName'].forEach(id => document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') doJoin(); }));
+
+// Auto-join from URL ?join=XXXXXX
+const autoCode = new URLSearchParams(location.search).get('join');
+if (autoCode && autoCode.length === 6) {
+  document.getElementById('joinCode').value = autoCode.toUpperCase();
+  openModal('join');
+  toast('Enter your name to join');
+}
+
+// Remove self from Firestore on page close
 window.addEventListener('beforeunload', () => {
-  if (roomCode && myPeerId) {
-    db.collection('rooms').doc(roomCode).collection('participants').doc(myPeerId)
-      .delete().catch(() => {});
-  }
+  if (roomCode && myPeerId) db.collection('rooms').doc(roomCode).collection('participants').doc(myPeerId).delete().catch(()=>{});
 });
 </script>
 </body>
