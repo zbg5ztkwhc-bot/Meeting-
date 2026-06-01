@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <title>HamoudaSpace · Video Meetings</title>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
@@ -13,8 +15,8 @@
   --border-dim: #2a2f3e; --text-primary: #eef2ff; --text-secondary: #9ca3af;
   --accent: #3b82f6; --accent-hover: #2563eb; --danger: #ef4444;
 }
-html, body { height: 100%; overflow: hidden; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-dark); color: var(--text-primary); }
+html { height: 100%; overflow: hidden; -webkit-overflow-scrolling: touch; }
+body { height: 100%; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-dark); color: var(--text-primary); }
 .hidden { display: none !important; }
 .btn { padding: 12px 24px; border-radius: 40px; font-weight: 600; border: none; cursor: pointer; font-size: 16px; transition: opacity .15s; }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
@@ -24,8 +26,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .btn-secondary:hover:not(:disabled) { background: #1c2030; }
 
 /* Lobby */
-#view-lobby { display: flex; flex-direction: column; height: 100vh; overflow-y: auto; background: radial-gradient(circle at 20% 30%, #0f121c, #020408); }
-.lobby-header { padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; background: rgba(10,12,18,.7); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border-dim); flex-wrap: wrap; gap: 10px; }
+#view-lobby { display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow-y: auto; background: radial-gradient(circle at 20% 30%, #0f121c, #020408); }
+.lobby-header { padding: 16px 20px; padding-top: max(16px, env(safe-area-inset-top)); display: flex; justify-content: space-between; align-items: center; background: rgba(10,12,18,.7); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border-dim); flex-wrap: wrap; gap: 10px; }
 .logo-area { display: flex; gap: 12px; align-items: center; }
 .logo-icon { width: 44px; height: 44px; background: var(--accent); border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 24px; }
 .lobby-actions { display: flex; gap: 10px; }
@@ -55,8 +57,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* Room */
-#view-room { display: flex; flex-direction: column; height: 100vh; background: #05070c; overflow: hidden; }
-.room-header { background: rgba(8,10,16,.95); padding: 8px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,.06); flex-shrink: 0; flex-wrap: wrap; gap: 8px; }
+#view-room { display: flex; flex-direction: column; height: 100vh; height: 100dvh; background: #05070c; overflow: hidden; }
+.room-header { background: rgba(8,10,16,.95); padding: 8px 16px; padding-top: max(8px, env(safe-area-inset-top)); padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,.06); flex-shrink: 0; flex-wrap: wrap; gap: 8px; }
 .room-info { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .room-title { font-weight: 600; font-size: 12px; }
 .room-code { font-family: monospace; background: rgba(59,130,246,.2); padding: 4px 10px; border-radius: 40px; font-size: 11px; cursor: pointer; user-select: none; letter-spacing: 1px; }
@@ -85,7 +87,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .send-btn { background: var(--accent); border: none; width: 44px; border-radius: 30px; cursor: pointer; font-size: 18px; color: white; flex-shrink: 0; }
 
 /* Video grid */
-.video-section { flex: 1; overflow: hidden; padding: 8px; background: #03050a; }
+.video-section { flex: 1; overflow: hidden; padding: 8px; padding-left: max(8px, env(safe-area-inset-left)); padding-right: max(8px, env(safe-area-inset-right)); background: #03050a; min-height: 0; }
 .video-grid { display: grid; gap: 8px; height: 100%; overflow-y: auto; padding: 4px; align-content: start; }
 .vtile { background: #11161f; border-radius: 16px; overflow: hidden; position: relative; aspect-ratio: 4/3; border: 1px solid rgba(255,255,255,.08); }
 .vtile video { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -99,9 +101,13 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .vbadge-camoff { background: #4b5563; }
 .vbadge-wait   { background: rgba(255,165,0,.4); color: #ffa500; font-size: 8px; }
 
+/* Tap-to-play overlay (iOS autoplay restriction) */
+.tap-to-play { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.55); cursor: pointer; border-radius: 16px; z-index: 10; }
+.tap-to-play-icon { background: rgba(255,255,255,.15); border-radius: 50%; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; font-size: 22px; }
+
 /* Bottom controls */
-.bottom-controls { background: rgba(8,10,16,.98); backdrop-filter: blur(20px); border-top: 1px solid rgba(255,255,255,.08); padding: 10px 12px; display: flex; justify-content: center; align-items: center; gap: 12px; flex-shrink: 0; flex-wrap: wrap; }
-.ctrl-btn { width: 52px; height: 52px; border-radius: 50%; background: rgba(255,255,255,.1); border: none; font-size: 22px; cursor: pointer; position: relative; transition: background .15s, transform .1s; }
+.bottom-controls { background: rgba(8,10,16,.98); backdrop-filter: blur(20px); border-top: 1px solid rgba(255,255,255,.08); padding: 10px 12px; padding-bottom: max(10px, env(safe-area-inset-bottom)); padding-left: max(12px, env(safe-area-inset-left)); padding-right: max(12px, env(safe-area-inset-right)); display: flex; justify-content: center; align-items: center; gap: 12px; flex-shrink: 0; flex-wrap: wrap; }
+.ctrl-btn { width: 52px; height: 52px; border-radius: 50%; background: rgba(255,255,255,.1); border: none; font-size: 22px; cursor: pointer; position: relative; transition: background .15s, transform .1s; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 .ctrl-btn:active { transform: scale(.93); }
 .ctrl-off   { background: var(--danger) !important; }
 .ctrl-leave { background: var(--danger) !important; }
@@ -366,20 +372,48 @@ function createTile(id, name, isLocal) {
 }
 
 function showVideo(id, stream) {
-  const vid = document.getElementById('vid-' + id);
-  const ph  = document.getElementById('ph-'  + id);
-  if (!vid || !ph) return;
-  if (stream && stream.getVideoTracks().length > 0) {
-    if (vid.srcObject !== stream) {
-      vid.srcObject = stream;
-      vid.play().catch(() => {});
-    }
-    vid.style.display = 'block';
-    ph.style.display  = 'none';
-  } else {
+  const vid  = document.getElementById('vid-' + id);
+  const ph   = document.getElementById('ph-'  + id);
+  const tile = document.getElementById('tile-' + id);
+  if (!vid || !ph || !tile) return;
+
+  if (!stream || stream.getTracks().length === 0) {
+    // No stream — show placeholder, keep video element hidden (but don't clear srcObject)
     vid.style.display = 'none';
     ph.style.display  = 'flex';
+    return;
   }
+
+  // Always attach stream so AUDIO plays even when video track is missing
+  if (vid.srcObject !== stream) vid.srcObject = stream;
+
+  // Show video element only when video tracks are present
+  // (avatar stays visible for audio-only / cam-off remote participants)
+  const hasVideo = stream.getVideoTracks().length > 0;
+  vid.style.display = hasVideo ? 'block' : 'none';
+  ph.style.display  = hasVideo ? 'none'  : 'flex';
+
+  // Listen for future track additions (e.g. video arrives after audio)
+  if (!vid._trackListener) {
+    vid._trackListener = () => showVideo(id, stream);
+    stream.addEventListener('addtrack',    vid._trackListener);
+    stream.addEventListener('removetrack', vid._trackListener);
+  }
+
+  // Try to play — handles iOS / Safari / strict Chrome autoplay policies
+  vid.play().then(() => {
+    document.getElementById('tap-' + id)?.remove();
+  }).catch((err) => {
+    if (err.name === 'NotAllowedError' && !document.getElementById('tap-' + id)) {
+      const overlay = document.createElement('div');
+      overlay.className = 'tap-to-play'; overlay.id = 'tap-' + id;
+      overlay.innerHTML = '<div class="tap-to-play-icon">▶</div>';
+      overlay.addEventListener('click', () => {
+        vid.play().then(() => overlay.remove()).catch(() => {});
+      }, { once: true });
+      tile.appendChild(overlay);
+    }
+  });
 }
 
 function setBadges(id, muted, camOff) {
