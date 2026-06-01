@@ -3,19 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-<title>HamoudaSpace · Fixed Creation Error | Reliable Video Meeting</title>
-<!-- Multiple PeerJS CDN fallbacks -->
-<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
-<script>
-  // Fallback if primary CDN fails
-  if (typeof Peer === 'undefined') {
-    document.write('<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"><\/script>');
-  }
-  // Second fallback
-  if (typeof Peer === 'undefined') {
-    document.write('<script src="https://cdn.skypack.dev/peerjs@1.5.4"><\/script>');
-  }
-</script>
+<title>HamoudaSpace · Multiple Server Backup | Reliable Video Meeting</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   :root {
@@ -94,17 +82,64 @@
   .modal-card { background: var(--bg-card); border-radius: 28px; padding: 28px; width: 340px; }
   .modal-card input { width: 100%; margin-bottom: 12px; background: var(--bg-soft); border: 1px solid var(--border-dim); border-radius: 14px; padding: 10px; color: white; }
   .badge { background: var(--danger); border-radius: 20px; padding: 2px 6px; font-size: 9px; margin-left: 6px; }
+  .server-status { font-size: 10px; background: rgba(0,0,0,0.5); padding: 2px 8px; border-radius: 20px; }
 </style>
+<!-- Multiple PeerJS CDN fallbacks -->
+<script>
+  window.PeerConfig = { 
+    host: '0.peerjs.com', 
+    port: 443, 
+    path: '/',
+    secure: true,
+    config: {
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:stun2.l.google.com:19302' },
+        { urls: 'stun:stun3.l.google.com:19302' },
+        { urls: 'stun:stun4.l.google.com:19302' },
+        { urls: 'stun:stun.stunprotocol.org:3478' },
+        { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+        { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }
+      ]
+    }
+  };
+</script>
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>
+  if (typeof Peer === 'undefined') {
+    document.write('<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"><\/script>');
+  }
+  if (typeof Peer === 'undefined') {
+    document.write('<script src="https://cdn.skypack.dev/peerjs@1.5.4"><\/script>');
+  }
+</script>
 </head>
 <body>
 
 <div id="view-lobby">
-  <div class="lobby-header"><div class="logo-area"><div class="logo-icon">🎥</div><div><strong>HamoudaSpace</strong><div style="font-size:11px;">Fixed Connection · Full Recording</div></div></div><div class="lobby-actions"><button class="btn btn-secondary" id="showJoinBtn">🔗 Join</button><button class="btn btn-primary" id="showCreateBtn">✨ New Meeting</button></div></div>
-  <div class="lobby-main"><div class="hero"><h1>Reliable Video Meetings</h1><p>Fixed creation error · Records video + audio + presentation</p></div><div class="action-cards"><div class="card"><h3>Host a meeting</h3><button class="btn btn-primary" id="createCardBtn">Create room</button></div><div class="card"><h3>Join with code</h3><button class="btn btn-secondary" id="joinCardBtn">Enter code</button></div></div></div>
+  <div class="lobby-header">
+    <div class="logo-area"><div class="logo-icon">🎥</div><div><strong>HamoudaSpace</strong><div style="font-size:11px;">Multi-Server Backup · Reliable</div></div></div>
+    <div class="lobby-actions">
+      <button class="btn btn-secondary" id="showJoinBtn">🔗 Join</button>
+      <button class="btn btn-primary" id="showCreateBtn">✨ New Meeting</button>
+    </div>
+  </div>
+  <div class="lobby-main">
+    <div class="hero"><h1>Reliable Video Meetings</h1><p>Multiple server backup · Records video + audio + presentation</p></div>
+    <div class="action-cards">
+      <div class="card"><h3>Host a meeting</h3><button class="btn btn-primary" id="createCardBtn">Create room</button></div>
+      <div class="card"><h3>Join with code</h3><button class="btn btn-secondary" id="joinCardBtn">Enter code</button></div>
+    </div>
+    <div class="server-status" id="serverStatus">🟡 Connecting to server...</div>
+  </div>
 </div>
 
 <div id="view-room">
-  <div class="room-header"><div class="room-info"><span class="room-title" id="roomNameDisplay">Meeting</span><span class="room-code" id="roomCodeDisplay" onclick="copyRoomCode()">XXXXXX</span></div><div id="recIndicator" class="recording-indicator hidden">🔴 RECORDING</div></div>
+  <div class="room-header">
+    <div class="room-info"><span class="room-title" id="roomNameDisplay">Meeting</span><span class="room-code" id="roomCodeDisplay" onclick="copyRoomCode()">XXXXXX</span></div>
+    <div id="recIndicator" class="recording-indicator hidden">🔴 RECORDING</div>
+  </div>
   <div id="upperPanel" class="upper-panel collapsed">
     <div class="panel-header"><span class="panel-title" id="upperPanelTitle">Chat</span><button class="close-upper-btn" id="closeUpperBtn">✕</button></div>
     <div id="chatView" class="chat-container hidden"><div class="chat-messages" id="chatMessagesList"></div><div class="chat-input-row"><input type="text" id="chatInputField" placeholder="Type a message..."><button class="send-btn" id="sendChatUpperBtn">➤</button></div></div>
@@ -127,10 +162,19 @@ const state = {
   isRecording: false, mediaRecorder: null, recordedChunks: [], recordingCanvas: null, recordingAnimationId: null,
   hostConn: null,
   presentation: { pages: [], currentPage: 0, ownerId: null },
-  chatUnread: 0, activeUpperPanel: null
+  chatUnread: 0, activeUpperPanel: null,
+  currentServerIndex: 0
 };
 
-// ========== ROBUST ICE SERVERS ==========
+// List of PeerJS servers to try (fallback mechanism)
+const PEER_SERVERS = [
+  { host: '0.peerjs.com', port: 443, path: '/', secure: true },
+  { host: '1.peerjs.com', port: 443, path: '/', secure: true },
+  { host: '2.peerjs.com', port: 443, path: '/', secure: true },
+  { host: '3.peerjs.com', port: 443, path: '/', secure: true },
+  { host: 'peerjs-server.herokuapp.com', port: 443, path: '/', secure: true }
+];
+
 const ICE_SERVERS = [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
@@ -139,8 +183,6 @@ const ICE_SERVERS = [
   { urls: 'stun:stun4.l.google.com:19302' },
   { urls: 'stun:stun.stunprotocol.org:3478' },
   { urls: 'stun:stun.voipstunt.com:3478' },
-  { urls: 'stun:stun.ekiga.net' },
-  // Free TURN servers for users behind strict firewalls
   { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
   { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
   { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
@@ -151,7 +193,7 @@ function hostPid(code){ return 'room-' + code.toLowerCase(); }
 function toast(msg){ let t=document.querySelector('.toast'); if(t)t.remove(); t=document.createElement('div'); t.className='toast'; t.innerText=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),3000); }
 function showOverlay(msg){ let ov=document.getElementById('loadingOverlay'); ov.classList.remove('hidden'); ov.querySelector('p').innerText=msg; }
 function hideOverlay(){ document.getElementById('loadingOverlay').classList.add('hidden'); }
-function showLobby(){ document.getElementById('view-lobby').style.display='flex'; document.getElementById('view-room').style.display='none'; hideOverlay(); closeAllModals(); if(state.localStream) state.localStream.getTracks().forEach(t=>t.stop()); state.participants.clear(); state.calls.clear(); state.isRecording=false; document.getElementById('recBtn').classList.remove('recording'); document.getElementById('recIndicator').classList.add('hidden'); }
+function showLobby(){ document.getElementById('view-lobby').style.display='flex'; document.getElementById('view-room').style.display='none'; hideOverlay(); closeAllModals(); if(state.localStream) state.localStream.getTracks().forEach(t=>t.stop()); state.participants.clear(); state.calls.clear(); state.isRecording=false; document.getElementById('recBtn').classList.remove('recording'); document.getElementById('recIndicator').classList.add('hidden'); document.getElementById('serverStatus').innerHTML = '🟢 Ready'; }
 function showRoom(){ document.getElementById('view-lobby').style.display='none'; document.getElementById('view-room').style.display='flex'; hideOverlay(); }
 function closeAllModals(){ document.getElementById('createModal').classList.add('hidden'); document.getElementById('joinModal').classList.add('hidden'); }
 function escapeHtml(s){ return String(s).replace(/[&<>]/g, function(m){ if(m==='&') return '&amp;'; if(m==='<') return '&lt;'; if(m==='>') return '&gt;'; return m;}); }
@@ -367,63 +409,97 @@ function createTile(id, name, stream, isLocal){
   tile.appendChild(ph); tile.appendChild(video); tile.appendChild(bar); return tile;
 }
 
-// ========== CREATE ROOM (FIXED) ==========
-async function createRoom(){
+// ========== CREATE ROOM WITH SERVER FALLBACK ==========
+async function createRoomWithFallback(serverIndex = 0){
   const roomName = document.getElementById('createRoomName').value.trim();
   const userName = document.getElementById('createUserName').value.trim();
-  if(!roomName || !userName){ toast('Fill all fields'); return; }
-  closeAllModals(); showOverlay('Creating room...');
-  state.isHost = true; state.roomCode = genCode(); state.myName = userName; state.roomName = roomName;
+  if(!roomName || !userName){ toast('Fill all fields'); return false; }
+  
+  closeAllModals();
+  showOverlay(`Connecting to server ${serverIndex + 1}/${PEER_SERVERS.length}...`);
+  document.getElementById('serverStatus').innerHTML = `🟡 Trying server ${serverIndex + 1}...`;
+  
+  state.isHost = true;
+  state.roomCode = genCode();
+  state.myName = userName;
+  state.roomName = roomName;
   state.localStream = await getStream();
-  if(!state.localStream){ showLobby(); toast('Cannot access camera/microphone'); return; }
+  if(!state.localStream){ showLobby(); toast('Cannot access camera/microphone'); return false; }
   if(state.peer) state.peer.destroy();
-  const peerConfig = { config: { iceServers: ICE_SERVERS, iceCandidatePoolSize: 10 } };
+  
+  const server = PEER_SERVERS[serverIndex];
+  const peerConfig = {
+    host: server.host,
+    port: server.port,
+    path: server.path,
+    secure: server.secure,
+    config: { iceServers: ICE_SERVERS, iceCandidatePoolSize: 10 }
+  };
+  
   const hostId = hostPid(state.roomCode);
   state.peer = new Peer(hostId, peerConfig);
-  const timeout = setTimeout(() => {
-    if(state.peer) state.peer.destroy();
-    showLobby();
-    toast('Connection timeout - please check your internet and try again');
-  }, 20000);
-  state.peer.on('open', () => {
-    clearTimeout(timeout);
-    document.getElementById('roomNameDisplay').innerText = state.roomName;
-    document.getElementById('roomCodeDisplay').innerText = state.roomCode;
-    renderGrid(); showRoom(); toast(`Room created! Share code: ${state.roomCode}`);
-    state.peer.on('disconnected', () => { if(state.peer && !state.peer.destroyed) { toast('Reconnecting...'); state.peer.reconnect(); } });
-  });
-  state.peer.on('error', (err) => {
-    clearTimeout(timeout);
-    console.error('Peer error:', err);
-    if(err.type === 'unavailable-id'){
-      state.roomCode = genCode();
-      const newId = hostPid(state.roomCode);
-      state.peer.destroy();
-      state.peer = new Peer(newId, peerConfig);
-      // Re-attach handlers (simplified - recursion would be better but let's just retry)
-      toast('Retrying with new code...');
-      setTimeout(() => {
-        if(state.peer) state.peer.on('open', () => {});
-      }, 100);
-    } else {
-      showLobby();
-      toast('Creation error: ' + (err.message || err.type) + '. Please retry.');
-    }
-  });
-  state.peer.on('connection', (conn) => {
-    conn.on('open', () => {
-      const users = []; for(let [pid,p] of state.participants) users.push({peerId:pid, name:p.name});
-      users.push({peerId:state.peer.id, name:state.myName});
-      conn.send({ type:'welcome', users, roomName:state.roomName, roomCode:state.roomCode, presentation:state.presentation.pages.length ? { pages:state.presentation.pages.map(p=>p.type==='image'?{type:'image',url:p.url}:p), currentPage:state.presentation.currentPage, ownerId:state.presentation.ownerId } : null });
-      state.dataConns.forEach((c,k)=>{ if(k !== conn.peer && c.open) c.send({type:'user-joined', peerId:conn.peer, name:conn.metadata?.name || 'Guest'}); });
-      state.dataConns.set(conn.peer, conn);
-      state.participants.set(conn.peer, {name: conn.metadata?.name || 'Guest'});
-      renderGrid();
-      conn.on('data', (msg) => { if(msg.type === 'chat'){ appendChatMessage(msg, false); state.dataConns.forEach(c => { if(c.open && c.peer !== conn.peer) c.send(msg); }); } });
-      conn.on('close', () => handleLeft(conn.peer));
+  
+  return new Promise((resolve) => {
+    const timeout = setTimeout(() => {
+      if(state.peer) state.peer.destroy();
+      if(serverIndex + 1 < PEER_SERVERS.length){
+        toast(`Server ${serverIndex + 1} failed, trying next...`);
+        createRoomWithFallback(serverIndex + 1);
+      } else {
+        showLobby();
+        toast('All servers failed. Please check your internet connection.');
+        document.getElementById('serverStatus').innerHTML = '🔴 Connection failed';
+      }
+      resolve(false);
+    }, 15000);
+    
+    state.peer.on('open', () => {
+      clearTimeout(timeout);
+      document.getElementById('roomNameDisplay').innerText = state.roomName;
+      document.getElementById('roomCodeDisplay').innerText = state.roomCode;
+      renderGrid(); showRoom(); 
+      toast(`Room created! Share code: ${state.roomCode}`);
+      document.getElementById('serverStatus').innerHTML = '🟢 Connected';
+      
+      state.peer.on('disconnected', () => { 
+        if(state.peer && !state.peer.destroyed) { 
+          toast('Reconnecting...'); 
+          state.peer.reconnect(); 
+        } 
+      });
+      resolve(true);
     });
+    
+    state.peer.on('error', (err) => {
+      clearTimeout(timeout);
+      console.error('Peer error:', err);
+      if(serverIndex + 1 < PEER_SERVERS.length){
+        toast(`Server ${serverIndex + 1} error, trying next...`);
+        createRoomWithFallback(serverIndex + 1);
+      } else {
+        showLobby();
+        toast('Connection error. Please refresh and try again.');
+        document.getElementById('serverStatus').innerHTML = '🔴 Connection failed';
+      }
+      resolve(false);
+    });
+    
+    state.peer.on('connection', (conn) => {
+      conn.on('open', () => {
+        const users = []; for(let [pid,p] of state.participants) users.push({peerId:pid, name:p.name});
+        users.push({peerId:state.peer.id, name:state.myName});
+        conn.send({ type:'welcome', users, roomName:state.roomName, roomCode:state.roomCode, presentation:state.presentation.pages.length ? { pages:state.presentation.pages.map(p=>p.type==='image'?{type:'image',url:p.url}:p), currentPage:state.presentation.currentPage, ownerId:state.presentation.ownerId } : null });
+        state.dataConns.forEach((c,k)=>{ if(k !== conn.peer && c.open) c.send({type:'user-joined', peerId:conn.peer, name:conn.metadata?.name || 'Guest'}); });
+        state.dataConns.set(conn.peer, conn);
+        state.participants.set(conn.peer, {name: conn.metadata?.name || 'Guest'});
+        renderGrid();
+        conn.on('data', (msg) => { if(msg.type === 'chat'){ appendChatMessage(msg, false); state.dataConns.forEach(c => { if(c.open && c.peer !== conn.peer) c.send(msg); }); } });
+        conn.on('close', () => handleLeft(conn.peer));
+      });
+    });
+    
+    state.peer.on('call', (call) => { if(state.localStream){ call.answer(state.localStream); attachCall(call); } });
   });
-  state.peer.on('call', (call) => { if(state.localStream){ call.answer(state.localStream); attachCall(call); } });
 }
 
 // ========== JOIN ROOM ==========
@@ -438,10 +514,19 @@ async function joinRoom(){
   state.isRecording = false; document.getElementById('recBtn').classList.remove('recording'); document.getElementById('recIndicator').classList.add('hidden');
   state.isHost = false; state.roomCode = code; state.myName = userName; state.localStream = await getStream();
   if(!state.localStream){ showLobby(); toast('Cannot access camera/microphone'); return; }
-  const peerConfig = { config: { iceServers: ICE_SERVERS, iceCandidatePoolSize: 10 } };
+  
+  const server = PEER_SERVERS[0];
+  const peerConfig = {
+    host: server.host,
+    port: server.port,
+    path: server.path,
+    secure: server.secure,
+    config: { iceServers: ICE_SERVERS, iceCandidatePoolSize: 10 }
+  };
+  
   state.peer = new Peer(peerConfig);
   const timeout = setTimeout(() => { if(state.peer) state.peer.destroy(); showLobby(); toast('Connection timeout'); }, 20000);
-  state.peer.on('error', (err) => { clearTimeout(timeout); console.error(err); showLobby(); toast('Join error: ' + (err.message || err.type)); });
+  state.peer.on('error', (err) => { clearTimeout(timeout); showLobby(); toast('Join error'); });
   state.peer.on('open', (myPid) => {
     clearTimeout(timeout);
     const hostConn = state.peer.connect(hostPid(state.roomCode), { metadata: { name: state.myName }, reliable: true });
@@ -483,7 +568,7 @@ document.getElementById('createCardBtn').onclick = () => document.getElementById
 document.getElementById('joinCardBtn').onclick = () => document.getElementById('joinModal').classList.remove('hidden');
 document.getElementById('cancelCreateModal').onclick = closeAllModals;
 document.getElementById('cancelJoinModal').onclick = closeAllModals;
-document.getElementById('confirmCreateModal').onclick = createRoom;
+document.getElementById('confirmCreateModal').onclick = () => createRoomWithFallback(0);
 document.getElementById('confirmJoinModal').onclick = joinRoom;
 document.getElementById('joinRoomCode').addEventListener('input', e=> e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,''));
 const urlParams = new URLSearchParams(window.location.search);
