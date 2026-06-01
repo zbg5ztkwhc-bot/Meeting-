@@ -6,9 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <title>HamoudaSpace · Video Meetings</title>
-<!-- Signaling: PeerJS (WebSocket-based, no Firestore race conditions) -->
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
-<!-- Firebase: room presence + chat only -->
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 <style>
@@ -133,7 +131,6 @@ body { height:100%; overflow:hidden; font-family:-apple-system,BlinkMacSystemFon
 </head>
 <body>
 
-<!-- ══ LOBBY ══ -->
 <div id="view-lobby">
   <div class="lobby-header">
     <div class="logo-area">
@@ -159,7 +156,6 @@ body { height:100%; overflow:hidden; font-family:-apple-system,BlinkMacSystemFon
   </div>
 </div>
 
-<!-- ══ ROOM ══ -->
 <div id="view-room" class="hidden">
   <div class="room-header">
     <div class="room-info">
@@ -191,6 +187,7 @@ body { height:100%; overflow:hidden; font-family:-apple-system,BlinkMacSystemFon
   <div class="video-section"><div class="video-grid" id="videoGrid"></div></div>
 
   <div class="bottom-controls">
+    <button class="ctrl-btn" id="shareBtn" onclick="toggleScreenShare()" title="Share Screen (S)">📺</button>
     <button class="ctrl-btn" id="micBtn"  onclick="toggleMic()" title="Mute (M)">🎤</button>
     <button class="ctrl-btn" id="camBtn"  onclick="toggleCam()" title="Camera (V)">📷</button>
     <button class="ctrl-btn" id="recBtn"  onclick="toggleRec()" title="Record">⏺</button>
@@ -204,7 +201,6 @@ body { height:100%; overflow:hidden; font-family:-apple-system,BlinkMacSystemFon
   </div>
 </div>
 
-<!-- ══ MODALS ══ -->
 <div id="createModal" class="modal-backdrop hidden">
   <div class="modal-card">
     <div class="modal-title">New Meeting</div>
@@ -265,6 +261,8 @@ let mediaRecorder = null;
 let recordedChunks= [];
 let chatOpen      = false;
 let chatUnread    = 0;
+let screenStream  = null;
+let isSharingScreen = false;
 
 // peerjsId → { name, call }
 const participants = new Map();
@@ -352,7 +350,7 @@ function updateGrid() {
 }
 
 function makeTile(id, name, isLocal) {
-  const init  = (name.trim().split(/\s+/).map(w => w[0]).join('').slice(0,2) || '?').toUpperCase();
+  const init  = (name.trim().split(/\s+/).map(w => w).join('').slice(0,2) || '?').toUpperCase();
   const tile  = document.createElement('div');
   tile.className = 'vtile'; tile.id = 'tile-' + id;
   tile.innerHTML = `
@@ -543,11 +541,15 @@ async function setupRoom() {
   });
 
   // ── Chat listener ──
-  const unsubC = chatCol.orderBy('ts').onSnapshot(snap => {
+  const unsubC = chatCol.orderBy('ts').onSnapshot({ includeMetadataChanges: true }, snap => {
     snap.docChanges().forEach(change => {
-      if (change.type !== 'added') return;
-      const d = change.doc.data();
-      if (d.peerjsId !== myPeerjsId) appendChat(d, false);
+      if (change.type === 'added' || change.type === 'modified') {
+        const d = change.doc.data();
+        if (d.peerjsId === myPeerjsId) return;
+        // Check for duplicates before appending metadata transition events
+        if (document.getElementById(`msg-${change.doc.id}`)) return;
+        appendChat(d, false, change.doc.id);
+      }
     });
   });
 
@@ -663,6 +665,7 @@ function enterRoom() {
 // ─── Leave room ───────────────────────────────────────────────────────────────
 async function leaveRoom() {
   if (isRecording && mediaRecorder?.state !== 'inactive') mediaRecorder.stop();
+  if (isSharingScreen) stopScreenShare();
 
   unsubs.forEach(u => u()); unsubs.length = 0;
 
@@ -685,6 +688,7 @@ async function leaveRoom() {
   document.getElementById('chatPanel').classList.add('collapsed');
   document.getElementById('chatBadge').classList.add('hidden');
   document.getElementById('recIndicator').classList.add('hidden');
+  document.getElementById('shareBtn').classList.remove('ctrl-sec');
   document.getElementById('micBtn').classList.remove('ctrl-off'); document.getElementById('micBtn').textContent = '🎤';
   document.getElementById('camBtn').classList.remove('ctrl-off'); document.getElementById('camBtn').textContent = '📷';
   document.getElementById('recBtn').classList.remove('ctrl-rec'); document.getElementById('recBtn').textContent = '⏺';
@@ -715,6 +719,70 @@ function toggleCam() {
   setBadges('local', isMuted, isCamOff);
 }
 
+// ─── Screen Sharing ───────────────────────────────────────────────────────────
+async function toggleScreenShare() {
+  if (isSharingScreen) {
+    stopScreenShare();
+    return;
+  }
+
+  try {
+    screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+    isSharingScreen = true;
+    document.getElementById('shareBtn').classList.add('ctrl-sec');
+    
+    const screenTrack = screenStream.getVideoTracks();
+
+    // Swap the video track for all active peer calls
+    participants.forEach(p => {
+      if (p.call && p.call.peerConnection) {
+        const senders = p.call.peerConnection.getSenders();
+        const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+        if (videoSender) {
+          videoSender.replaceTrack(screenTrack);
+        }
+      }
+    });
+
+    // Update your local video preview tile
+    attachStream('local', screenStream);
+
+    // If user stops sharing via browser bar instead of the button
+    screenTrack.onended = () => stopScreenShare();
+    toast('Screen presentation started!');
+  } catch (err) {
+    console.error("Failed to share screen:", err);
+    toast('Screen share cancelled');
+  }
+}
+
+function stopScreenShare() {
+  if (!isSharingScreen) return;
+  
+  isSharingScreen = false;
+  document.getElementById('shareBtn').classList.remove('ctrl-sec');
+
+  if (screenStream) {
+    screenStream.getTracks().forEach(t => t.stop());
+  }
+
+  // Fall back to original camera track
+  const cameraTrack = localStream.getVideoTracks();
+  participants.forEach(p => {
+    if (p.call && p.call.peerConnection) {
+      const senders = p.call.peerConnection.getSenders();
+      const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+      if (videoSender && cameraTrack) {
+        videoSender.replaceTrack(cameraTrack);
+      }
+    }
+  });
+
+  attachStream('local', localStream);
+  toast('Screen presentation stopped');
+}
+
+
 // ─── Recording ────────────────────────────────────────────────────────────────
 async function toggleRec() {
   if (isRecording) { stopRec(); return; }
@@ -738,7 +806,7 @@ async function toggleRec() {
   document.getElementById('recBtn').classList.add('ctrl-rec');    document.getElementById('recBtn').textContent = '⏹';
   document.getElementById('recIndicator').classList.remove('hidden');
   toast(captureStream ? 'Screen recording started' : 'Camera recording started');
-  if (captureStream) captureStream.getVideoTracks()[0].onended = stopRec;
+  if (captureStream) captureStream.getVideoTracks().onended = stopRec;
 }
 
 function stopRec() {
@@ -771,12 +839,13 @@ async function sendChat() {
   db.collection('rooms').doc(roomCode).collection('chat').add(msg).catch(console.error);
 }
 
-function appendChat(msg, isSelf) {
+function appendChat(msg, isSelf, docId = '') {
   document.getElementById('chatEmpty')?.remove();
   const ts   = typeof msg.ts === 'object' && msg.ts?.toMillis ? msg.ts.toMillis() : (msg.ts || Date.now());
   const time = new Date(ts).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
   const div  = document.createElement('div');
   div.className = 'chat-bubble' + (isSelf ? ' me' : '');
+  if (docId) div.id = `msg-${docId}`;
   div.innerHTML = `<div class="chat-meta">${isSelf ? 'You' : esc(msg.name)} · ${time}</div><div>${esc(msg.text)}</div>`;
   const c = document.getElementById('chatMessages');
   c.appendChild(div); c.scrollTop = c.scrollHeight;
@@ -797,6 +866,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'm') toggleMic();
   if (e.key === 'v') toggleCam();
   if (e.key === 'c') toggleChat();
+  if (e.key === 's') toggleScreenShare();
 });
 
 document.getElementById('chatInput').addEventListener('keydown', e => { if (e.key === 'Enter') sendChat(); });
