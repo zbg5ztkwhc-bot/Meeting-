@@ -406,11 +406,11 @@ function setBadges(id, muted, camOff) {
                 (camOff ? '<span class="vbadge vbadge-camoff">📵</span>' : '');
 }
 
-// ─── PeerJS (UPDATED TO USE YOUR RENDER SERVER) ───────────────────────────────
+// ─── PeerJS (UPDATED TO HUGGING FACE URL) ────────────────────────────────────
 function initPeer() {
   return new Promise((resolve, reject) => {
     const p = new Peer(undefined, {
-      host: 'my-peer-server-xqam.onrender.com', // 👈 Your custom Render server URL
+      host: 'mahmod-hamoda-hamoudaspace-signaling.hf.space', // 👈 Your Hugging Face URL
       secure: true,
       path: '/myapp',
       debug: 1, 
@@ -543,14 +543,13 @@ async function setupRoom() {
     }
   });
 
-  // ── Chat listener ──
+  // ── Chat listener (Fixed metadata issues) ──
   const unsubC = chatCol.orderBy('ts').onSnapshot({ includeMetadataChanges: true }, snap => {
     snap.docChanges().forEach(change => {
       if (change.type === 'added' || change.type === 'modified') {
         const d = change.doc.data();
         if (d.peerjsId === myPeerjsId) return;
-        // Check for duplicates before appending metadata transition events
-        if (document.getElementById(`msg-${change.doc.id}`)) return;
+        if (document.getElementById(`msg-${change.doc.id}`)) return; // Skip dupes
         appendChat(d, false, change.doc.id);
       }
     });
@@ -784,7 +783,6 @@ function stopScreenShare() {
   attachStream('local', localStream);
   toast('Screen presentation stopped');
 }
-
 
 // ─── Recording ────────────────────────────────────────────────────────────────
 async function toggleRec() {
