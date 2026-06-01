@@ -406,11 +406,14 @@ function setBadges(id, muted, camOff) {
                 (camOff ? '<span class="vbadge vbadge-camoff">📵</span>' : '');
 }
 
-// ─── PeerJS ───────────────────────────────────────────────────────────────────
+// ─── PeerJS (UPDATED TO USE YOUR RENDER SERVER) ───────────────────────────────
 function initPeer() {
   return new Promise((resolve, reject) => {
     const p = new Peer(undefined, {
-      debug: 0,
+      host: 'my-peer-server-xqam.onrender.com', // 👈 Your custom Render server URL
+      secure: true,
+      path: '/myapp',
+      debug: 1, 
       config: ICE_CFG
     });
 
@@ -574,7 +577,7 @@ async function doCreate() {
     document.getElementById('createBtn').disabled = false; return;
   }
 
-  showLoading('Setting up connection…');
+  showLoading('Connecting to signaling server…');
   try { await initPeer(); }
   catch(e) {
     hideLoading(); showLobbyErr('Could not connect to signaling server. Check your network.');
@@ -623,7 +626,7 @@ async function doJoin() {
     document.getElementById('joinBtn').disabled = false; return;
   }
 
-  showLoading('Setting up connection…');
+  showLoading('Connecting to signaling server…');
   try { await initPeer(); }
   catch(e) {
     hideLoading(); showLobbyErr('Could not connect to signaling server. Check your network.');
