@@ -103,20 +103,17 @@
 
 <div id="view-lobby">
   <div class="lobby-header">
-    <div class="logo-area"><div class="logo-icon">🎥</div><div><strong>HamoudaSpace</strong><div style="font-size:10px;">A/V Connections Fixed</div></div></div>
+    <div class="logo-area"><div class="logo-icon">🎥</div><div><strong>HamoudaSpace</strong><div style="font-size:10px;">Sync Bug Fixed</div></div></div>
     <div class="lobby-actions">
       <button class="btn btn-secondary" id="showJoinBtn">🔗 Join</button>
       <button class="btn btn-primary" id="showCreateBtn">✨ New Meeting</button>
     </div>
   </div>
   <div class="lobby-main">
-    <div class="hero"><h1>Video Meetings That Work</h1><p>Fixed A/V Sync - Up to 20 Participants</p></div>
+    <div class="hero"><h1>Video Meetings That Work</h1><p>Fixed Discovery - Participants now see each other.</p></div>
     <div class="action-cards">
       <div class="card"><h3>Start a Meeting</h3><button class="btn btn-primary" id="createCardBtn">Create Room</button></div>
       <div class="card"><h3>Join a Meeting</h3><button class="btn btn-secondary" id="joinCardBtn">Enter Code</button></div>
-    </div>
-    <div class="info-box">
-      <p>🔵 <strong>Fixed!</strong> TURN servers restored for mobile networks. Smart DOM updates added.</p>
     </div>
   </div>
 </div>
@@ -151,7 +148,7 @@
 <div id="loadingOverlay" class="overlay hidden"><div class="spinner"></div><p>Starting camera...</p></div>
 
 <script>
-// Firebase Config - EXACT CONFIGURATION KEPT
+// Firebase Config
 const firebaseConfig = {
   apiKey: "AIzaSyCra3IgsAaQlf3INjRn04DdX3KWwb8zdlo",
   authDomain: "hamoudaspace-meetingapp.firebaseapp.com",
@@ -170,7 +167,7 @@ const db = firebase.firestore();
 let localStream = null;
 let peerConnections = new Map();
 let pendingCandidates = new Map(); 
-let participants = new Map(); // Stores { name, stream }
+let participants = new Map(); 
 let isHost = false;
 let roomCode = '';
 let myName = '';
@@ -181,12 +178,12 @@ let isCamOff = false;
 let isRecording = false;
 let mediaRecorder = null;
 let recordedChunks = [];
-let unsubscribe = null;
+let unsubscribe = null; 
 let chatUnread = 0;
 let activeUpperPanel = null;
 let presentation = { pages: [], currentPage: 0 };
 
-// ICE Servers - TURN SERVERS RESTORED FOR MOBILE COMPATIBILITY
+// ICE Servers
 const ICE_SERVERS = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
@@ -227,7 +224,7 @@ function showLobby() {
   peerConnections.clear();
   pendingCandidates.clear();
   participants.clear();
-  document.getElementById('videoGridContainer').innerHTML = ''; // Clear grid safely here
+  document.getElementById('videoGridContainer').innerHTML = ''; 
   if(isRecording) stopRecording();
 }
 
@@ -444,7 +441,7 @@ async function sendToRoom(data) {
   });
 }
 
-// ========== WEBRTC FIXES (TRACK HANDLING) ==========
+// ========== WEBRTC ==========
 async function createPeerConnection(targetId) {
   const pc = new RTCPeerConnection(ICE_SERVERS);
   peerConnections.set(targetId, pc);
@@ -458,7 +455,6 @@ async function createPeerConnection(targetId) {
     document.getElementById('connectionStatus').className = 'status-badge connected';
     document.getElementById('connectionStatus').innerHTML = '🟢 Connected';
     
-    // SAVE THE STREAM AND RE-RENDER SMARTLY
     if (participants.has(targetId)) {
         participants.get(targetId).stream = event.streams;
         
@@ -486,14 +482,13 @@ async function createPeerConnection(targetId) {
   return pc;
 }
 
-// Process stored ICE candidates once RemoteDescription is set
 async function processPendingCandidates(targetId, pc) {
     const candidates = pendingCandidates.get(targetId) || [];
     for(let candidate of candidates) {
         try { await pc.addIceCandidate(new RTCIceCandidate(candidate)); } 
         catch(e) { console.error('Error adding queued ICE candidate', e); }
     }
-    pendingCandidates.set(targetId, []); // Clear queue
+    pendingCandidates.set(targetId, []); 
 }
 
 async function handleMessage(from, data) {
@@ -514,7 +509,6 @@ async function handleMessage(from, data) {
       document.getElementById('connectionStatus').className = 'status-badge connected';
       document.getElementById('connectionStatus').innerHTML = '🟢 Connected';
       
-      // SAVE THE STREAM AND RE-RENDER SMARTLY
       if (participants.has(from)) {
           participants.get(from).stream = event.streams;
           
@@ -570,39 +564,42 @@ async function handleMessage(from, data) {
   }
 }
 
-// ========== ROOM SETUP ==========
+// ========== ROOM SETUP (FIXED DISCOVERY) ==========
 async function setupRoom() {
   const roomRef = db.collection('rooms').doc(roomCode);
   
+  // 1. Add self to participants collection
   await roomRef.collection('participants').doc(myPeerId).set({
     name: myName,
     isHost: isHost,
     joinedAt: firebase.firestore.FieldValue.serverTimestamp()
   });
   
-  unsubscribe = roomRef.onSnapshot(async (snapshot) => {
-    const participantsSnap = await roomRef.collection('participants').get();
+  // 2. LISTEN DIRECTLY TO THE PARTICIPANTS SUBCOLLECTION
+  const unsubParticipants = roomRef.collection('participants').onSnapshot((snapshot) => {
     const currentParticipants = new Set();
     
-    participantsSnap.forEach(doc => {
+    snapshot.docs.forEach(doc => {
       const pid = doc.id;
       if(pid === myPeerId) return;
       currentParticipants.add(pid);
       
+      // If we see a new person we haven't tracked yet
       if(!participants.has(pid)) {
         const data = doc.data();
-        participants.set(pid, { name: data.name, stream: null }); // initialize stream as null
+        participants.set(pid, { name: data.name, stream: null }); 
         renderGrid();
         updateParticipantCount();
         toast(`${data.name} joined`);
         
-        // STRICT INITIATOR LOGIC (Fixes Glare issue)
+        // Ensure only one side initiates the WebRTC offer
         if(myPeerId < pid) {
             createPeerConnection(pid);
         }
       }
     });
     
+    // Cleanup users who left
     for(let [pid] of participants) {
       if(!currentParticipants.has(pid)) {
         const pc = peerConnections.get(pid);
@@ -610,13 +607,14 @@ async function setupRoom() {
         peerConnections.delete(pid);
         pendingCandidates.delete(pid);
         participants.delete(pid);
-        renderGrid(); // Smart render handles removal automatically
+        renderGrid(); 
         updateParticipantCount();
       }
     }
   });
   
-  roomRef.collection('signals').orderBy('timestamp').onSnapshot((snapshot) => {
+  // 3. Listen to signals subcollection
+  const unsubSignals = roomRef.collection('signals').orderBy('timestamp').onSnapshot((snapshot) => {
     snapshot.docChanges().forEach(async (change) => {
       if(change.type === 'added') {
         const signal = change.doc.data();
@@ -627,6 +625,12 @@ async function setupRoom() {
       }
     });
   });
+  
+  // Combine unsubscriptions so we can properly close both when leaving
+  unsubscribe = () => {
+      unsubParticipants();
+      unsubSignals();
+  };
   
   document.getElementById('connectionStatus').className = 'status-badge connecting';
   document.getElementById('connectionStatus').innerHTML = '🟡 Waiting for participants...';
@@ -719,23 +723,20 @@ async function joinRoom() {
   await setupRoom();
 }
 
-// ========== SMART VIDEO GRID (Fixes Video Disappearing) ==========
+// ========== SMART VIDEO GRID ==========
 function renderGrid() {
   const container = document.getElementById('videoGridContainer');
   
-  // 1. Ensure Local Tile Exists
   if (!document.getElementById('tile-local')) {
       container.appendChild(createTile('local', `${myName} (you)`, localStream, true));
   }
   
-  // 2. Add Missing Remote Tiles
   for(let [peerId, p] of participants.entries()) {
       if (!document.getElementById(`tile-${peerId}`)) {
           container.appendChild(createTile(peerId, p.name, p.stream, false));
       }
   }
   
-  // 3. Remove Disconnected Tiles
   Array.from(container.children).forEach(child => {
       if (child.id === 'tile-local') return;
       const peerId = child.id.replace('tile-', '');
