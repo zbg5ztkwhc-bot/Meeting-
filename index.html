@@ -3,968 +3,830 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover" />
-<title>HamoudaSpace · Video Meetings</title>
+<title>HamoudaSpace</title>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  :root {
-    --bg-dark: #05070c; --bg-card: #12161f; --bg-soft: #1a1f2c;
-    --border-dim: #2a2f3e; --text-primary: #eef2ff; --text-secondary: #9ca3af;
-    --accent: #3b82f6; --accent-hover: #2563eb; --danger: #ef4444; --success: #22c55e;
-  }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-dark); color: var(--text-primary); height: 100vh; overflow: hidden; }
-  .hidden { display: none !important; }
-  .btn { padding: 12px 24px; border-radius: 40px; font-weight: 600; border: none; cursor: pointer; font-size: 16px; }
-  .btn-primary { background: var(--accent); color: white; }
-  .btn-secondary { background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-dim); }
+* { margin:0; padding:0; box-sizing:border-box; }
+:root {
+  --bg:#05070c; --card:#12161f; --soft:#1a1f2c; --border:#2a2f3e;
+  --txt:#eef2ff; --dim:#9ca3af; --blue:#3b82f6; --red:#ef4444; --green:#22c55e;
+}
+body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; background:var(--bg); color:var(--txt); height:100vh; overflow:hidden; }
+.hidden { display:none !important; }
+.btn { padding:11px 22px; border-radius:40px; font-weight:600; border:none; cursor:pointer; font-size:15px; }
+.btn-p { background:var(--blue); color:#fff; }
+.btn-s { background:var(--card); color:var(--txt); border:1px solid var(--border); }
 
-  /* LOBBY */
-  #view-lobby { display: flex; flex-direction: column; height: 100vh; overflow-y: auto; background: radial-gradient(circle at 20% 30%, #0f121c, #020408); }
-  .lobby-header { padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; background: rgba(10,12,18,0.7); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border-dim); flex-wrap: wrap; gap: 10px; }
-  .logo-area { display: flex; gap: 12px; align-items: center; }
-  .logo-icon { width: 44px; height: 44px; background: var(--accent); border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 24px; }
-  .lobby-actions { display: flex; gap: 10px; }
-  .lobby-main { max-width: 700px; margin: 40px auto; padding: 20px; text-align: center; }
-  .hero h1 { font-size: 1.6rem; margin-bottom: 12px; }
-  .hero p { font-size: 14px; color: var(--text-secondary); }
-  .action-cards { display: flex; gap: 16px; justify-content: center; margin-top: 32px; flex-wrap: wrap; }
-  .card { background: var(--bg-card); padding: 24px; border-radius: 28px; width: 220px; border: 1px solid var(--border-dim); }
-  .card h3 { font-size: 18px; margin-bottom: 8px; }
-  .card p { font-size: 12px; color: var(--text-secondary); margin-bottom: 16px; }
-  .card button { width: 100%; padding: 10px; font-size: 14px; }
-  .info-box { margin-top: 30px; padding: 16px; background: rgba(59,130,246,0.1); border-radius: 20px; font-size: 12px; }
+/* LOBBY */
+#lobby { display:flex; flex-direction:column; height:100vh; overflow-y:auto; background:radial-gradient(circle at 20% 30%,#0f121c,#020408); }
+.lh { padding:14px 18px; display:flex; justify-content:space-between; align-items:center; background:rgba(10,12,18,.75); backdrop-filter:blur(12px); border-bottom:1px solid var(--border); flex-wrap:wrap; gap:8px; }
+.logo { display:flex; gap:10px; align-items:center; }
+.logo-ic { width:42px; height:42px; background:var(--blue); border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:22px; }
+.lbody { max-width:680px; margin:36px auto; padding:18px; text-align:center; }
+.lbody h1 { font-size:1.55rem; margin-bottom:10px; }
+.lbody p { font-size:13px; color:var(--dim); }
+.cards { display:flex; gap:14px; justify-content:center; margin-top:28px; flex-wrap:wrap; }
+.lcard { background:var(--card); padding:22px; border-radius:24px; width:210px; border:1px solid var(--border); }
+.lcard h3 { font-size:17px; margin-bottom:6px; }
+.lcard p { font-size:11px; color:var(--dim); margin-bottom:14px; }
+.lcard button { width:100%; padding:9px; font-size:13px; }
+.ibox { margin-top:26px; padding:14px; background:rgba(59,130,246,.1); border-radius:18px; font-size:12px; }
 
-  /* ROOM */
-  #view-room { display: none; flex-direction: column; height: 100vh; background: #05070c; }
-  .room-header { background: rgba(8,10,16,0.95); padding: 8px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.06); flex-shrink: 0; flex-wrap: wrap; gap: 8px; }
-  .room-info { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-  .room-title { font-weight: 600; font-size: 12px; }
-  .room-code { font-family: monospace; background: rgba(59,130,246,0.2); padding: 4px 10px; border-radius: 40px; font-size: 11px; cursor: pointer; }
-  .status-badge { font-size: 10px; padding: 3px 8px; border-radius: 20px; }
-  .status-badge.connected { background: rgba(34,197,94,0.3); color: #22c55e; }
-  .status-badge.connecting { background: rgba(255,165,0,0.3); color: #ffa500; }
-  .recording-indicator { background: var(--danger); padding: 4px 10px; border-radius: 30px; font-size: 10px; display: flex; align-items: center; gap: 6px; animation: pulseRed 1s infinite; }
-  @keyframes pulseRed { 0%,100%{opacity:1}50%{opacity:0.5} }
+/* ROOM */
+#room { display:none; flex-direction:column; height:100vh; background:var(--bg); }
+.rh { background:rgba(8,10,16,.95); padding:7px 14px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,.06); flex-shrink:0; flex-wrap:wrap; gap:6px; }
+.ri { display:flex; gap:7px; align-items:center; flex-wrap:wrap; }
+.rtitle { font-weight:600; font-size:12px; }
+.rcode { font-family:monospace; background:rgba(59,130,246,.2); padding:3px 9px; border-radius:40px; font-size:11px; cursor:pointer; user-select:all; }
+.sbadge { font-size:10px; padding:3px 8px; border-radius:20px; }
+.sbadge.ok  { background:rgba(34,197,94,.25); color:var(--green); }
+.sbadge.wait{ background:rgba(255,165,0,.25); color:#ffa500; }
+.recind { background:var(--red); padding:4px 9px; border-radius:30px; font-size:10px; display:flex; align-items:center; gap:5px; animation:blink 1s infinite; }
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.45}}
 
-  /* UPPER PANEL */
-  .upper-panel { background: rgba(16,20,28,0.96); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border-dim); height: 45%; min-height: 220px; display: flex; flex-direction: column; flex-shrink: 0; }
-  .upper-panel.collapsed { display: none; }
-  .panel-header { padding: 8px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.06); background: rgba(0,0,0,0.3); }
-  .panel-title { font-weight: 600; font-size: 12px; }
-  .close-upper-btn { background: none; border: none; color: var(--text-secondary); font-size: 18px; cursor: pointer; padding: 0 8px; }
-  .chat-container { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-  .chat-messages { flex: 1; overflow-y: auto; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
-  .chat-bubble { max-width: 80%; padding: 8px 12px; border-radius: 18px; font-size: 12px; background: var(--bg-soft); align-self: flex-start; word-break: break-word; }
-  .chat-bubble.me { background: var(--accent); align-self: flex-end; }
-  .chat-meta { font-size: 9px; color: var(--text-secondary); margin-bottom: 3px; }
-  .chat-input-row { display: flex; gap: 8px; padding: 8px 12px; border-top: 1px solid rgba(255,255,255,0.06); background: rgba(0,0,0,0.2); }
-  .chat-input-row input { flex: 1; background: var(--bg-soft); border: none; padding: 10px 14px; border-radius: 30px; color: white; outline: none; font-size: 14px; }
-  .send-btn { background: var(--accent); border: none; width: 44px; border-radius: 30px; cursor: pointer; font-size: 18px; }
-  .pres-container { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-  .pres-viewer { flex: 1; background: #000000cc; display: flex; align-items: center; justify-content: center; padding: 10px; min-height: 0; overflow: auto; }
-  .pres-viewer img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 12px; }
-  .pres-controls { padding: 8px 12px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; border-top: 1px solid rgba(255,255,255,0.06); background: rgba(0,0,0,0.4); flex-shrink: 0; }
-  .pres-controls button { background: var(--bg-soft); border: none; padding: 6px 12px; border-radius: 30px; color: white; font-size: 11px; cursor: pointer; }
-  .pres-progress { flex: 1; height: 3px; background: var(--border-dim); border-radius: 2px; cursor: pointer; }
-  .pres-progress-fill { width: 0%; height: 100%; background: var(--accent); border-radius: 2px; }
-  .page-indicator { font-size: 10px; color: var(--text-secondary); min-width: 50px; text-align: center; }
-  .upload-mini { background: var(--accent) !important; }
+/* UPPER PANEL */
+.up { background:rgba(16,20,28,.97); backdrop-filter:blur(18px); border-bottom:1px solid var(--border); height:44%; min-height:210px; display:flex; flex-direction:column; flex-shrink:0; }
+.up.off { display:none; }
+.ph2 { padding:7px 14px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid rgba(255,255,255,.06); background:rgba(0,0,0,.3); }
+.ph2 span { font-weight:600; font-size:12px; }
+.ph2 button { background:none; border:none; color:var(--dim); font-size:17px; cursor:pointer; }
+/* chat */
+.chat-wrap { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+.msgs { flex:1; overflow-y:auto; padding:9px 11px; display:flex; flex-direction:column; gap:7px; }
+.bubble { max-width:78%; padding:7px 11px; border-radius:17px; font-size:12px; background:var(--soft); align-self:flex-start; word-break:break-word; }
+.bubble.me { background:var(--blue); align-self:flex-end; }
+.bmeta { font-size:9px; color:var(--dim); margin-bottom:2px; }
+.cinput { display:flex; gap:7px; padding:7px 11px; border-top:1px solid rgba(255,255,255,.06); background:rgba(0,0,0,.2); }
+.cinput input { flex:1; background:var(--soft); border:none; padding:9px 13px; border-radius:28px; color:#fff; outline:none; font-size:13px; }
+.cinput button { background:var(--blue); border:none; width:42px; border-radius:28px; cursor:pointer; font-size:17px; }
+/* pres */
+.pres-wrap { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+.pviewer { flex:1; background:#000a; display:flex; align-items:center; justify-content:center; padding:8px; min-height:0; overflow:auto; }
+.pviewer img { max-width:100%; max-height:100%; object-fit:contain; border-radius:10px; }
+.pctrl { padding:7px 11px; display:flex; gap:7px; align-items:center; flex-wrap:wrap; border-top:1px solid rgba(255,255,255,.06); background:rgba(0,0,0,.4); flex-shrink:0; }
+.pctrl button { background:var(--soft); border:none; padding:5px 11px; border-radius:28px; color:#fff; font-size:11px; cursor:pointer; }
+.pprog { flex:1; height:3px; background:var(--border); border-radius:2px; }
+.pprogf { width:0%; height:100%; background:var(--blue); border-radius:2px; }
+.ppage { font-size:10px; color:var(--dim); min-width:44px; text-align:center; }
 
-  /* VIDEO GRID */
-  .video-section { flex: 1; display: flex; flex-direction: column; overflow: hidden; padding: 8px; background: #03050a; }
-  .video-grid { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); overflow-y: auto; padding: 4px; height: 100%; }
-  .vtile { background: #11161f; border-radius: 16px; overflow: hidden; position: relative; aspect-ratio: 9/16; border: 1px solid rgba(255,255,255,0.08); }
-  .vtile video { width: 100%; height: 100%; object-fit: cover; display: none; }
-  .vtile .ph { display: flex; align-items: center; justify-content: center; height: 100%; background: #0a0e16; }
-  .avatar-big { width: 50px; height: 50px; background: var(--accent); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: bold; }
-  .vtile-bar { position: absolute; bottom: 8px; left: 8px; right: 8px; display: flex; justify-content: space-between; }
-  .vtile-name { background: rgba(0,0,0,0.7); backdrop-filter: blur(6px); padding: 3px 8px; border-radius: 30px; font-size: 9px; }
+/* VIDEO */
+.vsec { flex:1; display:flex; flex-direction:column; overflow:hidden; padding:7px; background:#03050a; }
+.vgrid { display:grid; gap:7px; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); overflow-y:auto; padding:3px; height:100%; align-content:start; }
+.vtile { background:#11161f; border-radius:14px; overflow:hidden; position:relative; aspect-ratio:9/16; border:1px solid rgba(255,255,255,.07); }
+.vtile video { width:100%; height:100%; object-fit:cover; display:none; }
+.vtile .avph { display:flex; align-items:center; justify-content:center; height:100%; background:#0a0e16; }
+.avat { width:48px; height:48px; background:var(--blue); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:21px; font-weight:bold; }
+.vbar { position:absolute; bottom:7px; left:7px; right:7px; display:flex; justify-content:space-between; pointer-events:none; }
+.vname { background:rgba(0,0,0,.7); backdrop-filter:blur(5px); padding:2px 7px; border-radius:28px; font-size:9px; }
+.vmute { background:#ef4444; padding:2px 6px; border-radius:18px; font-size:9px; }
 
-  /* CONTROLS */
-  .bottom-controls { background: rgba(8,10,16,0.98); backdrop-filter: blur(20px); border-top: 1px solid rgba(255,255,255,0.08); padding: 10px 12px; display: flex; justify-content: center; gap: 12px; flex-shrink: 0; flex-wrap: wrap; }
-  .ctrl-btn { width: 52px; height: 52px; border-radius: 50%; background: rgba(255,255,255,0.1); border: none; font-size: 22px; cursor: pointer; }
-  .ctrl-btn:active { transform: scale(0.95); }
-  .ctrl-btn.off { background: var(--danger); }
-  .ctrl-btn.leave { background: var(--danger); }
-  .ctrl-btn.recording { background: var(--danger); animation: pulse 1s infinite; }
-  .ctrl-btn.secondary { background: rgba(59,130,246,0.2); }
-  .divider { width: 1px; height: 30px; background: rgba(255,255,255,0.15); margin: 0 4px; }
-  @keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.6} }
+/* CONTROLS */
+.bc { background:rgba(8,10,16,.98); backdrop-filter:blur(18px); border-top:1px solid rgba(255,255,255,.07); padding:9px 11px; display:flex; justify-content:center; gap:11px; flex-shrink:0; flex-wrap:wrap; }
+.cb { width:50px; height:50px; border-radius:50%; background:rgba(255,255,255,.1); border:none; font-size:21px; cursor:pointer; transition:transform .1s; }
+.cb:active { transform:scale(.94); }
+.cb.off { background:var(--red); }
+.cb.lv  { background:var(--red); }
+.cb.rec { background:var(--red); animation:blink 1s infinite; }
+.cb.sec { background:rgba(59,130,246,.2); }
+.div { width:1px; height:28px; background:rgba(255,255,255,.13); margin:0 3px; }
+.bdg { background:var(--red); border-radius:18px; padding:2px 5px; font-size:8px; margin-left:5px; }
 
-  /* MISC */
-  .toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); background: #1e1f2c; padding: 8px 18px; border-radius: 40px; z-index: 400; font-size: 12px; white-space: nowrap; border: 1px solid var(--border-dim); }
-  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: flex; align-items: center; justify-content: center; z-index: 500; flex-direction: column; gap: 16px; }
-  .spinner { width: 40px; height: 40px; border: 3px solid #2a3048; border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; z-index: 600; padding: 20px; }
-  .modal-card { background: var(--bg-card); border-radius: 28px; padding: 24px; width: 90%; max-width: 340px; }
-  .modal-card input { width: 100%; margin-bottom: 12px; background: var(--bg-soft); border: 1px solid var(--border-dim); border-radius: 14px; padding: 12px; color: white; font-size: 16px; outline: none; }
-  .badge { background: var(--danger); border-radius: 20px; padding: 2px 6px; font-size: 9px; margin-left: 6px; }
-  @media (max-width: 480px) {
-    .ctrl-btn { width: 44px; height: 44px; font-size: 18px; }
-    .bottom-controls { gap: 8px; }
-    .video-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
-  }
+/* MISC */
+.toast { position:fixed; bottom:86px; left:50%; transform:translateX(-50%); background:#1e2030; padding:7px 16px; border-radius:38px; z-index:400; font-size:12px; white-space:nowrap; border:1px solid var(--border); box-shadow:0 4px 20px #0008; }
+.ov { position:fixed; inset:0; background:rgba(0,0,0,.92); display:flex; align-items:center; justify-content:center; z-index:500; flex-direction:column; gap:14px; }
+.spin { width:38px; height:38px; border:3px solid #2a3048; border-top-color:var(--blue); border-radius:50%; animation:spin .75s linear infinite; }
+@keyframes spin{to{transform:rotate(360deg)}}
+.modal { position:fixed; inset:0; background:rgba(0,0,0,.82); backdrop-filter:blur(5px); display:flex; align-items:center; justify-content:center; z-index:600; padding:18px; }
+.mcard { background:var(--card); border-radius:26px; padding:22px; width:90%; max-width:330px; }
+.mcard h2 { font-size:19px; font-weight:700; margin-bottom:14px; }
+.mcard input { width:100%; margin-bottom:11px; background:var(--soft); border:1px solid var(--border); border-radius:13px; padding:11px; color:#fff; font-size:15px; outline:none; }
+.mcard input:focus { border-color:var(--blue); }
+.mbtns { display:flex; justify-content:flex-end; gap:10px; margin-top:6px; }
+@media(max-width:480px){
+  .cb{width:42px;height:42px;font-size:17px;}
+  .bc{gap:7px;}
+  .vgrid{grid-template-columns:repeat(auto-fill,minmax(110px,1fr));}
+}
 </style>
 </head>
 <body>
 
 <!-- LOBBY -->
-<div id="view-lobby">
-  <div class="lobby-header">
-    <div class="logo-area">
-      <div class="logo-icon">🎥</div>
-      <div><strong>HamoudaSpace</strong><div style="font-size:10px;">Video · Share · Record</div></div>
-    </div>
-    <div class="lobby-actions">
-      <button class="btn btn-secondary" id="showJoinBtn">🔗 Join</button>
-      <button class="btn btn-primary" id="showCreateBtn">✨ New Meeting</button>
+<div id="lobby">
+  <div class="lh">
+    <div class="logo"><div class="logo-ic">🎥</div><div><strong>HamoudaSpace</strong><div style="font-size:10px;color:var(--dim)">Multi-participant · HD Video</div></div></div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-s" id="btnJoin">🔗 Join</button>
+      <button class="btn btn-p" id="btnCreate">✨ New Meeting</button>
     </div>
   </div>
-  <div class="lobby-main">
-    <div class="hero"><h1>Video Meetings That Work</h1><p>Share presentations · Record meetings · Live chat</p></div>
-    <div class="action-cards">
-      <div class="card"><h3>Start a Meeting</h3><p>Create a new room and invite others</p><button class="btn btn-primary" id="createCardBtn">Create Room</button></div>
-      <div class="card"><h3>Join a Meeting</h3><p>Enter a 6-digit code to join</p><button class="btn btn-secondary" id="joinCardBtn">Enter Code</button></div>
+  <div class="lbody">
+    <h1>Video Meetings That Work</h1>
+    <p>HD video · Screen share · Record · Chat · Multiple participants</p>
+    <div class="cards">
+      <div class="lcard"><h3>Start Meeting</h3><p>Create a new room and invite others</p><button class="btn btn-p" id="btnCreate2">Create Room</button></div>
+      <div class="lcard"><h3>Join Meeting</h3><p>Enter a 6-digit code to join</p><button class="btn btn-s" id="btnJoin2">Enter Code</button></div>
     </div>
-    <div class="info-box"><p>🔵 Allow camera/microphone when prompted. Share the 6-digit code with participants.</p></div>
+    <div class="ibox">🔵 Allow camera &amp; microphone when prompted. Share the 6-digit code with all participants.</div>
   </div>
 </div>
 
 <!-- ROOM -->
-<div id="view-room">
-  <div class="room-header">
-    <div class="room-info">
-      <span class="room-title" id="roomNameDisplay">Meeting</span>
-      <span class="room-code" id="roomCodeDisplay" onclick="copyRoomCode()">XXXXXX</span>
+<div id="room">
+  <div class="rh">
+    <div class="ri">
+      <span class="rtitle" id="rname">Meeting</span>
+      <span class="rcode" id="rcode" onclick="copyCode()">------</span>
     </div>
-    <div class="room-info">
-      <span id="participantCount">👥 1</span>
-      <span id="connectionStatus" class="status-badge connecting">🟡 Waiting...</span>
-      <div id="recIndicator" class="recording-indicator hidden">🔴 REC</div>
+    <div class="ri">
+      <span id="pcnt">👥 1</span>
+      <span id="status" class="sbadge wait">🟡 Waiting…</span>
+      <div id="recind" class="recind hidden">🔴 REC</div>
     </div>
   </div>
 
-  <div id="upperPanel" class="upper-panel collapsed">
-    <div class="panel-header">
-      <span class="panel-title" id="upperPanelTitle">Chat</span>
-      <button class="close-upper-btn" id="closeUpperBtn">✕</button>
+  <div id="upanel" class="up off">
+    <div class="ph2">
+      <span id="ptitle">Chat</span>
+      <button onclick="closePanel()">✕</button>
     </div>
-    <div id="chatView" class="chat-container hidden">
-      <div class="chat-messages" id="chatMessagesList"></div>
-      <div class="chat-input-row">
-        <input type="text" id="chatInputField" placeholder="Type a message...">
-        <button class="send-btn" id="sendChatBtn">➤</button>
+    <div id="chatpanel" class="chat-wrap hidden">
+      <div class="msgs" id="msglist"></div>
+      <div class="cinput">
+        <input id="msginput" placeholder="Type a message…" autocomplete="off">
+        <button id="sendbtn">➤</button>
       </div>
     </div>
-    <div id="presView" class="pres-container hidden">
-      <div class="pres-viewer" id="presViewer"><div style="color:#aaa;text-align:center;padding:20px;">No presentation loaded</div></div>
-      <div class="pres-controls">
-        <button id="presPrevBtn" disabled>◀</button>
-        <button id="presNextBtn" disabled>▶</button>
-        <div class="pres-progress"><div class="pres-progress-fill" id="presProgressFill"></div></div>
-        <span class="page-indicator" id="presPageInfo">0/0</span>
-        <button id="presUploadBtn" class="upload-mini">📤 Upload</button>
-        <input type="file" id="presFileInput" accept=".jpg,.jpeg,.png,.gif" style="display:none">
-        <span id="presHostBadge" style="background:var(--accent);padding:2px 8px;border-radius:20px;font-size:9px;display:none;">👑 Host</span>
+    <div id="prespanel" class="pres-wrap hidden">
+      <div class="pviewer" id="pviewer"><div style="color:var(--dim);text-align:center;padding:18px;">No presentation loaded</div></div>
+      <div class="pctrl">
+        <button id="pprev" disabled>◀</button>
+        <button id="pnext" disabled>▶</button>
+        <div class="pprog"><div class="pprogf" id="pprogf"></div></div>
+        <span class="ppage" id="ppage">0/0</span>
+        <button id="pupload" style="background:var(--blue)">📤 Upload</button>
+        <input type="file" id="pfile" accept="image/*" style="display:none">
+        <span id="phostbadge" style="background:var(--blue);padding:2px 7px;border-radius:18px;font-size:9px;display:none">👑 Host</span>
       </div>
     </div>
   </div>
 
-  <div class="video-section">
-    <div class="video-grid" id="videoGridContainer"></div>
-  </div>
+  <div class="vsec"><div class="vgrid" id="vgrid"></div></div>
 
-  <div class="bottom-controls">
-    <button class="ctrl-btn" id="micBtn" title="Mute/Unmute">🎤</button>
-    <button class="ctrl-btn" id="camBtn" title="Camera On/Off">📷</button>
-    <button class="ctrl-btn" id="recBtn" title="Record">⏺</button>
-    <div class="divider"></div>
-    <button class="ctrl-btn secondary" id="chatBottomBtn" title="Chat">💬<span id="chatBadge" class="badge" style="display:none">0</span></button>
-    <button class="ctrl-btn secondary" id="presBottomBtn" title="Presentation">📽️</button>
-    <button class="ctrl-btn secondary" id="shareBtn" title="Share Link">🔗</button>
-    <div class="divider"></div>
-    <button class="ctrl-btn leave" id="leaveRoomBtn" title="Leave">🚪</button>
+  <div class="bc">
+    <button class="cb" id="micbtn" title="Mute">🎤</button>
+    <button class="cb" id="cambtn" title="Camera">📷</button>
+    <button class="cb" id="recbtn" title="Record">⏺</button>
+    <div class="div"></div>
+    <button class="cb sec" id="chatbtn" title="Chat">💬<span id="chatbdg" class="bdg hidden">0</span></button>
+    <button class="cb sec" id="presbtn" title="Slides">📽️</button>
+    <button class="cb sec" id="sharebtn" title="Share link">🔗</button>
+    <div class="div"></div>
+    <button class="cb lv" id="leavebtn" title="Leave">🚪</button>
   </div>
 </div>
 
 <!-- MODALS -->
-<div id="createModal" class="modal-backdrop hidden">
-  <div class="modal-card">
-    <div style="font-size:20px;font-weight:700;margin-bottom:16px;">New Meeting</div>
-    <input id="createRoomName" placeholder="Meeting name" autocomplete="off">
-    <input id="createUserName" placeholder="Your name" autocomplete="off">
-    <div style="display:flex;justify-content:flex-end;gap:12px;margin-top:8px;">
-      <button id="cancelCreateModal" class="btn btn-secondary">Cancel</button>
-      <button id="confirmCreateModal" class="btn btn-primary">Create</button>
+<div id="createModal" class="modal hidden">
+  <div class="mcard">
+    <h2>New Meeting</h2>
+    <input id="cRoomName" placeholder="Meeting name" autocomplete="off">
+    <input id="cUserName" placeholder="Your name" autocomplete="off">
+    <div class="mbtns">
+      <button class="btn btn-s" id="cCancel">Cancel</button>
+      <button class="btn btn-p" id="cConfirm">Create</button>
     </div>
   </div>
 </div>
-
-<div id="joinModal" class="modal-backdrop hidden">
-  <div class="modal-card">
-    <div style="font-size:20px;font-weight:700;margin-bottom:16px;">Join Meeting</div>
-    <input id="joinRoomCode" maxlength="6" placeholder="6-letter code" style="text-transform:uppercase" autocomplete="off">
-    <input id="joinUserName" placeholder="Your name" autocomplete="off">
-    <div style="display:flex;justify-content:flex-end;gap:12px;margin-top:8px;">
-      <button id="cancelJoinModal" class="btn btn-secondary">Cancel</button>
-      <button id="confirmJoinModal" class="btn btn-primary">Join</button>
+<div id="joinModal" class="modal hidden">
+  <div class="mcard">
+    <h2>Join Meeting</h2>
+    <input id="jCode" maxlength="6" placeholder="6-letter code" style="text-transform:uppercase;letter-spacing:3px" autocomplete="off">
+    <input id="jName" placeholder="Your name" autocomplete="off">
+    <div class="mbtns">
+      <button class="btn btn-s" id="jCancel">Cancel</button>
+      <button class="btn btn-p" id="jConfirm">Join</button>
     </div>
   </div>
 </div>
-
-<div id="loadingOverlay" class="overlay hidden">
-  <div class="spinner"></div>
-  <p id="loadingText">Starting camera...</p>
+<div id="ov" class="ov hidden">
+  <div class="spin"></div>
+  <p id="ovtxt">Starting…</p>
 </div>
 
 <script>
-// ─── FIREBASE ───────────────────────────────────────────────────────────────
-const firebaseConfig = {
-  apiKey: "AIzaSyCra3IgsAaQlf3INjRn04DdX3KWwb8zdlo",
-  authDomain: "hamoudaspace-meetingapp.firebaseapp.com",
-  projectId: "hamoudaspace-meetingapp",
-  storageBucket: "hamoudaspace-meetingapp.firebasestorage.app",
-  messagingSenderId: "9931981197",
-  appId: "1:9931981197:web:716e61223950d3d39c7dc4"
-};
-firebase.initializeApp(firebaseConfig);
+// ═══════════════════════════════════════════════════════
+//  FIREBASE
+// ═══════════════════════════════════════════════════════
+firebase.initializeApp({
+  apiKey:"AIzaSyCra3IgsAaQlf3INjRn04DdX3KWwb8zdlo",
+  authDomain:"hamoudaspace-meetingapp.firebaseapp.com",
+  projectId:"hamoudaspace-meetingapp",
+  storageBucket:"hamoudaspace-meetingapp.firebasestorage.app",
+  messagingSenderId:"9931981197",
+  appId:"1:9931981197:web:716e61223950d3d39c7dc4"
+});
 const db = firebase.firestore();
 
-// ─── STATE ───────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════
 let localStream = null;
-let peerConnections = new Map();   // peerId → RTCPeerConnection
-let pendingCandidates = new Map(); // peerId → [RTCIceCandidate, ...]
-let isHost = false;
-let roomCode = '';
-let myName = '';
-let roomName = '';
-let myPeerId = '';
-let isMuted = false;
-let isCamOff = false;
-let isRecording = false;
-let mediaRecorder = null;
-let recordedChunks = [];
-let participants = new Map();      // peerId → { name }
-let unsubscribeParticipants = null;
-let unsubscribeSignals = null;
-let chatUnread = 0;
-let activeUpperPanel = null;
-let presentation = { pages: [], currentPage: 0 };
-let processedSignalIds = new Set(); // avoid duplicate processing
+let roomCode = '', myName = '', roomName = '', myId = '';
+let isHost = false, muted = false, camOff = false;
+let isRecording = false, mediaRecorder = null, recChunks = [];
+let peers = {};          // peerId → { pc, name, iceBuf[], makingOffer, ignoreOffer }
+let unsubPeers = null, unsubSigs = null;
+let chatUnread = 0, activePanel = null;
+let pres = { slides: [], cur: 0 };
+let joinedAt = null;     // Firestore timestamp — only process signals AFTER this
 
-// ─── ICE SERVERS ─────────────────────────────────────────────────────────────
-const ICE_SERVERS = {
-  iceServers: [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
-    { urls: 'stun:stun2.l.google.com:19302' },
-    { urls: 'turn:openrelay.metered.ca:80',  username: 'openrelayproject', credential: 'openrelayproject' },
-    { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
-    { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
-  ]
-};
+const ICE = { iceServers: [
+  { urls:'stun:stun.l.google.com:19302' },
+  { urls:'stun:stun1.l.google.com:19302' },
+  { urls:'stun:stun2.l.google.com:19302' },
+  { urls:'stun:stun3.l.google.com:19302' },
+  // Free TURN servers (fallback for symmetric NAT)
+  { urls:'turn:openrelay.metered.ca:80',  username:'openrelayproject', credential:'openrelayproject' },
+  { urls:'turn:openrelay.metered.ca:443', username:'openrelayproject', credential:'openrelayproject' },
+  { urls:'turn:openrelay.metered.ca:443?transport=tcp', username:'openrelayproject', credential:'openrelayproject' }
+]};
 
-// ─── HELPERS ─────────────────────────────────────────────────────────────────
-const genCode   = () => Math.random().toString(36).slice(2, 8).toUpperCase();
-const genPeerId = () => 'p_' + Math.random().toString(36).slice(2, 10) + '_' + Date.now();
-
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"]/g, m =>
-    ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[m]));
-}
+// ═══════════════════════════════════════════════════════
+//  UTILS
+// ═══════════════════════════════════════════════════════
+const uid   = () => Math.random().toString(36).slice(2,10) + Date.now().toString(36);
+const code6 = () => Math.random().toString(36).slice(2,8).toUpperCase();
+const esc   = s  => String(s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
 
 function toast(msg) {
-  let t = document.querySelector('.toast');
-  if (t) t.remove();
-  t = document.createElement('div');
-  t.className = 'toast';
-  t.innerText = msg;
+  document.querySelector('.toast')?.remove();
+  const t = Object.assign(document.createElement('div'),{className:'toast',innerText:msg});
   document.body.appendChild(t);
-  setTimeout(() => t.remove(), 3000);
+  setTimeout(()=>t.remove(), 3200);
 }
+function showOv(msg) { document.getElementById('ov').classList.remove('hidden'); document.getElementById('ovtxt').innerText = msg; }
+function hideOv()    { document.getElementById('ov').classList.add('hidden'); }
+function setStatus(txt,cls) { const el=document.getElementById('status'); el.className='sbadge '+cls; el.innerHTML=txt; }
+function updateCount() { document.getElementById('pcnt').innerHTML = `👥 ${Object.keys(peers).length + 1}`; }
 
-function setStatus(text, type) {
-  const el = document.getElementById('connectionStatus');
-  el.className = 'status-badge ' + (type || '');
-  el.innerHTML = text;
-}
-
-function showOverlay(msg) {
-  document.getElementById('loadingOverlay').classList.remove('hidden');
-  document.getElementById('loadingText').innerText = msg;
-}
-function hideOverlay() {
-  document.getElementById('loadingOverlay').classList.add('hidden');
-}
-
-function updateParticipantCount() {
-  document.getElementById('participantCount').innerHTML = `👥 ${participants.size + 1}`;
-}
-
-// ─── VIEW SWITCHING ──────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════
+//  VIEWS
+// ═══════════════════════════════════════════════════════
 function showLobby() {
-  if (isRecording) stopRecording();
-  if (unsubscribeParticipants) { unsubscribeParticipants(); unsubscribeParticipants = null; }
-  if (unsubscribeSignals)      { unsubscribeSignals();      unsubscribeSignals = null; }
-  if (roomCode && myPeerId) {
-    db.collection('rooms').doc(roomCode).collection('participants').doc(myPeerId).delete().catch(() => {});
-  }
-  peerConnections.forEach(pc => pc.close());
-  peerConnections.clear();
-  pendingCandidates.clear();
-  processedSignalIds.clear();
-  participants.clear();
-  if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
-  roomCode = myPeerId = myName = roomName = '';
-  isHost = isMuted = isCamOff = false;
-  chatUnread = 0; activeUpperPanel = null;
-  presentation = { pages: [], currentPage: 0 };
-  document.getElementById('chatMessagesList').innerHTML = '';
-  document.getElementById('videoGridContainer').innerHTML = '';
-  document.getElementById('view-lobby').style.display = 'flex';
-  document.getElementById('view-room').style.display = 'none';
-  closeAllModals();
-  hideOverlay();
+  // cleanup recording
+  if (isRecording) stopRec();
+  // cleanup signaling
+  unsubPeers?.(); unsubPeers = null;
+  unsubSigs?.();  unsubSigs  = null;
+  // remove self from room
+  if (roomCode && myId)
+    db.collection('rooms').doc(roomCode).collection('peers').doc(myId).delete().catch(()=>{});
+  // close all PCs
+  Object.values(peers).forEach(p => p.pc?.close());
+  peers = {};
+  // stop media
+  localStream?.getTracks().forEach(t=>t.stop());
+  localStream = null;
+  // reset
+  roomCode=myId=myName=roomName=''; isHost=muted=camOff=false;
+  chatUnread=0; activePanel=null;
+  pres={slides:[],cur:0};
+  document.getElementById('msglist').innerHTML='';
+  document.getElementById('vgrid').innerHTML='';
+  document.getElementById('micbtn').classList.remove('off'); document.getElementById('micbtn').innerText='🎤';
+  document.getElementById('cambtn').classList.remove('off'); document.getElementById('cambtn').innerText='📷';
+  document.getElementById('recbtn').classList.remove('rec');
+  document.getElementById('recind').classList.add('hidden');
+  document.getElementById('chatbdg').classList.add('hidden');
+  document.getElementById('lobby').style.display='flex';
+  document.getElementById('room').style.display='none';
+  closeModals(); hideOv();
 }
-
 function showRoom() {
-  document.getElementById('view-lobby').style.display = 'none';
-  document.getElementById('view-room').style.display = 'flex';
-  hideOverlay();
+  document.getElementById('lobby').style.display='none';
+  document.getElementById('room').style.display='flex';
+  hideOv();
 }
-
-function closeAllModals() {
+function closeModals() {
   document.getElementById('createModal').classList.add('hidden');
   document.getElementById('joinModal').classList.add('hidden');
 }
 
-// ─── PANELS ──────────────────────────────────────────────────────────────────
-const upperPanel = document.getElementById('upperPanel');
-const chatView   = document.getElementById('chatView');
-const presView   = document.getElementById('presView');
-
-function closeUpperPanel() { upperPanel.classList.add('collapsed'); activeUpperPanel = null; }
-
-function openChatPanel() {
-  if (activeUpperPanel === 'chat') { closeUpperPanel(); return; }
-  upperPanel.classList.remove('collapsed');
-  chatView.classList.remove('hidden');
-  presView.classList.add('hidden');
-  document.getElementById('upperPanelTitle').innerText = 'Chat';
-  activeUpperPanel = 'chat';
-  chatUnread = 0;
-  document.getElementById('chatBadge').style.display = 'none';
-  setTimeout(() => document.getElementById('chatInputField')?.focus(), 100);
+// ═══════════════════════════════════════════════════════
+//  PANELS
+// ═══════════════════════════════════════════════════════
+function closePanel() { document.getElementById('upanel').classList.add('off'); activePanel=null; }
+function openChat() {
+  if (activePanel==='chat') { closePanel(); return; }
+  document.getElementById('upanel').classList.remove('off');
+  document.getElementById('chatpanel').classList.remove('hidden');
+  document.getElementById('prespanel').classList.add('hidden');
+  document.getElementById('ptitle').innerText='Chat';
+  activePanel='chat'; chatUnread=0;
+  document.getElementById('chatbdg').classList.add('hidden');
+  setTimeout(()=>document.getElementById('msginput')?.focus(),80);
+}
+function openPres() {
+  if (activePanel==='pres') { closePanel(); return; }
+  document.getElementById('upanel').classList.remove('off');
+  document.getElementById('prespanel').classList.remove('hidden');
+  document.getElementById('chatpanel').classList.add('hidden');
+  document.getElementById('ptitle').innerText='Presentation';
+  activePanel='pres';
+  if (pres.slides.length) renderSlide(pres.cur);
 }
 
-function openPresPanel() {
-  if (activeUpperPanel === 'pres') { closeUpperPanel(); return; }
-  upperPanel.classList.remove('collapsed');
-  presView.classList.remove('hidden');
-  chatView.classList.add('hidden');
-  document.getElementById('upperPanelTitle').innerText = 'Presentation';
-  activeUpperPanel = 'pres';
-  if (presentation.pages.length) renderPresentationPage(presentation.currentPage);
-}
+document.getElementById('chatbtn').onclick  = openChat;
+document.getElementById('presbtn').onclick  = openPres;
+document.getElementById('upanel').querySelector('button').onclick = closePanel;
 
-document.getElementById('chatBottomBtn').onclick  = openChatPanel;
-document.getElementById('presBottomBtn').onclick  = openPresPanel;
-document.getElementById('closeUpperBtn').onclick  = closeUpperPanel;
-document.getElementById('shareBtn').onclick       = shareMeetingLink;
-
-// ─── CHAT ─────────────────────────────────────────────────────────────────────
-function appendChatMessage(msg, isSelf) {
-  const container = document.getElementById('chatMessagesList');
-  const div = document.createElement('div');
-  div.className = 'chat-bubble' + (isSelf ? ' me' : '');
-  const time = new Date(msg.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  div.innerHTML = `<div class="chat-meta">${isSelf ? 'You' : escapeHtml(msg.name)} · ${time}</div><div>${escapeHtml(msg.text)}</div>`;
-  container.appendChild(div);
-  container.scrollTop = container.scrollHeight;
-  if (!isSelf && (activeUpperPanel !== 'chat' || upperPanel.classList.contains('collapsed'))) {
+// ═══════════════════════════════════════════════════════
+//  CHAT
+// ═══════════════════════════════════════════════════════
+function addMsg(msg, self) {
+  const c = document.getElementById('msglist');
+  const d = document.createElement('div');
+  d.className = 'bubble'+(self?' me':'');
+  const t = new Date(msg.ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  d.innerHTML = `<div class="bmeta">${self?'You':esc(msg.from)} · ${t}</div>${esc(msg.text)}`;
+  c.appendChild(d); c.scrollTop=c.scrollHeight;
+  if (!self && (activePanel!=='chat' || document.getElementById('upanel').classList.contains('off'))) {
     chatUnread++;
-    const badge = document.getElementById('chatBadge');
-    badge.innerText = chatUnread > 9 ? '9+' : chatUnread;
-    badge.style.display = 'inline';
+    const b = document.getElementById('chatbdg');
+    b.innerText = chatUnread>9?'9+':chatUnread;
+    b.classList.remove('hidden');
   }
 }
-
-function sendChatMessage() {
-  const input = document.getElementById('chatInputField');
-  const text  = input.value.trim();
-  if (!text) return;
-  input.value = '';
-  const msg = { type: 'chat', name: myName, text, ts: Date.now() };
-  appendChatMessage(msg, true);
-  broadcastData(msg);
+function sendMsg() {
+  const inp = document.getElementById('msginput');
+  const txt = inp.value.trim(); if (!txt) return;
+  inp.value='';
+  const m = { type:'chat', from:myName, text:txt, ts:Date.now() };
+  addMsg(m,true);
+  broadcast(m);
 }
+document.getElementById('sendbtn').onclick = sendMsg;
+document.getElementById('msginput').addEventListener('keypress',e=>{ if(e.key==='Enter') sendMsg(); });
 
-document.getElementById('sendChatBtn').onclick = sendChatMessage;
-document.getElementById('chatInputField').addEventListener('keypress', e => { if (e.key === 'Enter') sendChatMessage(); });
-
-// ─── PRESENTATION ─────────────────────────────────────────────────────────────
-function renderPresentationPage(pageNum) {
-  const viewer = document.getElementById('presViewer');
-  const { pages } = presentation;
-  if (!pages.length) { viewer.innerHTML = '<div style="color:#aaa;text-align:center;padding:20px;">No slides</div>'; return; }
-  viewer.innerHTML = '';
-  const page = pages[pageNum];
-  if (page.type === 'image') { const img = document.createElement('img'); img.src = page.url; viewer.appendChild(img); }
-  document.getElementById('presPageInfo').innerText = `${pageNum + 1}/${pages.length}`;
-  document.getElementById('presProgressFill').style.width = `${((pageNum + 1) / pages.length) * 100}%`;
-  document.getElementById('presPrevBtn').disabled = pageNum === 0;
-  document.getElementById('presNextBtn').disabled = pageNum === pages.length - 1;
+// ═══════════════════════════════════════════════════════
+//  PRESENTATION
+// ═══════════════════════════════════════════════════════
+function renderSlide(n) {
+  const v = document.getElementById('pviewer');
+  if (!pres.slides.length) { v.innerHTML='<div style="color:var(--dim);text-align:center;padding:18px">No slides</div>'; return; }
+  v.innerHTML=''; const img=document.createElement('img'); img.src=pres.slides[n]; v.appendChild(img);
+  document.getElementById('ppage').innerText  = `${n+1}/${pres.slides.length}`;
+  document.getElementById('pprogf').style.width = `${((n+1)/pres.slides.length)*100}%`;
+  document.getElementById('pprev').disabled = n===0;
+  document.getElementById('pnext').disabled = n===pres.slides.length-1;
 }
+function bcastPres() { broadcast({type:'pres',slides:pres.slides,cur:pres.cur}); }
+document.getElementById('pupload').onclick = ()=>{ if(isHost) document.getElementById('pfile').click(); else toast('Only host can upload'); };
+document.getElementById('pfile').addEventListener('change', e=>{
+  const f=e.target.files[0]; if(!f||!isHost) return;
+  if (!f.type.startsWith('image/')) { toast('Images only'); return; }
+  const url=URL.createObjectURL(f);
+  pres={slides:[url],cur:0}; renderSlide(0); bcastPres();
+  if (activePanel!=='pres') openPres();
+  toast('Slide uploaded'); e.target.value='';
+});
+document.getElementById('pprev').onclick = ()=>{ if(!isHost){toast('Host only');return;} pres.cur--; renderSlide(pres.cur); bcastPres(); };
+document.getElementById('pnext').onclick = ()=>{ if(!isHost){toast('Host only');return;} pres.cur++; renderSlide(pres.cur); bcastPres(); };
 
-async function onFileUpload(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  if (!isHost) { toast('Only host can share slides'); return; }
-  if (!file.type.startsWith('image/')) { toast('Please upload image files'); return; }
-  const url = URL.createObjectURL(file);
-  presentation = { pages: [{ type: 'image', url }], currentPage: 0 };
-  renderPresentationPage(0);
-  broadcastData({ type: 'pres_sync', pages: presentation.pages, currentPage: 0 });
-  toast('Presentation loaded');
-  if (activeUpperPanel !== 'pres') openPresPanel();
-  e.target.value = '';
-}
-
-function changeSlide(delta) {
-  if (!isHost) { toast('Only host controls slides'); return; }
-  const newPage = presentation.currentPage + delta;
-  if (newPage >= 0 && newPage < presentation.pages.length) {
-    presentation.currentPage = newPage;
-    renderPresentationPage(newPage);
-    broadcastData({ type: 'pres_sync', pages: presentation.pages, currentPage: newPage });
-  }
-}
-
-document.getElementById('presUploadBtn').onclick = () => isHost ? document.getElementById('presFileInput').click() : toast('Only host can upload');
-document.getElementById('presFileInput').addEventListener('change', onFileUpload);
-document.getElementById('presPrevBtn').onclick = () => changeSlide(-1);
-document.getElementById('presNextBtn').onclick = () => changeSlide(1);
-
-// ─── RECORDING ───────────────────────────────────────────────────────────────
-async function startRecording() {
+// ═══════════════════════════════════════════════════════
+//  RECORDING
+// ═══════════════════════════════════════════════════════
+function startRec() {
   if (isRecording) return;
-  const canvas = document.createElement('canvas');
-  canvas.width = 640; canvas.height = 480;
-  const ctx = canvas.getContext('2d');
-
-  function drawFrame() {
+  const canvas=document.createElement('canvas'); canvas.width=640; canvas.height=480;
+  const ctx=canvas.getContext('2d');
+  isRecording=true;
+  (function draw(){
     if (!isRecording) return;
-    ctx.fillStyle = '#05070c';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    const tiles = document.querySelectorAll('.vtile video');
-    const cols = Math.min(Math.ceil(Math.sqrt(tiles.length + 1)), 2);
-    const rows = Math.ceil((tiles.length) / cols);
-    const w = canvas.width / cols, h = canvas.height / rows;
-    tiles.forEach((vid, i) => {
-      if (vid.readyState >= 2) {
-        try { ctx.drawImage(vid, (i % cols) * w, Math.floor(i / cols) * h, w, h); } catch {}
-      }
-    });
-    requestAnimationFrame(drawFrame);
-  }
-
-  isRecording = true;
-  drawFrame();
-
-  const canvasStream = canvas.captureStream(15);
-  const audioCtx = new AudioContext();
-  const dest = audioCtx.createMediaStreamDestination();
-  if (localStream?.getAudioTracks().length) audioCtx.createMediaStreamSource(localStream).connect(dest);
-
-  const combined = new MediaStream([...canvasStream.getVideoTracks(), ...dest.stream.getAudioTracks()]);
-  const recorder = new MediaRecorder(combined, { mimeType: 'video/webm' });
-  recordedChunks = [];
-  recorder.ondataavailable = e => { if (e.data.size) recordedChunks.push(e.data); };
-  recorder.onstop = () => {
-    const blob = new Blob(recordedChunks, { type: 'video/webm' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `meeting-${roomCode}.webm`;
-    a.click();
-    toast('Recording saved!');
-    audioCtx.close();
+    ctx.fillStyle='#05070c'; ctx.fillRect(0,0,640,480);
+    const vids=[...document.querySelectorAll('.vtile video')];
+    const cols=Math.max(1,Math.ceil(Math.sqrt(vids.length)));
+    const rows=Math.ceil(vids.length/cols);
+    const w=640/cols, h=480/rows;
+    vids.forEach((v,i)=>{ try{ if(v.readyState>=2) ctx.drawImage(v,(i%cols)*w,Math.floor(i/cols)*h,w,h); }catch{} });
+    requestAnimationFrame(draw);
+  })();
+  const ac=new AudioContext(), dst=ac.createMediaStreamDestination();
+  if (localStream?.getAudioTracks().length) ac.createMediaStreamSource(localStream).connect(dst);
+  const mr=new MediaRecorder(new MediaStream([...canvas.captureStream(15).getVideoTracks(),...dst.stream.getAudioTracks()]),{mimeType:'video/webm'});
+  recChunks=[];
+  mr.ondataavailable=e=>{ if(e.data.size) recChunks.push(e.data); };
+  mr.onstop=()=>{
+    const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob(recChunks,{type:'video/webm'}));
+    a.download=`meeting-${roomCode}.webm`; a.click(); toast('Recording saved!'); ac.close();
   };
-  recorder.start(1000);
-  mediaRecorder = recorder;
-  document.getElementById('recBtn').classList.add('recording');
-  document.getElementById('recIndicator').classList.remove('hidden');
-  toast('Recording started');
+  mr.start(1000); mediaRecorder=mr;
+  document.getElementById('recbtn').classList.add('rec');
+  document.getElementById('recind').classList.remove('hidden');
+  toast('Recording…');
 }
-
-function stopRecording() {
-  isRecording = false;
-  if (mediaRecorder?.state !== 'inactive') mediaRecorder?.stop();
-  document.getElementById('recBtn').classList.remove('recording');
-  document.getElementById('recIndicator').classList.add('hidden');
+function stopRec() {
+  isRecording=false; mediaRecorder?.state!=='inactive'&&mediaRecorder?.stop();
+  document.getElementById('recbtn').classList.remove('rec');
+  document.getElementById('recind').classList.add('hidden');
 }
+document.getElementById('recbtn').onclick=()=>isRecording?stopRec():startRec();
 
-document.getElementById('recBtn').onclick = () => isRecording ? stopRecording() : startRecording();
-
-// ─── FIREBASE SIGNALING ───────────────────────────────────────────────────────
-// FIX: Signals are written to a dedicated subcollection per target peer.
-// This avoids all peers receiving every signal — each peer only reads its own mailbox.
-async function sendSignal(targetPeerId, data) {
+// ═══════════════════════════════════════════════════════
+//  FIRESTORE SIGNALING
+// ═══════════════════════════════════════════════════════
+// Each signal: { from, to, type, ...payload, ts }
+// 'to' is a specific peerId OR '*' for broadcast
+async function sig(to, payload) {
   if (!roomCode) return;
   try {
-    await db.collection('rooms').doc(roomCode)
-      .collection('signals').add({
-        from:      myPeerId,
-        to:        targetPeerId,
-        data:      data,
-        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-      });
-  } catch (e) { console.error('sendSignal error:', e); }
-}
-
-// Broadcast non-WebRTC data (chat, pres) via all open data channels or Firestore
-function broadcastData(msg) {
-  // Use Firestore signals with to='*' for broadcast messages
-  if (!roomCode) return;
-  db.collection('rooms').doc(roomCode).collection('signals').add({
-    from: myPeerId, to: '*', data: msg,
-    timestamp: firebase.firestore.FieldValue.serverTimestamp()
-  }).catch(() => {});
-}
-
-// ─── WEBRTC ──────────────────────────────────────────────────────────────────
-// FIX: Use polite/impolite peer pattern to resolve offer collisions.
-// The peer with the lexicographically smaller peerId is "polite" (will rollback on collision).
-// Only ONE side initiates: the peer who JOINED sees the existing participant and creates the offer.
-
-async function getOrCreatePeerConnection(remotePeerId) {
-  if (peerConnections.has(remotePeerId)) return peerConnections.get(remotePeerId);
-
-  console.log(`[WebRTC] Creating PC for ${remotePeerId}`);
-  const pc = new RTCPeerConnection(ICE_SERVERS);
-  peerConnections.set(remotePeerId, pc);
-  pendingCandidates.set(remotePeerId, []);
-
-  // Add all local tracks
-  if (localStream) {
-    localStream.getTracks().forEach(track => {
-      console.log(`[WebRTC] Adding ${track.kind} track to PC for ${remotePeerId}`);
-      pc.addTrack(track, localStream);
+    await db.collection('rooms').doc(roomCode).collection('sigs').add({
+      from:myId, to, ts:firebase.firestore.FieldValue.serverTimestamp(), ...payload
     });
+  } catch(e) { console.error('[sig]',e); }
+}
+function broadcast(payload) {
+  if (!roomCode) return;
+  db.collection('rooms').doc(roomCode).collection('sigs').add({
+    from:myId, to:'*', ts:firebase.firestore.FieldValue.serverTimestamp(), ...payload
+  }).catch(()=>{});
+}
+
+// ═══════════════════════════════════════════════════════
+//  WEBRTC  — Perfect Negotiation pattern
+//  https://w3c.github.io/webrtc-pc/#perfect-negotiation-example
+// ═══════════════════════════════════════════════════════
+function createPC(peerId, peerName) {
+  if (peers[peerId]) return peers[peerId].pc;
+
+  console.log(`[PC] create for ${peerId} (${peerName})`);
+  const pc = new RTCPeerConnection(ICE);
+
+  // Polite peer = lexicographically smaller ID
+  // The polite peer yields on collision (rollback), impolite ignores incoming offer on collision
+  const polite = myId < peerId;
+
+  peers[peerId] = { pc, name:peerName, iceBuf:[], makingOffer:false, ignoreOffer:false, polite };
+
+  // ── Add local tracks ──
+  if (localStream) {
+    localStream.getTracks().forEach(t => {
+      console.log(`[PC] addTrack ${t.kind} → ${peerId}`);
+      pc.addTrack(t, localStream);
+    });
+  } else {
+    console.warn('[PC] localStream is null when creating PC for', peerId);
   }
 
-  // ── ontrack: remote stream arrived ──
-  // FIX: Do NOT call renderGrid() here — that destroys existing video elements.
-  // Instead, wire the stream directly to the existing (or newly created) video element.
-  pc.ontrack = (event) => {
-    console.log(`[WebRTC] ontrack from ${remotePeerId}: ${event.track.kind}, streams: ${event.streams.length}`);
-    setStatus('🟢 Connected', 'connected');
-
-    // Ensure the tile exists in the DOM
-    if (!document.getElementById(`tile-${remotePeerId}`)) {
-      const name = participants.get(remotePeerId)?.name || remotePeerId;
-      addRemoteTile(remotePeerId, name);
-    }
-
-    const videoEl = document.getElementById(`vid-${remotePeerId}`);
-    if (!videoEl) return;
-
-    if (event.streams && event.streams[0]) {
-      // FIX: Attach the MediaStream directly — never recreate the element
-      videoEl.srcObject = event.streams[0];
-    } else {
-      // Fallback: build a stream from the track
-      if (!videoEl.srcObject) videoEl.srcObject = new MediaStream();
-      videoEl.srcObject.addTrack(event.track);
-    }
-    videoEl.style.display = 'block';
-    const ph = document.getElementById(`ph-${remotePeerId}`);
-    if (ph) ph.style.display = 'none';
-    videoEl.play().catch(e => console.warn('play() error:', e));
+  // ── negotiationneeded: fires when tracks are added ──
+  // The LARGER ID initiates (impolite peer). Both sides listen;
+  // only one will satisfy myId > peerId after comparison.
+  pc.onnegotiationneeded = async () => {
+    if (myId < peerId) return; // polite peer: let the other side offer first
+    try {
+      peers[peerId].makingOffer = true;
+      console.log(`[PC] onnegotiationneeded → creating offer to ${peerId}`);
+      await pc.setLocalDescription();             // createOffer + setLocalDescription combined
+      sig(peerId, { type:'offer', sdp:pc.localDescription });
+    } catch(e) { console.error('[PC] offer error',e); }
+    finally { peers[peerId].makingOffer = false; }
   };
 
-  // ── onicecandidate ──
-  pc.onicecandidate = (event) => {
-    if (event.candidate) {
-      console.log(`[WebRTC] Sending ICE candidate to ${remotePeerId}`);
-      sendSignal(remotePeerId, { type: 'candidate', candidate: event.candidate.toJSON() });
-    }
+  // ── ICE candidate ──
+  pc.onicecandidate = ({ candidate }) => {
+    if (candidate) sig(peerId, { type:'ice', candidate:candidate.toJSON() });
   };
 
   pc.oniceconnectionstatechange = () => {
-    console.log(`[WebRTC] ICE state with ${remotePeerId}: ${pc.iceConnectionState}`);
+    console.log(`[ICE] ${peerId}: ${pc.iceConnectionState}`);
     if (pc.iceConnectionState === 'failed') {
-      console.warn(`[WebRTC] ICE failed with ${remotePeerId}, restarting ICE...`);
+      console.warn(`[ICE] restarting for ${peerId}`);
       pc.restartIce();
     }
   };
 
   pc.onconnectionstatechange = () => {
-    console.log(`[WebRTC] Connection state with ${remotePeerId}: ${pc.connectionState}`);
-    if (pc.connectionState === 'connected')   setStatus('🟢 Connected', 'connected');
-    if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
-      setStatus('🔴 Disconnected', '');
+    console.log(`[PC] ${peerId} state: ${pc.connectionState}`);
+    const anyConnected = Object.values(peers).some(p=>p.pc.connectionState==='connected');
+    if (anyConnected) setStatus('🟢 Connected','ok');
+  };
+
+  // ── Remote track ──
+  // KEY FIX: never rebuild the grid here — just wire the stream to the existing element
+  pc.ontrack = ({ track, streams }) => {
+    console.log(`[PC] ontrack from ${peerId}: ${track.kind}`);
+    setStatus('🟢 Connected','ok');
+
+    // ensure tile exists
+    if (!document.getElementById(`tile-${peerId}`)) {
+      addTile(peerId, peerName);
+    }
+
+    const vid = document.getElementById(`vid-${peerId}`);
+    if (!vid) return;
+
+    if (streams[0]) {
+      if (vid.srcObject !== streams[0]) {
+        vid.srcObject = streams[0];
+        vid.play().catch(()=>{});
+      }
+    } else {
+      if (!vid.srcObject) vid.srcObject = new MediaStream();
+      (vid.srcObject).addTrack(track);
+      vid.play().catch(()=>{});
+    }
+
+    // show video, hide avatar
+    vid.onloadedmetadata = () => {
+      vid.style.display='block';
+      const ph=document.getElementById(`ph-${peerId}`);
+      if (ph) ph.style.display='none';
+    };
+    // also try immediately in case metadata already loaded
+    if (vid.readyState >= 1) {
+      vid.style.display='block';
+      const ph=document.getElementById(`ph-${peerId}`);
+      if (ph) ph.style.display='none';
     }
   };
 
   return pc;
 }
 
-// FIX: Flush queued ICE candidates after remote description is set
-async function flushPendingCandidates(remotePeerId) {
-  const queue = pendingCandidates.get(remotePeerId) || [];
-  console.log(`[WebRTC] Flushing ${queue.length} queued candidates for ${remotePeerId}`);
-  for (const candidate of queue) {
-    try { await peerConnections.get(remotePeerId)?.addIceCandidate(candidate); } catch (e) { console.warn('addIceCandidate error:', e); }
-  }
-  pendingCandidates.set(remotePeerId, []);
-}
+// ── Handle incoming signal ──
+async function handleSig(data) {
+  const { from, to, type } = data;
+  if (from === myId) return;
+  if (to !== myId && to !== '*') return;
 
-// ─── SIGNAL HANDLER ──────────────────────────────────────────────────────────
-async function handleSignal(docId, from, to, data) {
-  // FIX: Skip already-processed signals (Firestore can re-deliver on reconnect)
-  if (processedSignalIds.has(docId)) return;
-  processedSignalIds.add(docId);
-
-  // Drop signals not meant for us (unless broadcast)
-  if (to !== myPeerId && to !== '*') return;
-  // Drop our own signals
-  if (from === myPeerId) return;
-
-  // ── Broadcast messages (chat, pres) ──
+  // Broadcast messages
   if (to === '*') {
-    if (data.type === 'chat')      { appendChatMessage(data, false); return; }
-    if (data.type === 'pres_sync') { presentation = { pages: data.pages, currentPage: data.currentPage }; renderPresentationPage(data.currentPage); return; }
+    if (type==='chat') addMsg(data, false);
+    if (type==='pres') { pres={slides:data.slides,cur:data.cur}; renderSlide(data.cur); }
     return;
   }
 
-  // ── WebRTC signaling ──
-  if (data.type === 'offer') {
-    console.log(`[Signal] offer from ${from}`);
-    const pc = await getOrCreatePeerConnection(from);
-
-    // FIX: Handle glare (simultaneous offers) with rollback
-    if (pc.signalingState !== 'stable') {
-      const polite = myPeerId < from; // lexicographic: polite peer rolls back
-      if (!polite) {
-        console.warn('[Signal] Glare: impolite peer ignoring incoming offer');
-        return;
-      }
-      console.warn('[Signal] Glare: polite peer rolling back');
-      await Promise.all([
-        pc.setLocalDescription({ type: 'rollback' }),
-        pc.setRemoteDescription(new RTCSessionDescription(data.sdp))
-      ]);
-    } else {
-      await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
-    }
-
-    await flushPendingCandidates(from);
-    const answer = await pc.createAnswer();
-    await pc.setLocalDescription(answer);
-    sendSignal(from, { type: 'answer', sdp: pc.localDescription });
+  // WebRTC — ensure peer entry exists (may arrive before participant snapshot)
+  const peerName = peers[from]?.name || from;
+  if (!peers[from]) {
+    console.log(`[sig] signal from unknown peer ${from}, creating PC`);
+    createPC(from, peerName);
   }
+  const entry = peers[from];
+  const pc = entry.pc;
 
-  else if (data.type === 'answer') {
-    console.log(`[Signal] answer from ${from}`);
-    const pc = peerConnections.get(from);
-    if (!pc) return;
-    if (pc.signalingState !== 'have-local-offer') {
-      console.warn(`[Signal] Unexpected answer in state: ${pc.signalingState}`);
+  if (type === 'offer') {
+    const offerCollision = entry.makingOffer || pc.signalingState !== 'stable';
+    entry.ignoreOffer = !entry.polite && offerCollision;
+    if (entry.ignoreOffer) {
+      console.warn(`[sig] ignoring offer from ${from} (impolite, collision)`);
       return;
     }
+    console.log(`[sig] received offer from ${from}`);
     await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
-    await flushPendingCandidates(from);
+    // flush buffered ICE
+    for (const c of entry.iceBuf) { try { await pc.addIceCandidate(c); } catch{} }
+    entry.iceBuf=[];
+    await pc.setLocalDescription();
+    sig(from, { type:'answer', sdp:pc.localDescription });
   }
 
-  else if (data.type === 'candidate') {
-    console.log(`[Signal] ICE candidate from ${from}`);
-    const pc = peerConnections.get(from);
+  else if (type === 'answer') {
+    if (pc.signalingState === 'have-local-offer') {
+      console.log(`[sig] received answer from ${from}`);
+      await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
+      // flush buffered ICE
+      for (const c of entry.iceBuf) { try { await pc.addIceCandidate(c); } catch{} }
+      entry.iceBuf=[];
+    } else {
+      console.warn(`[sig] unexpected answer from ${from} in state ${pc.signalingState}`);
+    }
+  }
+
+  else if (type === 'ice') {
     const candidate = new RTCIceCandidate(data.candidate);
-
-    if (!pc || !pc.remoteDescription) {
-      // FIX: Queue candidates that arrive before remote description is set
-      const queue = pendingCandidates.get(from) || [];
-      queue.push(candidate);
-      pendingCandidates.set(from, queue);
-      console.log(`[Signal] Queued ICE candidate for ${from} (no remote desc yet)`);
-      return;
+    if (pc.remoteDescription) {
+      try { await pc.addIceCandidate(candidate); }
+      catch(e) { if (!entry.ignoreOffer) console.warn('[ICE] addCandidate err',e); }
+    } else {
+      console.log(`[sig] buffering ICE from ${from}`);
+      entry.iceBuf.push(candidate);
     }
-    try { await pc.addIceCandidate(candidate); } catch (e) { console.warn('addIceCandidate error:', e); }
   }
 }
 
-// ─── VIDEO GRID MANAGEMENT ───────────────────────────────────────────────────
-// FIX: Instead of rebuilding the whole grid (which destroys video srcObject),
-// we ADD / REMOVE individual tiles surgically.
-
-function renderLocalTile() {
-  const container = document.getElementById('videoGridContainer');
-  let tile = document.getElementById('tile-local');
-  if (tile) {
-    // Update video if stream changed
-    const video = document.getElementById('vid-local');
-    if (video && video.srcObject !== localStream) {
-      video.srcObject = localStream;
-      video.play().catch(() => {});
-    }
-    return;
-  }
-  tile = buildTile('local', `${myName} (you)`, localStream, true);
-  container.prepend(tile);
-}
-
-function addRemoteTile(peerId, name) {
-  if (document.getElementById(`tile-${peerId}`)) return; // already exists
-  const tile = buildTile(peerId, name, null, false);
-  document.getElementById('videoGridContainer').appendChild(tile);
-  updateParticipantCount();
-}
-
-function removeRemoteTile(peerId) {
-  document.getElementById(`tile-${peerId}`)?.remove();
-  updateParticipantCount();
-}
-
-function buildTile(id, name, stream, isLocal) {
-  const tile = document.createElement('div');
-  tile.className = 'vtile';
-  tile.id = `tile-${id}`;
-
-  const ph = document.createElement('div');
-  ph.className = 'ph';
-  ph.id = `ph-${id}`;
-  ph.innerHTML = `<div class="avatar-big">${(name[0] || '?').toUpperCase()}</div>`;
-
-  const video = document.createElement('video');
-  video.id     = `vid-${id}`;
-  video.autoplay  = true;
-  video.playsInline = true;
-  video.muted   = isLocal; // local video muted to avoid echo
-
-  if (stream) {
-    video.srcObject  = stream;
-    video.style.display = 'block';
-    ph.style.display = 'none';
-    video.play().catch(() => {});
-  }
-
-  const bar = document.createElement('div');
-  bar.className = 'vtile-bar';
-  bar.innerHTML = `<div class="vtile-name">${escapeHtml(name)}</div>`;
-
-  tile.appendChild(ph);
-  tile.appendChild(video);
-  tile.appendChild(bar);
-  return tile;
-}
-
-// ─── ROOM SETUP ───────────────────────────────────────────────────────────────
-async function setupRoomSignaling() {
+// ═══════════════════════════════════════════════════════
+//  ROOM LIFECYCLE
+// ═══════════════════════════════════════════════════════
+async function setupRoom() {
   const roomRef = db.collection('rooms').doc(roomCode);
 
-  // Register ourselves
-  await roomRef.collection('participants').doc(myPeerId).set({
-    name: myName, isHost, joinedAt: firebase.firestore.FieldValue.serverTimestamp()
+  // Register self
+  joinedAt = firebase.firestore.Timestamp.now();
+  await roomRef.collection('peers').doc(myId).set({
+    name:myName, isHost, joinedAt: firebase.firestore.FieldValue.serverTimestamp()
   });
 
-  // Watch participants
-  // FIX: Only the NEWLY JOINING peer creates the offer.
-  // When participant A sees participant B arrive, A creates an offer to B.
-  // This means whoever joined LATER initiates all connections to existing peers.
-  unsubscribeParticipants = roomRef.collection('participants').onSnapshot(async snapshot => {
-    for (const change of snapshot.docChanges()) {
-      const pid  = change.doc.id;
-      if (pid === myPeerId) continue;
+  // Watch peer list — create PCs for existing peers
+  unsubPeers = roomRef.collection('peers').onSnapshot(snap => {
+    snap.docChanges().forEach(ch => {
+      const pid = ch.doc.id;
+      if (pid === myId) return;
 
-      if (change.type === 'added') {
-        const data = change.doc.data();
-        if (!participants.has(pid)) {
-          participants.set(pid, { name: data.name });
-          addRemoteTile(pid, data.name);
-          toast(`${data.name} joined`);
-
-          // FIX: Only initiate if we joined BEFORE this peer (we are the existing participant).
-          // We compare join timestamps: if we're already set up, we must have joined earlier.
-          // The simpler rule: whoever has the lexicographically LARGER peerId sends the offer.
-          // This guarantees exactly one offer per pair (no glare).
-          if (myPeerId > pid) {
-            console.log(`[Room] I'm initiator to ${pid}`);
-            const pc = await getOrCreatePeerConnection(pid);
-            const offer = await pc.createOffer();
-            await pc.setLocalDescription(offer);
-            sendSignal(pid, { type: 'offer', sdp: pc.localDescription });
-          } else {
-            console.log(`[Room] I'm receiver for ${pid}, waiting for offer...`);
-            // Still create the PC so ICE candidates can be received
-            await getOrCreatePeerConnection(pid);
-          }
+      if (ch.type === 'added') {
+        const { name } = ch.doc.data();
+        if (!peers[pid]) {
+          console.log(`[room] peer added: ${pid} (${name})`);
+          peers[pid] = peers[pid] || {};
+          peers[pid].name = name;
+          createPC(pid, name);
+          addTile(pid, name);
+          toast(`${name} joined`);
+          updateCount();
+          // onnegotiationneeded will fire automatically once tracks are added in createPC
+          // for the larger-ID peer. No need to manually call createOffer.
         }
       }
 
-      else if (change.type === 'removed') {
-        const pc = peerConnections.get(pid);
-        if (pc) pc.close();
-        peerConnections.delete(pid);
-        pendingCandidates.delete(pid);
-        participants.delete(pid);
-        removeRemoteTile(pid);
+      if (ch.type === 'removed') {
+        console.log(`[room] peer left: ${pid}`);
+        peers[pid]?.pc?.close();
+        delete peers[pid];
+        removeTile(pid);
         toast('A participant left');
-        if (participants.size === 0) setStatus('🟡 Waiting...', 'connecting');
+        updateCount();
+        if (!Object.keys(peers).length) setStatus('🟡 Waiting…','wait');
       }
-    }
+    });
   });
 
-  // Watch signals addressed to us (or broadcast)
-  // FIX: Do NOT delete signals immediately — let all peers read them.
-  // Use a timestamp cutoff: only read signals created AFTER we joined.
-  const joinTime = firebase.firestore.Timestamp.now();
-  unsubscribeSignals = roomRef.collection('signals')
-    .where('timestamp', '>', joinTime)
-    .orderBy('timestamp')
-    .onSnapshot(async snapshot => {
-      for (const change of snapshot.docChanges()) {
-        if (change.type === 'added') {
-          const d = change.doc.data();
-          await handleSignal(change.doc.id, d.from, d.to, d.data);
-          // Clean up old signals after a delay (so both peers can read)
-          setTimeout(() => change.doc.ref.delete().catch(() => {}), 8000);
+  // Watch signals for us (only signals created after we joined)
+  unsubSigs = roomRef.collection('sigs')
+    .where('ts','>', joinedAt)
+    .orderBy('ts')
+    .onSnapshot(snap => {
+      snap.docChanges().forEach(ch => {
+        if (ch.type === 'added') {
+          handleSig(ch.doc.data()).catch(e=>console.error('[sig] handler error',e));
+          // TTL cleanup after 15s (signals are tiny, this is safe)
+          setTimeout(()=>ch.doc.ref.delete().catch(()=>{}), 15000);
         }
-      }
+      });
     });
 }
 
-// ─── CREATE / JOIN ────────────────────────────────────────────────────────────
-async function createRoom() {
-  const rName = document.getElementById('createRoomName').value.trim();
-  const uName = document.getElementById('createUserName').value.trim();
-  if (!rName || !uName) { toast('Please fill all fields'); return; }
-  closeAllModals();
-  showOverlay('Starting camera...');
+// ═══════════════════════════════════════════════════════
+//  VIDEO TILES  (surgical add/remove — never rebuild all)
+// ═══════════════════════════════════════════════════════
+function addLocalTile() {
+  if (document.getElementById('tile-local')) return;
+  const tile=document.createElement('div'); tile.className='vtile'; tile.id='tile-local';
+  const ph=document.createElement('div'); ph.className='avph'; ph.id='ph-local';
+  ph.innerHTML=`<div class="avat">${(myName[0]||'?').toUpperCase()}</div>`;
+  const vid=document.createElement('video'); vid.id='vid-local'; vid.autoplay=true; vid.playsInline=true; vid.muted=true;
+  const bar=document.createElement('div'); bar.className='vbar';
+  bar.innerHTML=`<div class="vname">${esc(myName)} (you)</div>`;
+  tile.append(ph,vid,bar);
+  if (localStream) {
+    vid.srcObject=localStream;
+    vid.style.display='block'; ph.style.display='none';
+    vid.play().catch(()=>{});
+  }
+  document.getElementById('vgrid').prepend(tile);
+}
 
-  isHost  = true;
-  roomCode = genCode();
-  myName  = uName;
-  roomName = rName;
-  myPeerId = genPeerId();
+function addTile(pid, name) {
+  if (document.getElementById(`tile-${pid}`)) return;
+  const tile=document.createElement('div'); tile.className='vtile'; tile.id=`tile-${pid}`;
+  const ph=document.createElement('div'); ph.className='avph'; ph.id=`ph-${pid}`;
+  ph.innerHTML=`<div class="avat">${(name[0]||'?').toUpperCase()}</div>`;
+  const vid=document.createElement('video'); vid.id=`vid-${pid}`; vid.autoplay=true; vid.playsInline=true; vid.muted=false;
+  const bar=document.createElement('div'); bar.className='vbar';
+  bar.innerHTML=`<div class="vname">${esc(name)}</div>`;
+  tile.append(ph,vid,bar);
+  document.getElementById('vgrid').appendChild(tile);
+}
+
+function removeTile(pid) { document.getElementById(`tile-${pid}`)?.remove(); }
+
+// ═══════════════════════════════════════════════════════
+//  CREATE / JOIN
+// ═══════════════════════════════════════════════════════
+async function createRoom() {
+  const rn=document.getElementById('cRoomName').value.trim();
+  const un=document.getElementById('cUserName').value.trim();
+  if (!rn||!un) { toast('Fill all fields'); return; }
+  closeModals(); showOv('Starting camera…');
+
+  isHost=true; roomCode=code6(); myName=un; roomName=rn; myId=uid();
 
   try {
-    localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } } });
-    console.log('[Media] Local stream:', localStream.getTracks().map(t => t.kind));
-  } catch (e) {
-    console.error('[Media] getUserMedia failed:', e);
-    showLobby();
-    toast('Camera/microphone access required');
-    return;
+    localStream = await navigator.mediaDevices.getUserMedia({
+      audio:true,
+      video:{ facingMode:'user', width:{ideal:640}, height:{ideal:480} }
+    });
+    console.log('[media] got stream:', localStream.getTracks().map(t=>t.kind));
+  } catch(e) {
+    console.error('[media]',e); showLobby(); toast('Camera/microphone required'); return;
   }
 
   await db.collection('rooms').doc(roomCode).set({
-    name: roomName, host: myPeerId, createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    name:roomName, host:myId, createdAt:firebase.firestore.FieldValue.serverTimestamp()
   });
 
-  document.getElementById('roomNameDisplay').innerText = roomName;
-  document.getElementById('roomCodeDisplay').innerText = roomCode;
-  document.getElementById('presHostBadge').style.display = 'inline-block';
-  renderLocalTile();
+  document.getElementById('rname').innerText=roomName;
+  document.getElementById('rcode').innerText=roomCode;
+  document.getElementById('phostbadge').style.display='inline-block';
+  addLocalTile();
   showRoom();
-  toast(`Room created! Code: ${roomCode}`);
-  await setupRoomSignaling();
+  toast(`Room ready! Code: ${roomCode}`);
+  await setupRoom();
 }
 
 async function joinRoom() {
-  const code  = document.getElementById('joinRoomCode').value.trim().toUpperCase();
-  const uName = document.getElementById('joinUserName').value.trim();
-  if (!code || !uName || code.length !== 6) { toast('Enter a valid 6-character code'); return; }
-  closeAllModals();
-  showOverlay('Checking room...');
+  const c=document.getElementById('jCode').value.trim().toUpperCase();
+  const n=document.getElementById('jName').value.trim();
+  if (!c||!n||c.length!==6) { toast('Enter valid code & name'); return; }
+  closeModals(); showOv('Checking room…');
 
-  const roomDoc = await db.collection('rooms').doc(code).get();
-  if (!roomDoc.exists) { showLobby(); toast('Room not found'); return; }
+  const snap=await db.collection('rooms').doc(c).get();
+  if (!snap.exists) { showLobby(); toast('Room not found'); return; }
 
-  isHost   = false;
-  roomCode  = code;
-  myName   = uName;
-  roomName  = roomDoc.data().name;
-  myPeerId  = genPeerId();
-
-  showOverlay('Starting camera...');
+  isHost=false; roomCode=c; myName=n; roomName=snap.data().name; myId=uid();
+  showOv('Starting camera…');
   try {
-    localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } } });
-    console.log('[Media] Local stream:', localStream.getTracks().map(t => t.kind));
-  } catch (e) {
-    console.error('[Media] getUserMedia failed:', e);
-    showLobby();
-    toast('Camera/microphone access required');
-    return;
+    localStream = await navigator.mediaDevices.getUserMedia({
+      audio:true,
+      video:{ facingMode:'user', width:{ideal:640}, height:{ideal:480} }
+    });
+    console.log('[media] got stream:', localStream.getTracks().map(t=>t.kind));
+  } catch(e) {
+    console.error('[media]',e); showLobby(); toast('Camera/microphone required'); return;
   }
 
-  document.getElementById('roomNameDisplay').innerText = roomName;
-  document.getElementById('roomCodeDisplay').innerText = roomCode;
-  document.getElementById('presHostBadge').style.display = 'none';
-  renderLocalTile();
+  document.getElementById('rname').innerText=roomName;
+  document.getElementById('rcode').innerText=roomCode;
+  document.getElementById('phostbadge').style.display='none';
+  addLocalTile();
   showRoom();
-  toast(`Joined ${roomName}`);
-  await setupRoomSignaling();
+  toast(`Joined ${roomName}!`);
+  await setupRoom();
 }
 
-// ─── MEDIA CONTROLS ───────────────────────────────────────────────────────────
-document.getElementById('micBtn').onclick = () => {
+// ═══════════════════════════════════════════════════════
+//  MEDIA CONTROLS
+// ═══════════════════════════════════════════════════════
+document.getElementById('micbtn').onclick = () => {
   if (!localStream) return;
-  isMuted = !isMuted;
-  localStream.getAudioTracks().forEach(t => { t.enabled = !isMuted; });
-  document.getElementById('micBtn').classList.toggle('off', isMuted);
-  document.getElementById('micBtn').innerText = isMuted ? '🔇' : '🎤';
+  muted=!muted;
+  localStream.getAudioTracks().forEach(t=>t.enabled=!muted);
+  document.getElementById('micbtn').classList.toggle('off',muted);
+  document.getElementById('micbtn').innerText=muted?'🔇':'🎤';
 };
-
-document.getElementById('camBtn').onclick = () => {
+document.getElementById('cambtn').onclick = () => {
   if (!localStream) return;
-  isCamOff = !isCamOff;
-  localStream.getVideoTracks().forEach(t => { t.enabled = !isCamOff; });
-  document.getElementById('camBtn').classList.toggle('off', isCamOff);
-  document.getElementById('camBtn').innerText = isCamOff ? '🚫' : '📷';
-  const localVideo = document.getElementById('vid-local');
-  const localPh    = document.getElementById('ph-local');
-  if (localVideo && localPh) {
-    localVideo.style.display = isCamOff ? 'none' : 'block';
-    localPh.style.display    = isCamOff ? 'flex' : 'none';
-  }
+  camOff=!camOff;
+  localStream.getVideoTracks().forEach(t=>t.enabled=!camOff);
+  document.getElementById('cambtn').classList.toggle('off',camOff);
+  document.getElementById('cambtn').innerText=camOff?'🚫':'📷';
+  const v=document.getElementById('vid-local'), p=document.getElementById('ph-local');
+  if(v&&p){ v.style.display=camOff?'none':'block'; p.style.display=camOff?'flex':'none'; }
 };
-
-function leaveRoom() {
-  showLobby();
-  toast('Left the meeting');
-}
-document.getElementById('leaveRoomBtn').onclick = leaveRoom;
-
-function copyRoomCode() { navigator.clipboard.writeText(roomCode).then(() => toast('Code copied!')); }
-
+document.getElementById('leavebtn').onclick = () => { showLobby(); toast('Left meeting'); };
+function copyCode() { navigator.clipboard.writeText(roomCode).then(()=>toast('Code copied!')); }
 function shareMeetingLink() {
-  const url = `${location.origin}${location.pathname}?join=${roomCode}`;
-  navigator.clipboard.writeText(url).then(() => toast('Invite link copied!'));
+  const url=`${location.origin}${location.pathname}?join=${roomCode}`;
+  navigator.clipboard.writeText(url).then(()=>toast('Invite link copied!'));
 }
+document.getElementById('sharebtn').onclick = shareMeetingLink;
 
-// ─── MODAL WIRING ─────────────────────────────────────────────────────────────
-document.getElementById('showCreateBtn').onclick    = () => document.getElementById('createModal').classList.remove('hidden');
-document.getElementById('showJoinBtn').onclick      = () => document.getElementById('joinModal').classList.remove('hidden');
-document.getElementById('createCardBtn').onclick    = () => document.getElementById('createModal').classList.remove('hidden');
-document.getElementById('joinCardBtn').onclick      = () => document.getElementById('joinModal').classList.remove('hidden');
-document.getElementById('cancelCreateModal').onclick = closeAllModals;
-document.getElementById('cancelJoinModal').onclick   = closeAllModals;
-document.getElementById('confirmCreateModal').onclick = createRoom;
-document.getElementById('confirmJoinModal').onclick   = joinRoom;
-document.getElementById('joinRoomCode').addEventListener('input', e => {
-  e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+// ═══════════════════════════════════════════════════════
+//  MODAL WIRING
+// ═══════════════════════════════════════════════════════
+document.getElementById('btnCreate').onclick  =
+document.getElementById('btnCreate2').onclick = ()=>document.getElementById('createModal').classList.remove('hidden');
+document.getElementById('btnJoin').onclick    =
+document.getElementById('btnJoin2').onclick   = ()=>document.getElementById('joinModal').classList.remove('hidden');
+document.getElementById('cCancel').onclick    =
+document.getElementById('jCancel').onclick    = closeModals;
+document.getElementById('cConfirm').onclick   = createRoom;
+document.getElementById('jConfirm').onclick   = joinRoom;
+document.getElementById('jCode').addEventListener('input',e=>{
+  e.target.value=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'');
 });
 
-// ─── AUTO-JOIN FROM URL ──────────────────────────────────────────────────────
-const autoCode = new URLSearchParams(location.search).get('join');
-if (autoCode?.length === 6) {
-  setTimeout(() => {
-    document.getElementById('joinRoomCode').value = autoCode.toUpperCase();
+// ═══════════════════════════════════════════════════════
+//  AUTO-JOIN FROM URL
+// ═══════════════════════════════════════════════════════
+const autoCode=new URLSearchParams(location.search).get('join');
+if (autoCode?.length===6) {
+  setTimeout(()=>{
+    document.getElementById('jCode').value=autoCode.toUpperCase();
     document.getElementById('joinModal').classList.remove('hidden');
     toast('Enter your name to join');
-  }, 300);
+  },300);
 }
 </script>
 </body>
