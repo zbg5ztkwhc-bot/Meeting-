@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover" />
-<title>HamoudaSpace · Working Video & Audio | WebRTC Fixed</title>
+<title>HamoudaSpace · Working Video & Audio</title>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 <style>
@@ -103,20 +103,20 @@
 
 <div id="view-lobby">
   <div class="lobby-header">
-    <div class="logo-area"><div class="logo-icon">🎥</div><div><strong>HamoudaSpace</strong><div style="font-size:10px;">Working WebRTC Fixed</div></div></div>
+    <div class="logo-area"><div class="logo-icon">🎥</div><div><strong>HamoudaSpace</strong><div style="font-size:10px;">A/V Connections Fixed</div></div></div>
     <div class="lobby-actions">
       <button class="btn btn-secondary" id="showJoinBtn">🔗 Join</button>
       <button class="btn btn-primary" id="showCreateBtn">✨ New Meeting</button>
     </div>
   </div>
   <div class="lobby-main">
-    <div class="hero"><h1>Video Meetings That Work</h1><p>Fixed WebRTC - Up to 20 Participants</p></div>
+    <div class="hero"><h1>Video Meetings That Work</h1><p>Fixed A/V Sync - Up to 20 Participants</p></div>
     <div class="action-cards">
       <div class="card"><h3>Start a Meeting</h3><button class="btn btn-primary" id="createCardBtn">Create Room</button></div>
       <div class="card"><h3>Join a Meeting</h3><button class="btn btn-secondary" id="joinCardBtn">Enter Code</button></div>
     </div>
     <div class="info-box">
-      <p>🔵 <strong>Fixed!</strong> Optimized for groups and cross-device recording.</p>
+      <p>🔵 <strong>Fixed!</strong> TURN servers restored for mobile networks. Smart DOM updates added.</p>
     </div>
   </div>
 </div>
@@ -151,7 +151,7 @@
 <div id="loadingOverlay" class="overlay hidden"><div class="spinner"></div><p>Starting camera...</p></div>
 
 <script>
-// Firebase Config - Keep your exact configuration
+// Firebase Config - EXACT CONFIGURATION KEPT
 const firebaseConfig = {
   apiKey: "AIzaSyCra3IgsAaQlf3INjRn04DdX3KWwb8zdlo",
   authDomain: "hamoudaspace-meetingapp.firebaseapp.com",
@@ -169,7 +169,8 @@ const db = firebase.firestore();
 // State
 let localStream = null;
 let peerConnections = new Map();
-let pendingCandidates = new Map(); // Store candidates received before RemoteDescription is set
+let pendingCandidates = new Map(); 
+let participants = new Map(); // Stores { name, stream }
 let isHost = false;
 let roomCode = '';
 let myName = '';
@@ -180,18 +181,18 @@ let isCamOff = false;
 let isRecording = false;
 let mediaRecorder = null;
 let recordedChunks = [];
-let participants = new Map();
 let unsubscribe = null;
 let chatUnread = 0;
 let activeUpperPanel = null;
 let presentation = { pages: [], currentPage: 0 };
 
-// ICE Servers
+// ICE Servers - TURN SERVERS RESTORED FOR MOBILE COMPATIBILITY
 const ICE_SERVERS = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
-    { urls: 'stun:stun2.l.google.com:19302' }
+    { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }
   ]
 };
 
@@ -226,6 +227,7 @@ function showLobby() {
   peerConnections.clear();
   pendingCandidates.clear();
   participants.clear();
+  document.getElementById('videoGridContainer').innerHTML = ''; // Clear grid safely here
   if(isRecording) stopRecording();
 }
 
@@ -337,7 +339,6 @@ document.getElementById('presFileInput').addEventListener('change', async (e) =>
   if(file.type.startsWith('image/')) {
     const reader = new FileReader();
     reader.onload = function(event) {
-        // Use base64 so it can be sent via signaling (Not ideal for large files, but works for basic images)
         presentation = { pages: [{ url: event.target.result, type: 'image' }], currentPage: 0 };
         renderPresentationPage(0);
         sendToRoom({ type: 'pres_sync', pages: presentation.pages, currentPage: 0 });
@@ -362,7 +363,7 @@ document.getElementById('presUploadBtn').onclick = () => { if(isHost) document.g
 document.getElementById('presPrevBtn').onclick = () => changeSlide(-1);
 document.getElementById('presNextBtn').onclick = () => changeSlide(1);
 
-// ========== UNIVERSAL RECORDING FIX ==========
+// ========== UNIVERSAL RECORDING ==========
 async function startRecording() {
   if(isRecording) return;
   toast('Starting recording...');
@@ -373,7 +374,6 @@ async function startRecording() {
   
   let captureStream;
   try {
-      // 1. Try to record the whole screen/meeting (Best for Desktop)
       if (navigator.mediaDevices.getDisplayMedia) {
           captureStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
       }
@@ -381,17 +381,15 @@ async function startRecording() {
       console.log('Screen capture rejected or unsupported, falling back to local camera');
   }
 
-  // 2. Fallback to Local Stream (Mobile devices that don't support screen record)
   if(!captureStream) {
       captureStream = localStream; 
       toast('Screen record unsupported. Recording your camera only.');
   }
 
-  // 3. Find Universally Playable Codec
   const options = [
-      'video/mp4', // Highly compatible (iOS/Android/Windows)
-      'video/webm;codecs=h264,opus', // Fallback
-      'video/webm' // Final fallback
+      'video/mp4',
+      'video/webm;codecs=h264,opus', 
+      'video/webm' 
   ];
   
   let mimeType = '';
@@ -406,7 +404,6 @@ async function startRecording() {
   recorder.ondataavailable = (e) => { if(e.data.size > 0) recordedChunks.push(e.data); };
   
   recorder.onstop = () => {
-    // Generate file extension based on mimeType
     const ext = mimeType.includes('mp4') ? 'mp4' : 'webm';
     const blob = new Blob(recordedChunks, { type: mimeType || 'video/mp4' });
     const url = URL.createObjectURL(blob);
@@ -421,7 +418,6 @@ async function startRecording() {
   recorder.start(1000);
   mediaRecorder = recorder;
   
-  // If user stops sharing screen, stop recording
   if(captureStream !== localStream) {
       captureStream.getVideoTracks().onended = () => { stopRecording(); };
   }
@@ -448,7 +444,7 @@ async function sendToRoom(data) {
   });
 }
 
-// ========== WEBRTC FIXES (ICE QUEUE & TRACK HANDLING) ==========
+// ========== WEBRTC FIXES (TRACK HANDLING) ==========
 async function createPeerConnection(targetId) {
   const pc = new RTCPeerConnection(ICE_SERVERS);
   peerConnections.set(targetId, pc);
@@ -461,13 +457,19 @@ async function createPeerConnection(targetId) {
   pc.ontrack = (event) => {
     document.getElementById('connectionStatus').className = 'status-badge connected';
     document.getElementById('connectionStatus').innerHTML = '🟢 Connected';
-    const videoEl = document.getElementById(`vid-${targetId}`);
-    if(videoEl && event.streams) {
-      videoEl.srcObject = event.streams;
-      videoEl.play().catch(e => console.log(e));
-      const ph = document.getElementById(`ph-${targetId}`);
-      if(ph) ph.style.display = 'none';
-      videoEl.style.display = 'block';
+    
+    // SAVE THE STREAM AND RE-RENDER SMARTLY
+    if (participants.has(targetId)) {
+        participants.get(targetId).stream = event.streams;
+        
+        const videoEl = document.getElementById(`vid-${targetId}`);
+        if(videoEl) {
+          videoEl.srcObject = event.streams;
+          videoEl.play().catch(e => console.log(e));
+          const ph = document.getElementById(`ph-${targetId}`);
+          if(ph) ph.style.display = 'none';
+          videoEl.style.display = 'block';
+        }
     }
   };
   
@@ -511,13 +513,19 @@ async function handleMessage(from, data) {
     pc.ontrack = (event) => {
       document.getElementById('connectionStatus').className = 'status-badge connected';
       document.getElementById('connectionStatus').innerHTML = '🟢 Connected';
-      const videoEl = document.getElementById(`vid-${from}`);
-      if(videoEl && event.streams) {
-        videoEl.srcObject = event.streams;
-        videoEl.play().catch(e => console.log(e));
-        const ph = document.getElementById(`ph-${from}`);
-        if(ph) ph.style.display = 'none';
-        videoEl.style.display = 'block';
+      
+      // SAVE THE STREAM AND RE-RENDER SMARTLY
+      if (participants.has(from)) {
+          participants.get(from).stream = event.streams;
+          
+          const videoEl = document.getElementById(`vid-${from}`);
+          if(videoEl) {
+            videoEl.srcObject = event.streams;
+            videoEl.play().catch(e => console.log(e));
+            const ph = document.getElementById(`ph-${from}`);
+            if(ph) ph.style.display = 'none';
+            videoEl.style.display = 'block';
+          }
       }
     };
     
@@ -546,7 +554,6 @@ async function handleMessage(from, data) {
       if(pc.remoteDescription) {
         await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
       } else {
-        // Queue candidate if remote description isn't set yet (Fixes audio/video dropping)
         if(!pendingCandidates.has(from)) pendingCandidates.set(from, []);
         pendingCandidates.get(from).push(data.candidate);
       }
@@ -584,13 +591,13 @@ async function setupRoom() {
       
       if(!participants.has(pid)) {
         const data = doc.data();
-        participants.set(pid, { name: data.name });
+        participants.set(pid, { name: data.name, stream: null }); // initialize stream as null
         renderGrid();
         updateParticipantCount();
         toast(`${data.name} joined`);
         
-        // Host (or first participant) initiates connection to avoid dual offers
-        if(isHost || myPeerId < pid) {
+        // STRICT INITIATOR LOGIC (Fixes Glare issue)
+        if(myPeerId < pid) {
             createPeerConnection(pid);
         }
       }
@@ -603,9 +610,7 @@ async function setupRoom() {
         peerConnections.delete(pid);
         pendingCandidates.delete(pid);
         participants.delete(pid);
-        const tile = document.getElementById(`tile-${pid}`);
-        if(tile) tile.remove();
-        renderGrid();
+        renderGrid(); // Smart render handles removal automatically
         updateParticipantCount();
       }
     }
@@ -627,11 +632,10 @@ async function setupRoom() {
   document.getElementById('connectionStatus').innerHTML = '🟡 Waiting for participants...';
 }
 
-// ========== BANDWIDTH OPTIMIZATION FOR 20 USERS ==========
+// ========== BANDWIDTH OPTIMIZATION ==========
 async function getOptimizedMedia() {
     return await navigator.mediaDevices.getUserMedia({ 
       audio: { echoCancellation: true, noiseSuppression: true }, 
-      // Force lower resolution/framerate to prevent 20 participants from crashing the phone
       video: { 
           width: { ideal: 320, max: 640 }, 
           height: { ideal: 240, max: 480 },
@@ -715,14 +719,31 @@ async function joinRoom() {
   await setupRoom();
 }
 
-// ========== VIDEO GRID ==========
+// ========== SMART VIDEO GRID (Fixes Video Disappearing) ==========
 function renderGrid() {
   const container = document.getElementById('videoGridContainer');
-  container.innerHTML = '';
-  container.appendChild(createTile('local', `${myName} (you)`, localStream, true));
-  for(let [peerId, p] of participants.entries()) {
-    container.appendChild(createTile(peerId, p.name, null, false));
+  
+  // 1. Ensure Local Tile Exists
+  if (!document.getElementById('tile-local')) {
+      container.appendChild(createTile('local', `${myName} (you)`, localStream, true));
   }
+  
+  // 2. Add Missing Remote Tiles
+  for(let [peerId, p] of participants.entries()) {
+      if (!document.getElementById(`tile-${peerId}`)) {
+          container.appendChild(createTile(peerId, p.name, p.stream, false));
+      }
+  }
+  
+  // 3. Remove Disconnected Tiles
+  Array.from(container.children).forEach(child => {
+      if (child.id === 'tile-local') return;
+      const peerId = child.id.replace('tile-', '');
+      if (!participants.has(peerId)) {
+          child.remove();
+      }
+  });
+
   updateParticipantCount();
   document.getElementById('presHostBadge').style.display = isHost ? 'inline-block' : 'none';
 }
@@ -770,7 +791,6 @@ document.getElementById('micBtn').onclick = () => {
     isMuted = !isMuted; 
     localStream.getAudioTracks().forEach(t => t.enabled = !isMuted); 
     document.getElementById('micBtn').classList.toggle('off', isMuted);
-    renderGrid();
   } 
 };
 
@@ -779,7 +799,6 @@ document.getElementById('camBtn').onclick = () => {
     isCamOff = !isCamOff; 
     localStream.getVideoTracks().forEach(t => t.enabled = !isCamOff); 
     document.getElementById('camBtn').classList.toggle('off', isCamOff); 
-    renderGrid(); 
   } 
 };
 
