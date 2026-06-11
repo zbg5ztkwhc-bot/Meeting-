@@ -51,58 +51,72 @@ async function handleRTK(request, env, url) {
   return Response.json({ error: 'Not found' }, { status: 404, headers: corsHeaders() });
 }
 
+// Extract a value from either Cloudflare API format (result.x) or Dyte format (data.x)
+function pick(json, key) {
+  return json?.result?.[key] ?? json?.data?.[key];
+}
+
+function assertSuccess(json, label) {
+  const ok = json?.success ?? (json?.data !== undefined);
+  if (!ok) {
+    const msg = json?.errors?.[0]?.message ?? json?.message ?? JSON.stringify(json);
+    throw new Error(`${label}: ${msg}`);
+  }
+}
+
 async function createMeeting(request, env) {
   const { title, userName } = await request.json();
 
   // 1. Create the meeting
-  const meetRes = await fetch(`${rtkBase(env)}/meetings`, {
+  const meetRes  = await fetch(`${rtkBase(env)}/meetings`, {
     method: 'POST',
     headers: rtkHeaders(env),
     body: JSON.stringify({ title })
   });
   const meetJson = await meetRes.json();
-  if (!meetJson.success) throw new Error(meetJson.errors?.[0]?.message || 'Failed to create meeting');
+  assertSuccess(meetJson, 'Create meeting');
 
-  const meetingId = meetJson.result.id;
+  const meetingId = pick(meetJson, 'id');
+  if (!meetingId) throw new Error('No meeting ID in response: ' + JSON.stringify(meetJson));
 
   // 2. Add the host as a participant and receive their auth token
-  const partRes = await fetch(`${rtkBase(env)}/meetings/${meetingId}/participants`, {
+  const partRes  = await fetch(`${rtkBase(env)}/meetings/${meetingId}/participants`, {
     method: 'POST',
     headers: rtkHeaders(env),
     body: JSON.stringify({
-      name:                   userName,
-      preset_id:              env.REALTIMEKIT_PRESET_ID,
-      custom_participant_id:  crypto.randomUUID()
+      name:                  userName,
+      preset_id:             env.REALTIMEKIT_PRESET_ID,
+      custom_participant_id: crypto.randomUUID()
     })
   });
   const partJson = await partRes.json();
-  if (!partJson.success) throw new Error(partJson.errors?.[0]?.message || 'Failed to add participant');
+  assertSuccess(partJson, 'Add participant');
 
-  return Response.json(
-    { meetingId, token: partJson.result.token },
-    { headers: corsHeaders() }
-  );
+  const token = pick(partJson, 'token');
+  if (!token) throw new Error('No token in response: ' + JSON.stringify(partJson));
+
+  return Response.json({ meetingId, token }, { headers: corsHeaders() });
 }
 
 async function joinMeeting(request, env) {
   const { meetingId, userName } = await request.json();
 
-  const partRes = await fetch(`${rtkBase(env)}/meetings/${meetingId}/participants`, {
+  const partRes  = await fetch(`${rtkBase(env)}/meetings/${meetingId}/participants`, {
     method: 'POST',
     headers: rtkHeaders(env),
     body: JSON.stringify({
-      name:                   userName,
-      preset_id:              env.REALTIMEKIT_PRESET_ID,
-      custom_participant_id:  crypto.randomUUID()
+      name:                  userName,
+      preset_id:             env.REALTIMEKIT_PRESET_ID,
+      custom_participant_id: crypto.randomUUID()
     })
   });
   const partJson = await partRes.json();
-  if (!partJson.success) throw new Error(partJson.errors?.[0]?.message || 'Failed to join meeting');
+  assertSuccess(partJson, 'Join meeting');
 
-  return Response.json(
-    { token: partJson.result.token },
-    { headers: corsHeaders() }
-  );
+  const token = pick(partJson, 'token');
+  if (!token) throw new Error('No token in response: ' + JSON.stringify(partJson));
+
+  return Response.json({ token }, { headers: corsHeaders() });
 }
 
 function corsHeaders() {
