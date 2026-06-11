@@ -50,7 +50,8 @@ async function handleRTK(request, env, url) {
   const path = url.pathname.replace('/api/rtk', '');
 
   try {
-    if (request.method === 'GET'  && path === '/debug')  return await debugRTK(env, cors);
+    if (request.method === 'GET'  && path === '/debug')   return await debugRTK(env, cors);
+    if (request.method === 'GET'  && path === '/presets') return await listPresets(env, cors);
     if (request.method === 'POST' && path === '/create') return await createMeeting(request, env, cors);
     if (request.method === 'POST' && path === '/join')   return await joinMeeting(request, env, cors);
   } catch (err) {
@@ -89,6 +90,14 @@ async function debugRTK(env, cors) {
     raw: text.slice(0, 2000),
     parsed
   }, { headers: cors });
+}
+
+async function listPresets(env, cors) {
+  const res = await fetch(`${rtkBase(env)}/presets`, { method: 'GET', headers: rtkHeaders(env) });
+  const text = await res.text();
+  let parsed;
+  try { parsed = JSON.parse(text); } catch { parsed = null; }
+  return Response.json({ status: res.status, raw: text.slice(0, 3000), parsed }, { headers: cors });
 }
 
 async function safeJson(res, label) {
