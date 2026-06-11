@@ -7,12 +7,15 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <title>HamoudaSpace · Video Meetings</title>
 
-<!-- Firebase (room code ↔ Dyte meeting ID mapping + compat layer) -->
+<!-- Firebase (room code ↔ RealtimeKit meeting ID mapping) -->
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 
-<!-- Dyte UI Kit — registers <dyte-meeting> custom element -->
-<script type="module" src="https://cdn.jsdelivr.net/npm/@dytesdk/ui-kit@2/dist/dyte/dyte.esm.js"></script>
+<!-- Cloudflare RealtimeKit SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@cloudflare/realtimekit@latest/dist/browser.js"></script>
+
+<!-- Cloudflare RealtimeKit UI Kit (registers <cloudflare-meeting> web component) -->
+<script type="module" src="https://cdn.jsdelivr.net/npm/@cloudflare/realtimekit-ui@latest/dist/realtimekit-ui/realtimekit-ui.esm.js"></script>
 
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
@@ -62,7 +65,7 @@ body { height:100%; overflow:hidden; font-family:-apple-system,BlinkMacSystemFon
 .overlay-msg { color:var(--text-secondary); font-size:14px; }
 @keyframes spin { to { transform:rotate(360deg); } }
 
-/* Room — full-screen Dyte meeting */
+/* Room — full-screen RealtimeKit meeting */
 #view-room { position:fixed; inset:0; z-index:100; }
 
 /* Floating room-code chip */
@@ -74,12 +77,12 @@ body { height:100%; overflow:hidden; font-family:-apple-system,BlinkMacSystemFon
   display:flex; align-items:center; gap:8px;
   pointer-events:auto; white-space:nowrap;
 }
-#roomChip span.label { font-size:10px; color:rgba(255,255,255,.5); }
-#roomChip span.code  { font-family:monospace; font-size:13px; letter-spacing:2px; cursor:pointer; }
-#roomChip span.hint  { font-size:10px; color:rgba(255,255,255,.35); }
+#roomChip .label { font-size:10px; color:rgba(255,255,255,.5); }
+#roomChip .code  { font-family:monospace; font-size:13px; letter-spacing:2px; cursor:pointer; }
+#roomChip .hint  { font-size:10px; color:rgba(255,255,255,.35); }
 
 /* Toast */
-.toast { position:fixed; bottom:calc(80px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); background:#1e2030; border:1px solid var(--border-dim); padding:8px 20px; border-radius:40px; z-index:400; font-size:12px; white-space:nowrap; pointer-events:none; animation:toastAnim 2.8s ease forwards; }
+.toast { position:fixed; bottom:calc(80px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); background:#1e2030; border:1px solid var(--border-dim); padding:8px 20px; border-radius:40px; z-index:800; font-size:12px; white-space:nowrap; pointer-events:none; animation:toastAnim 2.8s ease forwards; }
 @keyframes toastAnim { 0%{opacity:0;transform:translateX(-50%) translateY(8px)} 12%{opacity:1;transform:translateX(-50%) translateY(0)} 80%{opacity:1} 100%{opacity:0} }
 </style>
 </head>
@@ -90,7 +93,10 @@ body { height:100%; overflow:hidden; font-family:-apple-system,BlinkMacSystemFon
   <div class="lobby-header">
     <div class="logo-area">
       <div class="logo-icon">🎥</div>
-      <div><strong>HamoudaSpace</strong><div style="font-size:10px;color:var(--text-secondary)">Powered by Dyte RealtimeKit</div></div>
+      <div>
+        <strong>HamoudaSpace</strong>
+        <div style="font-size:10px;color:var(--text-secondary)">Powered by Cloudflare RealtimeKit</div>
+      </div>
     </div>
     <div class="lobby-actions">
       <button class="btn btn-secondary" onclick="openModal('join')">🔗 Join</button>
@@ -100,25 +106,29 @@ body { height:100%; overflow:hidden; font-family:-apple-system,BlinkMacSystemFon
   <div class="lobby-main">
     <div class="hero">
       <h1>Video Meetings That Work</h1>
-      <p>Powered by Dyte RealtimeKit · Encrypted WebRTC · Works on all browsers</p>
+      <p>Powered by Cloudflare RealtimeKit · Encrypted WebRTC · Works on all browsers</p>
     </div>
     <div class="action-cards">
       <div class="card"><h3>Start a Meeting</h3><button class="btn btn-primary"   onclick="openModal('create')">Create Room</button></div>
       <div class="card"><h3>Join a Meeting</h3> <button class="btn btn-secondary" onclick="openModal('join')">Enter Code</button></div>
     </div>
     <div id="lobbyError" class="error-box hidden"></div>
-    <div class="info-box"><strong>How it works:</strong> Create a room and share the 6-letter code. Media is relayed through Dyte's global infrastructure — fully encrypted, works on Chrome, Firefox, Safari, Edge, and all mobile browsers.</div>
+    <div class="info-box">
+      <strong>How it works:</strong> Create a room and share the 6-letter code.
+      Media is relayed through Cloudflare's global network — fully encrypted,
+      works on Chrome, Firefox, Safari, Edge, and all mobile browsers.
+    </div>
   </div>
 </div>
 
-<!-- ── Room (Dyte prebuilt UI) ─────────────────────────────────────────── -->
+<!-- ── Room (Cloudflare RealtimeKit prebuilt UI) ──────────────────────── -->
 <div id="view-room" class="hidden">
   <div id="roomChip">
     <span class="label">Room</span>
     <span class="code" id="roomCodeDisplay" onclick="copyCode()"></span>
     <span class="hint">· tap to copy</span>
   </div>
-  <dyte-meeting id="dyteEl" style="width:100%;height:100%;display:block;"></dyte-meeting>
+  <cloudflare-meeting id="rtkEl" style="width:100%;height:100%;display:block;"></cloudflare-meeting>
 </div>
 
 <!-- ── Create modal ───────────────────────────────────────────────────── -->
@@ -158,7 +168,7 @@ body { height:100%; overflow:hidden; font-family:-apple-system,BlinkMacSystemFon
 <script>
 'use strict';
 
-// ─── Firebase (room code ↔ Dyte meeting ID) ───────────────────────────────────
+// ─── Firebase (room code ↔ RealtimeKit meeting ID) ────────────────────────────
 firebase.initializeApp({
   apiKey:            'AIzaSyCra3IgsAaQlf3INjRn04DdX3KWwb8zdlo',
   authDomain:        'hamoudaspace-meetingapp.firebaseapp.com',
@@ -173,7 +183,6 @@ const db = firebase.firestore();
 let roomCode = '';
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
-function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function genCode() { return Math.random().toString(36).slice(2,8).toUpperCase(); }
 
 function toast(msg) {
@@ -202,7 +211,9 @@ function openModal(type) {
   document.getElementById('createModal').classList.toggle('hidden', type !== 'create');
   document.getElementById('joinModal').classList.toggle('hidden',   type !== 'join');
   setTimeout(() => {
-    (type === 'create' ? document.getElementById('createRoomName') : document.getElementById('joinCode'))?.focus();
+    (type === 'create'
+      ? document.getElementById('createRoomName')
+      : document.getElementById('joinCode'))?.focus();
   }, 60);
 }
 function closeModals() {
@@ -210,33 +221,32 @@ function closeModals() {
   document.getElementById('joinModal').classList.add('hidden');
 }
 
-// ─── Dyte meeting initialisation ──────────────────────────────────────────────
-async function initDyteMeeting(authToken, code) {
+// ─── Start the RealtimeKit meeting in the room view ───────────────────────────
+async function startMeeting(authToken, code) {
   roomCode = code;
+  showLoading('Connecting to meeting…');
 
-  // Lazy-load DyteClient from CDN (ui-kit already loaded in <head>)
-  const { DyteClient } = await import('https://cdn.jsdelivr.net/npm/@dytesdk/web-core@2/dist/index.esm.js');
-
-  const meeting = await DyteClient.init({
+  // RealtimeKit is loaded globally via the browser bundle above
+  const meeting = await RealtimeKit.init({
     authToken,
     defaults: { audio: true, video: true }
   });
 
-  // Attach to the <dyte-meeting> web component
-  document.getElementById('dyteEl').meeting = meeting;
+  // Attach to the <cloudflare-meeting> web component
+  document.getElementById('rtkEl').meeting = meeting;
 
   document.getElementById('roomCodeDisplay').textContent = code;
   document.getElementById('view-lobby').classList.add('hidden');
   document.getElementById('view-room').classList.remove('hidden');
   hideLoading();
 
-  // Return to lobby when the user leaves or the meeting ends
+  // Return to lobby when the participant leaves or the meeting ends
   const backToLobby = () => {
     document.getElementById('view-room').classList.add('hidden');
     document.getElementById('view-lobby').classList.remove('hidden');
     roomCode = '';
   };
-  meeting.self.on('roomLeft',    backToLobby);
+  meeting.self.on('roomLeft',        backToLobby);
   meeting.meta?.on?.('meetingEnded', backToLobby);
 }
 
@@ -245,7 +255,10 @@ async function doCreate() {
   const rn = document.getElementById('createRoomName').value.trim();
   const un = document.getElementById('createUserName').value.trim();
   document.getElementById('createError').textContent = '';
-  if (!rn || !un) { document.getElementById('createError').textContent = 'Please fill in both fields.'; return; }
+  if (!rn || !un) {
+    document.getElementById('createError').textContent = 'Please fill in both fields.';
+    return;
+  }
 
   document.getElementById('createBtn').disabled = true;
   closeModals();
@@ -254,7 +267,7 @@ async function doCreate() {
 
   let data;
   try {
-    const res = await fetch('/api/dyte/create', {
+    const res = await fetch('/api/rtk/create', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ title: rn, userName: un })
@@ -262,34 +275,41 @@ async function doCreate() {
     data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Server error');
   } catch(e) {
-    hideLoading(); showLobbyErr(e.message);
-    document.getElementById('createBtn').disabled = false; return;
+    hideLoading();
+    showLobbyErr(e.message);
+    document.getElementById('createBtn').disabled = false;
+    return;
   }
 
   const code = genCode();
 
   try {
     await db.collection('rooms').doc(code).set({
-      name: rn,
-      dyteRoomId: data.meetingId,
+      name:      rn,
+      rtkRoomId: data.meetingId,
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
   } catch(e) {
-    hideLoading(); showLobbyErr('Could not save room: ' + e.message);
-    document.getElementById('createBtn').disabled = false; return;
+    hideLoading();
+    showLobbyErr('Could not save room: ' + e.message);
+    document.getElementById('createBtn').disabled = false;
+    return;
   }
 
-  await initDyteMeeting(data.token, code);
+  await startMeeting(data.token, code);
   toast('Room created! Share code: ' + code);
   document.getElementById('createBtn').disabled = false;
 }
 
 // ─── Join room ────────────────────────────────────────────────────────────────
 async function doJoin() {
-  const code = document.getElementById('joinCode').value.toUpperCase().replace(/[^A-Z0-9]/g,'');
+  const code = document.getElementById('joinCode').value.toUpperCase().replace(/[^A-Z0-9]/g, '');
   const un   = document.getElementById('joinUserName').value.trim();
   document.getElementById('joinError').textContent = '';
-  if (!code || code.length !== 6 || !un) { document.getElementById('joinError').textContent = 'Enter a valid 6-letter code and your name.'; return; }
+  if (!code || code.length !== 6 || !un) {
+    document.getElementById('joinError').textContent = 'Enter a valid 6-letter code and your name.';
+    return;
+  }
 
   document.getElementById('joinBtn').disabled = true;
   closeModals();
@@ -297,50 +317,62 @@ async function doJoin() {
   showLoading('Looking up room…');
 
   let roomDoc;
-  try { roomDoc = await db.collection('rooms').doc(code).get(); }
-  catch(e) { hideLoading(); showLobbyErr('Connection error: ' + e.message); document.getElementById('joinBtn').disabled = false; return; }
+  try {
+    roomDoc = await db.collection('rooms').doc(code).get();
+  } catch(e) {
+    hideLoading();
+    showLobbyErr('Connection error: ' + e.message);
+    document.getElementById('joinBtn').disabled = false;
+    return;
+  }
 
-  if (!roomDoc.exists) { hideLoading(); showLobbyErr('Room not found. Double-check the code.'); document.getElementById('joinBtn').disabled = false; return; }
+  if (!roomDoc.exists) {
+    hideLoading();
+    showLobbyErr('Room not found. Double-check the code.');
+    document.getElementById('joinBtn').disabled = false;
+    return;
+  }
 
-  const { dyteRoomId } = roomDoc.data();
+  const { rtkRoomId } = roomDoc.data();
   showLoading('Joining meeting…');
 
   let data;
   try {
-    const res = await fetch('/api/dyte/join', {
+    const res = await fetch('/api/rtk/join', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ meetingId: dyteRoomId, userName: un })
+      body: JSON.stringify({ meetingId: rtkRoomId, userName: un })
     });
     data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Server error');
   } catch(e) {
-    hideLoading(); showLobbyErr(e.message);
-    document.getElementById('joinBtn').disabled = false; return;
+    hideLoading();
+    showLobbyErr(e.message);
+    document.getElementById('joinBtn').disabled = false;
+    return;
   }
 
-  await initDyteMeeting(data.token, code);
-  toast('Joined meeting · ' + code);
+  await startMeeting(data.token, code);
+  toast('Joined · ' + code);
   document.getElementById('joinBtn').disabled = false;
 }
 
 // ─── Clipboard ────────────────────────────────────────────────────────────────
 function copyCode() {
   if (!roomCode) return;
-  navigator.clipboard?.writeText(roomCode).then(() => toast('Code copied!')).catch(()=>{});
-}
-function copyLink() {
-  navigator.clipboard?.writeText(location.origin + location.pathname + '?join=' + roomCode).then(() => toast('Invite link copied!')).catch(()=>{});
+  navigator.clipboard?.writeText(roomCode)
+    .then(() => toast('Code copied!'))
+    .catch(() => {});
 }
 
 // ─── Input wiring ─────────────────────────────────────────────────────────────
 document.getElementById('joinCode').addEventListener('input', e => {
-  e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'');
+  e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
 });
-['createRoomName','createUserName'].forEach(id =>
+['createRoomName', 'createUserName'].forEach(id =>
   document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') doCreate(); })
 );
-['joinCode','joinUserName'].forEach(id =>
+['joinCode', 'joinUserName'].forEach(id =>
   document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') doJoin(); })
 );
 

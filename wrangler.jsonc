@@ -7,8 +7,9 @@
     "enabled": true
   },
   "vars": {
-    "DYTE_ORG_ID":    "c1e04640-67d7-4f7b-83c5-85420c1bb65b",
-    "DYTE_PRESET_ID": "a4399568-50cc-42d7-89c5-bf567700ea48"
+    "REALTIMEKIT_ACCOUNT_ID": "ab5bdefc1a1abd85f78c1a80ac0db805",
+    "REALTIMEKIT_APP_ID":     "c1e04640-67d7-4f7b-83c5-85420c1bb65b",
+    "REALTIMEKIT_PRESET_ID":  "a4399568-50cc-42d7-89c5-bf567700ea48"
   },
   "assets": {
     "directory": "."
