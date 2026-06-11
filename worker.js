@@ -42,6 +42,7 @@ async function handleRTK(request, env, url) {
   const path = url.pathname.replace('/api/rtk', '');
 
   try {
+    if (request.method === 'GET'  && path === '/debug')  return await debugRTK(env);
     if (request.method === 'POST' && path === '/create') return await createMeeting(request, env);
     if (request.method === 'POST' && path === '/join')   return await joinMeeting(request, env);
   } catch (err) {
@@ -62,6 +63,24 @@ function assertSuccess(json, label) {
     const msg = json?.errors?.[0]?.message ?? json?.message ?? JSON.stringify(json);
     throw new Error(`${label}: ${msg}`);
   }
+}
+
+async function debugRTK(env) {
+  const base = rtkBase(env);
+  const headers = rtkHeaders(env);
+
+  // Attempt to list meetings (GET) so we get a real response without side effects
+  const res = await fetch(`${base}/meetings`, { method: 'GET', headers });
+  const text = await res.text();
+  let parsed;
+  try { parsed = JSON.parse(text); } catch { parsed = null; }
+
+  return Response.json({
+    status: res.status,
+    base,
+    raw: text.slice(0, 2000),
+    parsed
+  }, { headers: corsHeaders() });
 }
 
 async function createMeeting(request, env) {
