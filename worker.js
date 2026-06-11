@@ -28,28 +28,30 @@ function rtkHeaders(env) {
 }
 
 async function handleRTK(request, env, url) {
+  const cors = corsHeaders(request);
+
   if (request.method === 'OPTIONS') {
-    return new Response(null, { status: 204, headers: corsHeaders() });
+    return new Response(null, { status: 204, headers: cors });
   }
 
   if (!env.REALTIMEKIT_API_TOKEN) {
     return Response.json(
       { error: 'REALTIMEKIT_API_TOKEN is not configured.' },
-      { status: 503, headers: corsHeaders() }
+      { status: 503, headers: cors }
     );
   }
 
   const path = url.pathname.replace('/api/rtk', '');
 
   try {
-    if (request.method === 'GET'  && path === '/debug')  return await debugRTK(env);
-    if (request.method === 'POST' && path === '/create') return await createMeeting(request, env);
-    if (request.method === 'POST' && path === '/join')   return await joinMeeting(request, env);
+    if (request.method === 'GET'  && path === '/debug')  return await debugRTK(env, cors);
+    if (request.method === 'POST' && path === '/create') return await createMeeting(request, env, cors);
+    if (request.method === 'POST' && path === '/join')   return await joinMeeting(request, env, cors);
   } catch (err) {
-    return Response.json({ error: err.message }, { status: 500, headers: corsHeaders() });
+    return Response.json({ error: err.message }, { status: 500, headers: cors });
   }
 
-  return Response.json({ error: 'Not found' }, { status: 404, headers: corsHeaders() });
+  return Response.json({ error: 'Not found' }, { status: 404, headers: cors });
 }
 
 // Extract a value from either Cloudflare API format (result.x) or Dyte format (data.x)
@@ -65,7 +67,7 @@ function assertSuccess(json, label) {
   }
 }
 
-async function debugRTK(env) {
+async function debugRTK(env, cors) {
   const base = rtkBase(env);
   const headers = rtkHeaders(env);
 
@@ -80,7 +82,7 @@ async function debugRTK(env) {
     base,
     raw: text.slice(0, 2000),
     parsed
-  }, { headers: corsHeaders() });
+  }, { headers: cors });
 }
 
 async function safeJson(res, label) {
@@ -92,7 +94,7 @@ async function safeJson(res, label) {
   return json;
 }
 
-async function createMeeting(request, env) {
+async function createMeeting(request, env, cors) {
   const { title, userName } = await request.json();
 
   // 1. Create the meeting
@@ -123,10 +125,10 @@ async function createMeeting(request, env) {
   const token = pick(partJson, 'token');
   if (!token) throw new Error('No token in response: ' + JSON.stringify(partJson));
 
-  return Response.json({ meetingId, token }, { headers: corsHeaders() });
+  return Response.json({ meetingId, token }, { headers: cors });
 }
 
-async function joinMeeting(request, env) {
+async function joinMeeting(request, env, cors) {
   const { meetingId, userName } = await request.json();
 
   const partRes  = await fetch(`${rtkBase(env)}/meetings/${meetingId}/participants`, {
@@ -144,13 +146,15 @@ async function joinMeeting(request, env) {
   const token = pick(partJson, 'token');
   if (!token) throw new Error('No token in response: ' + JSON.stringify(partJson));
 
-  return Response.json({ token }, { headers: corsHeaders() });
+  return Response.json({ token }, { headers: cors });
 }
 
-function corsHeaders() {
+function corsHeaders(request) {
+  const origin = request?.headers?.get('Origin') ?? '*';
   return {
-    'Access-Control-Allow-Origin':  '*',
+    'Access-Control-Allow-Origin':  origin,
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type'
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Vary': 'Origin'
   };
 }
