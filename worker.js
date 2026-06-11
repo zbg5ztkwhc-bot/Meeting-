@@ -83,6 +83,15 @@ async function debugRTK(env) {
   }, { headers: corsHeaders() });
 }
 
+async function safeJson(res, label) {
+  const text = await res.text();
+  let json;
+  try { json = JSON.parse(text); } catch {
+    throw new Error(`${label} returned non-JSON (HTTP ${res.status}): ${text.slice(0, 500)}`);
+  }
+  return json;
+}
+
 async function createMeeting(request, env) {
   const { title, userName } = await request.json();
 
@@ -92,7 +101,7 @@ async function createMeeting(request, env) {
     headers: rtkHeaders(env),
     body: JSON.stringify({ title })
   });
-  const meetJson = await meetRes.json();
+  const meetJson = await safeJson(meetRes, 'Create meeting');
   assertSuccess(meetJson, 'Create meeting');
 
   const meetingId = pick(meetJson, 'id');
@@ -108,7 +117,7 @@ async function createMeeting(request, env) {
       custom_participant_id: crypto.randomUUID()
     })
   });
-  const partJson = await partRes.json();
+  const partJson = await safeJson(partRes, 'Add participant');
   assertSuccess(partJson, 'Add participant');
 
   const token = pick(partJson, 'token');
@@ -129,7 +138,7 @@ async function joinMeeting(request, env) {
       custom_participant_id: crypto.randomUUID()
     })
   });
-  const partJson = await partRes.json();
+  const partJson = await safeJson(partRes, 'Join meeting');
   assertSuccess(partJson, 'Join meeting');
 
   const token = pick(partJson, 'token');
