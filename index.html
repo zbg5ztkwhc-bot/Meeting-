@@ -229,26 +229,36 @@ async function startMeeting(authToken, code) {
   roomCode = code;
   showLoading('Connecting to meeting…');
 
-  const meeting = await RealtimeKitClient.init({
-    authToken,
-    defaults: { audio: true, video: true }
-  });
+  try {
+    console.log('[RTK] RealtimeKitClient =', typeof RealtimeKitClient);
+    console.log('[RTK] authToken (first 40 chars) =', authToken?.slice(0, 40));
 
-  // Attach to the <cloudflare-meeting> web component
-  document.getElementById('rtkEl').meeting = meeting;
+    const meeting = await RealtimeKitClient.init({
+      authToken,
+      defaults: { audio: true, video: true }
+    });
 
-  document.getElementById('roomCodeDisplay').textContent = code;
-  document.getElementById('view-lobby').classList.add('hidden');
-  document.getElementById('view-room').classList.remove('hidden');
-  hideLoading();
+    console.log('[RTK] init resolved, meeting =', meeting);
 
-  const backToLobby = () => {
-    document.getElementById('view-room').classList.add('hidden');
-    document.getElementById('view-lobby').classList.remove('hidden');
-    roomCode = '';
-  };
-  meeting.self.on('roomLeft',        backToLobby);
-  meeting.meta?.on?.('meetingEnded', backToLobby);
+    document.getElementById('rtkEl').meeting = meeting;
+
+    document.getElementById('roomCodeDisplay').textContent = code;
+    document.getElementById('view-lobby').classList.add('hidden');
+    document.getElementById('view-room').classList.remove('hidden');
+    hideLoading();
+
+    const backToLobby = () => {
+      document.getElementById('view-room').classList.add('hidden');
+      document.getElementById('view-lobby').classList.remove('hidden');
+      roomCode = '';
+    };
+    meeting.self.on('roomLeft',        backToLobby);
+    meeting.meta?.on?.('meetingEnded', backToLobby);
+  } catch (err) {
+    console.error('[RTK] startMeeting error:', err);
+    hideLoading();
+    showLobbyErr('Meeting error: ' + err.message);
+  }
 }
 
 // ─── Create room ──────────────────────────────────────────────────────────────
