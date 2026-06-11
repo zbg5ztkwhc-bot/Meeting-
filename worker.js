@@ -113,7 +113,7 @@ async function createMeeting(request, env) {
     headers: rtkHeaders(env),
     body: JSON.stringify({
       name:                  userName,
-      presetName:            env.REALTIMEKIT_PRESET_NAME,
+      presetName:            env.REALTIMEKIT_PRESET_NAME || 'group_call_host',
       custom_participant_id: crypto.randomUUID()
     })
   });
@@ -134,7 +134,7 @@ async function joinMeeting(request, env) {
     headers: rtkHeaders(env),
     body: JSON.stringify({
       name:                  userName,
-      presetName:            env.REALTIMEKIT_PRESET_NAME,
+      presetName:            env.REALTIMEKIT_PRESET_NAME || 'group_call_host',
       custom_participant_id: crypto.randomUUID()
     })
   });
