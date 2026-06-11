@@ -409,6 +409,16 @@ async function startMeeting(authToken, code) {
 
     console.log('[RTK] init resolved, meeting =', meeting);
 
+    // Ensure camera and mic are enabled after joining
+    meeting.self.on('roomJoined', async () => {
+      try {
+        if (!meeting.self.videoEnabled)  await meeting.self.enableVideo();
+        if (!meeting.self.audioEnabled)  await meeting.self.enableAudio();
+      } catch(e) {
+        console.warn('[RTK] Could not enable media:', e.message);
+      }
+    });
+
     document.getElementById('rtkEl').meeting = meeting;
 
     document.getElementById('roomCodeDisplay').textContent = code;
