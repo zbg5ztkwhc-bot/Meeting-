@@ -6,7 +6,6 @@
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <title>HamoudaSpace · Video Meetings</title>
-<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 <style>
@@ -145,14 +144,14 @@ body { height:100%; overflow:hidden; font-family:-apple-system,BlinkMacSystemFon
   <div class="lobby-main">
     <div class="hero">
       <h1>Video Meetings That Work</h1>
-      <p>Encrypted WebRTC · Works on all browsers · Up to 20 participants</p>
+      <p>Powered by Cloudflare Calls · Encrypted WebRTC · Up to 20 participants</p>
     </div>
     <div class="action-cards">
       <div class="card"><h3>Start a Meeting</h3><button class="btn btn-primary"   onclick="openModal('create')">Create Room</button></div>
       <div class="card"><h3>Join a Meeting</h3> <button class="btn btn-secondary" onclick="openModal('join')">Enter Code</button></div>
     </div>
     <div id="lobbyError" class="error-box hidden"></div>
-    <div class="info-box"><strong>How it works:</strong> Create a room and share the 6-letter code. Participants connect directly via WebRTC — fully encrypted, works on Chrome, Firefox, Safari, Edge, and all mobile browsers.</div>
+    <div class="info-box"><strong>How it works:</strong> Create a room and share the 6-letter code. Media is relayed through Cloudflare's global network — low latency, fully encrypted, works on Chrome, Firefox, Safari, Edge, and all mobile browsers.</div>
   </div>
 </div>
 
@@ -235,7 +234,7 @@ body { height:100%; overflow:hidden; font-family:-apple-system,BlinkMacSystemFon
 <script>
 'use strict';
 
-// ─── Firebase (room presence + chat only) ────────────────────────────────────
+// ─── Firebase (room presence + chat) ─────────────────────────────────────────
 firebase.initializeApp({
   apiKey:            'AIzaSyCra3IgsAaQlf3INjRn04DdX3KWwb8zdlo',
   authDomain:        'hamoudaspace-meetingapp.firebaseapp.com',
@@ -246,10 +245,10 @@ firebase.initializeApp({
 });
 const db = firebase.firestore();
 
-// ─── State ───────────────────────────────────────────────────────────────────
-let peer          = null;   // PeerJS instance
-let localStream   = null;   // Local camera/mic
-let myPeerjsId    = '';     // Our PeerJS ID (= Firestore doc key)
+// ─── State ────────────────────────────────────────────────────────────────────
+let cfSessionId   = null;  // Our Cloudflare Calls session ID (used as Firestore doc key)
+let localPc       = null;  // Single RTCPeerConnection to the CF Calls SFU
+let localStream   = null;
 let myName        = '';
 let roomCode      = '';
 let roomName      = '';
@@ -264,25 +263,14 @@ let chatUnread    = 0;
 let screenStream  = null;
 let isSharingScreen = false;
 
-// peerjsId → { name, call }
+// cfSessionId → { name }
 const participants = new Map();
-// Firestore unsubscribe functions
+// transceiver mid → remote participant's cfSessionId
+const midToCfSid   = new Map();
+// remote cfSessionId → MediaStream assembled from individual tracks
+const remoteStreams = new Map();
+// Firestore unsubscribe handles
 const unsubs       = [];
-// Participants we've already initiated a call to (avoid double-calling)
-const calledPeers  = new Set();
-
-// ─── PeerJS ICE config (STUN + TURN) ─────────────────────────────────────────
-const ICE_CFG = {
-  iceServers: [
-    { urls: 'stun:stun.l.google.com:19302'     },
-    { urls: 'stun:stun1.l.google.com:19302'    },
-    { urls: 'stun:stun2.l.google.com:19302'    },
-    { urls: 'stun:stun3.l.google.com:19302'    },
-    { urls: 'turn:openrelay.metered.ca:80',               username:'openrelayproject', credential:'openrelayproject' },
-    { urls: 'turn:openrelay.metered.ca:443',              username:'openrelayproject', credential:'openrelayproject' },
-    { urls: 'turn:openrelay.metered.ca:443?transport=tcp',username:'openrelayproject', credential:'openrelayproject' }
-  ]
-};
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
 function esc(s) {
@@ -297,7 +285,6 @@ function toast(msg) {
   document.body.appendChild(t);
   setTimeout(() => t.remove(), 3200);
 }
-
 function showLoading(msg) {
   document.getElementById('overlayMsg').textContent = msg || 'Please wait…';
   document.getElementById('loadingOverlay').classList.remove('hidden');
@@ -326,7 +313,7 @@ function closeModals() {
   document.getElementById('joinModal').classList.add('hidden');
 }
 
-// ─── Media ───────────────────────────────────────────────────────────────────
+// ─── Media ────────────────────────────────────────────────────────────────────
 async function getMedia() {
   return navigator.mediaDevices.getUserMedia({
     audio: { echoCancellation:true, noiseSuppression:true, autoGainControl:true },
@@ -350,8 +337,8 @@ function updateGrid() {
 }
 
 function makeTile(id, name, isLocal) {
-  const init  = (name.trim().split(/\s+/).map(w => w).join('').slice(0,2) || '?').toUpperCase();
-  const tile  = document.createElement('div');
+  const init = (name.trim().replace(/\s+/g,'').slice(0,2) || '?').toUpperCase();
+  const tile = document.createElement('div');
   tile.className = 'vtile'; tile.id = 'tile-' + id;
   tile.innerHTML = `
     <div class="ph" id="ph-${id}"><div class="avatar-big">${esc(init)}</div></div>
@@ -363,7 +350,6 @@ function makeTile(id, name, isLocal) {
   return tile;
 }
 
-// Attach a MediaStream to a video tile, handling iOS/Safari autoplay restrictions
 function attachStream(id, stream) {
   const vid  = document.getElementById('vid-' + id);
   const ph   = document.getElementById('ph-'  + id);
@@ -373,15 +359,12 @@ function attachStream(id, stream) {
   if (!stream || stream.getTracks().length === 0) {
     vid.style.display = 'none'; ph.style.display = 'flex'; return;
   }
-
-  // Always attach for audio (even when camera is off)
   if (vid.srcObject !== stream) vid.srcObject = stream;
 
   const hasVideo = stream.getVideoTracks().some(t => t.enabled && t.readyState === 'live');
   vid.style.display = hasVideo ? 'block' : 'none';
   ph.style.display  = hasVideo ? 'none'  : 'flex';
 
-  // Re-check when tracks change (e.g. video arrives after audio)
   const onTrackChange = () => attachStream(id, stream);
   stream.addEventListener('addtrack',    onTrackChange);
   stream.addEventListener('removetrack', onTrackChange);
@@ -406,97 +389,120 @@ function setBadges(id, muted, camOff) {
                 (camOff ? '<span class="vbadge vbadge-camoff">📵</span>' : '');
 }
 
-// ─── PeerJS (UPDATED TO HUGGING FACE URL) ────────────────────────────────────
-function initPeer() {
-  return new Promise((resolve, reject) => {
-    const p = new Peer(undefined, {
-      host: 'mahmod-hamoda-hamoudaspace-signaling.hf.space', // 👈 Your Hugging Face URL
-      secure: true,
-      path: '/myapp',
-      debug: 1, 
-      config: ICE_CFG
-    });
+// ─── Cloudflare Calls API (proxied through our Worker) ───────────────────────
+async function callsAPI(path, method = 'POST', body = null) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (body !== null) opts.body = JSON.stringify(body);
+  const res = await fetch('/api/calls' + path, opts);
+  if (!res.ok) {
+    const txt = await res.text().catch(() => res.statusText);
+    throw new Error(`Calls API ${method} ${path} → ${res.status}: ${txt}`);
+  }
+  return res.json();
+}
 
-    p.on('open', id => {
-      myPeerjsId = id;
-      resolve(p);
-    });
-
-    p.on('error', err => {
-      console.error('PeerJS error:', err.type, err);
-      if (!myPeerjsId) reject(err);
-      // After connection: reconnect on non-fatal errors
-      else if (err.type !== 'peer-unavailable') {
-        setTimeout(() => p.reconnect(), 2000);
-      }
-    });
-
-    // Handle ALL incoming calls from any participant
-    p.on('call', call => {
-      const remotePeerId = call.peer;
-      // Answer immediately with our local stream
-      call.answer(localStream);
-
-      call.on('stream', stream => {
-        const info = participants.get(remotePeerId);
-        if (info) {
-          info.call = call;
-          attachStream(remotePeerId, stream);
-          setStatus('connected');
-        }
-      });
-
-      call.on('error', err => console.warn('incoming call error:', err));
-
-      call.on('close', () => {
-        // Peer disconnected — they'll be removed by Firestore presence
-      });
-    });
-
-    peer = p;
+// Answer a new offer from CF Calls and send back the answer
+async function doRenegotiate(newOffer) {
+  await localPc.setRemoteDescription(new RTCSessionDescription(newOffer));
+  const answer = await localPc.createAnswer();
+  await localPc.setLocalDescription(answer);
+  await callsAPI(`/sessions/${cfSessionId}/renegotiate`, 'PUT', {
+    sessionDescription: { type: 'answer', sdp: localPc.localDescription.sdp }
   });
 }
 
-// Call a participant (only if we haven't already)
-function callPeer(remotePeerjsId) {
-  if (!peer || !localStream)       return;
-  if (calledPeers.has(remotePeerjsId)) return;
-  if (remotePeerjsId === myPeerjsId)   return;
+// Create a CF Calls session, publish local tracks, wire up ontrack
+async function initCallsSession() {
+  // 1. New session — CF returns an SDP offer
+  const { sessionId, sessionDescription } = await callsAPI('/sessions/new');
+  cfSessionId = sessionId;
 
-  calledPeers.add(remotePeerjsId);
+  // 2. Single RTCPeerConnection for the SFU; bundle all media on one transport
+  localPc = new RTCPeerConnection({ bundlePolicy: 'max-bundle' });
 
-  const call = peer.call(remotePeerjsId, localStream, { sdpTransform: sdp => sdp });
-  if (!call) { calledPeers.delete(remotePeerjsId); return; }
+  // 3. Wire up incoming remote tracks before any renegotiation
+  localPc.ontrack = (event) => {
+    const mid         = event.transceiver.mid;
+    const remoteCfSid = midToCfSid.get(mid);
+    if (!remoteCfSid) return;
 
-  const info = participants.get(remotePeerjsId);
-  if (info) info.call = call;
+    let stream = remoteStreams.get(remoteCfSid);
+    if (!stream) { stream = new MediaStream(); remoteStreams.set(remoteCfSid, stream); }
 
-  call.on('stream', stream => {
-    attachStream(remotePeerjsId, stream);
+    // Replace any existing track of the same kind so the stream stays current
+    stream.getTracks().filter(t => t.kind === event.track.kind).forEach(t => stream.removeTrack(t));
+    stream.addTrack(event.track);
+    attachStream(remoteCfSid, stream);
     setStatus('connected');
+  };
+
+  // 4. Apply CF's offer as remote description
+  await localPc.setRemoteDescription(new RTCSessionDescription(sessionDescription));
+
+  // 5. Add local tracks as sendonly transceivers (one per media kind)
+  const transceivers = [];
+  for (const track of localStream.getTracks()) {
+    const t = localPc.addTransceiver(track, { direction: 'sendonly' });
+    transceivers.push({ transceiver: t, kind: track.kind });
+  }
+
+  // 6. Create answer and apply locally (mids are assigned after setLocalDescription)
+  const answer = await localPc.createAnswer();
+  await localPc.setLocalDescription(answer);
+
+  // 7. Publish tracks — include our SDP answer so CF can open the transport
+  const trackDescs = transceivers.map(({ transceiver, kind }) => ({
+    location:  'local',
+    mid:       transceiver.mid,
+    trackName: kind   // "audio" or "video"
+  }));
+
+  const published = await callsAPI(`/sessions/${cfSessionId}/tracks/new`, 'POST', {
+    sessionDescription: { type: 'answer', sdp: localPc.localDescription.sdp },
+    tracks: trackDescs
   });
 
-  call.on('error', err => {
-    console.warn('outgoing call error:', err);
-    calledPeers.delete(remotePeerjsId);
-  });
+  if (published.requiresImmediateRenegotiation) {
+    await doRenegotiate(published.sessionDescription);
+  }
+}
 
-  call.on('close', () => {
-    calledPeers.delete(remotePeerjsId);
-  });
+// Subscribe to a remote participant's audio and video tracks
+async function pullRemoteTracks(remoteCfSid) {
+  if (!cfSessionId || !localPc) return;
+  try {
+    const pull = await callsAPI(`/sessions/${cfSessionId}/tracks/new`, 'POST', {
+      tracks: [
+        { location: 'remote', sessionId: remoteCfSid, trackName: 'audio' },
+        { location: 'remote', sessionId: remoteCfSid, trackName: 'video' }
+      ]
+    });
+
+    // Map each returned mid to the remote session so ontrack can look it up
+    for (const t of (pull.tracks || [])) {
+      if (!t.errorCode && t.mid != null) midToCfSid.set(t.mid, remoteCfSid);
+    }
+
+    if (pull.requiresImmediateRenegotiation) {
+      await doRenegotiate(pull.sessionDescription);
+    }
+  } catch(e) {
+    console.warn('pullRemoteTracks failed for', remoteCfSid, e);
+  }
 }
 
 // ─── Room setup ───────────────────────────────────────────────────────────────
 async function setupRoom() {
-  const roomRef  = db.collection('rooms').doc(roomCode);
-  const partCol  = roomRef.collection('participants');
-  const chatCol  = roomRef.collection('chat');
+  const roomRef = db.collection('rooms').doc(roomCode);
+  const partCol = roomRef.collection('participants');
+  const chatCol = roomRef.collection('chat');
 
-  // Write our presence (key = our PeerJS ID so others can call us)
-  await partCol.doc(myPeerjsId).set({
-    name:     myName,
+  // Presence doc ID = cfSessionId so others can pull our tracks directly
+  await partCol.doc(cfSessionId).set({
+    name:      myName,
     isHost,
-    joinedAt: firebase.firestore.FieldValue.serverTimestamp()
+    cfSessionId,
+    joinedAt:  firebase.firestore.FieldValue.serverTimestamp()
   });
 
   // ── Participant presence ──
@@ -504,15 +510,14 @@ async function setupRoom() {
     const live = new Set();
 
     snap.docs.forEach(d => {
-      const pid = d.id;
-      if (pid === myPeerjsId) return;
+      const pid = d.id;  // = cfSessionId of that participant
+      if (pid === cfSessionId) return;
       live.add(pid);
 
       if (!participants.has(pid)) {
         const { name } = d.data();
-        participants.set(pid, { name, call: null });
+        participants.set(pid, { name });
 
-        // Add tile with connecting badge
         const grid = document.getElementById('videoGrid');
         const tile = makeTile(pid, name, false);
         const b = document.getElementById('badges-' + pid);
@@ -521,21 +526,16 @@ async function setupRoom() {
         updateGrid();
         toast(esc(name) + ' joined');
 
-        // Deterministic: lower PeerJS ID initiates the call
-        // This prevents both sides calling each other simultaneously
-        if (myPeerjsId < pid) {
-          callPeer(pid);
-        }
-        // If myPeerjsId > pid, THEY will call US — we handle in peer.on('call')
+        // Pull their media tracks from CF Calls SFU
+        pullRemoteTracks(pid);
       }
     });
 
-    // Remove tiles for participants who left
-    for (const [pid, info] of participants) {
+    for (const [pid] of participants) {
       if (!live.has(pid)) {
-        info.call?.close();
         participants.delete(pid);
-        calledPeers.delete(pid);
+        midToCfSid.forEach((cfSid, mid) => { if (cfSid === pid) midToCfSid.delete(mid); });
+        remoteStreams.delete(pid);
         document.getElementById('tile-' + pid)?.remove();
         updateGrid();
         if (participants.size === 0) setStatus('waiting');
@@ -543,13 +543,13 @@ async function setupRoom() {
     }
   });
 
-  // ── Chat listener (Fixed metadata issues) ──
+  // ── Chat ──
   const unsubC = chatCol.orderBy('ts').onSnapshot({ includeMetadataChanges: true }, snap => {
     snap.docChanges().forEach(change => {
       if (change.type === 'added' || change.type === 'modified') {
         const d = change.doc.data();
-        if (d.peerjsId === myPeerjsId) return;
-        if (document.getElementById(`msg-${change.doc.id}`)) return; // Skip dupes
+        if (d.participantId === cfSessionId) return;
+        if (document.getElementById(`msg-${change.doc.id}`)) return;
         appendChat(d, false, change.doc.id);
       }
     });
@@ -576,10 +576,10 @@ async function doCreate() {
     document.getElementById('createBtn').disabled = false; return;
   }
 
-  showLoading('Connecting to signaling server…');
-  try { await initPeer(); }
+  showLoading('Connecting to Cloudflare Calls…');
+  try { await initCallsSession(); }
   catch(e) {
-    hideLoading(); showLobbyErr('Could not connect to signaling server. Check your network.');
+    hideLoading(); showLobbyErr('Could not connect to Cloudflare Calls: ' + e.message);
     localStream.getTracks().forEach(t => t.stop()); localStream = null;
     document.getElementById('createBtn').disabled = false; return;
   }
@@ -588,12 +588,13 @@ async function doCreate() {
 
   try {
     await db.collection('rooms').doc(roomCode).set({
-      name: rn, host: myPeerjsId,
+      name: rn, host: cfSessionId,
       createdAt: firebase.firestore.FieldValue.serverTimestamp(), maxParticipants: 20
     });
   } catch(e) {
     hideLoading(); showLobbyErr('Could not create room: ' + e.message);
-    localStream.getTracks().forEach(t => t.stop()); peer?.destroy(); localStream = null;
+    localStream.getTracks().forEach(t => t.stop()); localPc?.close();
+    localStream = null; localPc = null; cfSessionId = null;
     document.getElementById('createBtn').disabled = false; return;
   }
 
@@ -625,10 +626,10 @@ async function doJoin() {
     document.getElementById('joinBtn').disabled = false; return;
   }
 
-  showLoading('Connecting to signaling server…');
-  try { await initPeer(); }
+  showLoading('Connecting to Cloudflare Calls…');
+  try { await initCallsSession(); }
   catch(e) {
-    hideLoading(); showLobbyErr('Could not connect to signaling server. Check your network.');
+    hideLoading(); showLobbyErr('Could not connect to Cloudflare Calls: ' + e.message);
     localStream.getTracks().forEach(t => t.stop()); localStream = null;
     document.getElementById('joinBtn').disabled = false; return;
   }
@@ -667,20 +668,21 @@ function enterRoom() {
 // ─── Leave room ───────────────────────────────────────────────────────────────
 async function leaveRoom() {
   if (isRecording && mediaRecorder?.state !== 'inactive') mediaRecorder.stop();
-  if (isSharingScreen) stopScreenShare();
+  if (isSharingScreen) await stopScreenShare();
 
   unsubs.forEach(u => u()); unsubs.length = 0;
 
-  if (roomCode && myPeerjsId) {
-    db.collection('rooms').doc(roomCode).collection('participants').doc(myPeerjsId).delete().catch(()=>{});
+  if (roomCode && cfSessionId) {
+    db.collection('rooms').doc(roomCode).collection('participants').doc(cfSessionId).delete().catch(()=>{});
   }
 
-  for (const [, info] of participants) info.call?.close();
-  participants.clear(); calledPeers.clear();
-
-  peer?.destroy(); peer = null; myPeerjsId = '';
-
+  localPc?.close(); localPc = null;
   if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
+
+  participants.clear();
+  midToCfSid.clear();
+  remoteStreams.clear();
+  cfSessionId = null;
 
   isMuted = false; isCamOff = false; chatOpen = false; chatUnread = 0;
   isRecording = false; roomCode = ''; myName = ''; roomName = '';
@@ -714,74 +716,47 @@ function toggleCam() {
   localStream.getVideoTracks().forEach(t => t.enabled = !isCamOff);
   document.getElementById('camBtn').classList.toggle('ctrl-off', isCamOff);
   document.getElementById('camBtn').textContent = isCamOff ? '📵' : '📷';
-  // Update own tile
   const vid = document.getElementById('vid-local');
   const ph  = document.getElementById('ph-local');
   if (vid && ph) { vid.style.display = isCamOff ? 'none' : 'block'; ph.style.display = isCamOff ? 'flex' : 'none'; }
   setBadges('local', isMuted, isCamOff);
 }
 
-// ─── Screen Sharing ───────────────────────────────────────────────────────────
+// ─── Screen sharing ───────────────────────────────────────────────────────────
 async function toggleScreenShare() {
-  if (isSharingScreen) {
-    stopScreenShare();
-    return;
-  }
-
+  if (isSharingScreen) { await stopScreenShare(); return; }
   try {
     screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
     isSharingScreen = true;
     document.getElementById('shareBtn').classList.add('ctrl-sec');
-    
-    const screenTrack = screenStream.getVideoTracks();
 
-    // Swap the video track for all active peer calls
-    participants.forEach(p => {
-      if (p.call && p.call.peerConnection) {
-        const senders = p.call.peerConnection.getSenders();
-        const videoSender = senders.find(s => s.track && s.track.kind === 'video');
-        if (videoSender) {
-          videoSender.replaceTrack(screenTrack);
-        }
-      }
-    });
+    const screenTrack = screenStream.getVideoTracks()[0];
+    // replaceTrack swaps the video on the SFU without renegotiation
+    const videoSender = localPc?.getSenders().find(s => s.track?.kind === 'video');
+    if (videoSender && screenTrack) await videoSender.replaceTrack(screenTrack);
 
-    // Update your local video preview tile
     attachStream('local', screenStream);
-
-    // If user stops sharing via browser bar instead of the button
     screenTrack.onended = () => stopScreenShare();
-    toast('Screen presentation started!');
-  } catch (err) {
-    console.error("Failed to share screen:", err);
+    toast('Screen sharing started');
+  } catch(err) {
+    console.error('Screen share error:', err);
     toast('Screen share cancelled');
   }
 }
 
-function stopScreenShare() {
+async function stopScreenShare() {
   if (!isSharingScreen) return;
-  
   isSharingScreen = false;
   document.getElementById('shareBtn').classList.remove('ctrl-sec');
 
-  if (screenStream) {
-    screenStream.getTracks().forEach(t => t.stop());
-  }
+  if (screenStream) { screenStream.getTracks().forEach(t => t.stop()); screenStream = null; }
 
-  // Fall back to original camera track
-  const cameraTrack = localStream.getVideoTracks();
-  participants.forEach(p => {
-    if (p.call && p.call.peerConnection) {
-      const senders = p.call.peerConnection.getSenders();
-      const videoSender = senders.find(s => s.track && s.track.kind === 'video');
-      if (videoSender && cameraTrack) {
-        videoSender.replaceTrack(cameraTrack);
-      }
-    }
-  });
+  const cameraTrack = localStream?.getVideoTracks()[0];
+  const videoSender = localPc?.getSenders().find(s => s.track?.kind === 'video');
+  if (videoSender && cameraTrack) await videoSender.replaceTrack(cameraTrack);
 
   attachStream('local', localStream);
-  toast('Screen presentation stopped');
+  toast('Screen sharing stopped');
 }
 
 // ─── Recording ────────────────────────────────────────────────────────────────
@@ -807,7 +782,7 @@ async function toggleRec() {
   document.getElementById('recBtn').classList.add('ctrl-rec');    document.getElementById('recBtn').textContent = '⏹';
   document.getElementById('recIndicator').classList.remove('hidden');
   toast(captureStream ? 'Screen recording started' : 'Camera recording started');
-  if (captureStream) captureStream.getVideoTracks().onended = stopRec;
+  if (captureStream) captureStream.getVideoTracks()[0].onended = stopRec;
 }
 
 function stopRec() {
@@ -835,7 +810,7 @@ async function sendChat() {
   const text  = input.value.trim();
   if (!text || !roomCode) return;
   input.value = '';
-  const msg = { name: myName, text, ts: firebase.firestore.FieldValue.serverTimestamp(), peerjsId: myPeerjsId };
+  const msg = { name: myName, text, ts: firebase.firestore.FieldValue.serverTimestamp(), participantId: cfSessionId };
   appendChat({ name: myName, text, ts: Date.now() }, true);
   db.collection('rooms').doc(roomCode).collection('chat').add(msg).catch(console.error);
 }
@@ -871,10 +846,10 @@ document.addEventListener('keydown', e => {
 });
 
 document.getElementById('chatInput').addEventListener('keydown', e => { if (e.key === 'Enter') sendChat(); });
-document.getElementById('joinCode').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,''); });
+document.getElementById('joinCode').addEventListener('input',   e => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,''); });
 
 ['createRoomName','createUserName'].forEach(id => document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') doCreate(); }));
-['joinCode','joinUserName'].forEach(id       => document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') doJoin(); }));
+['joinCode','joinUserName'].forEach(id         => document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') doJoin();  }));
 
 // Auto-join from URL ?join=XXXXXX
 const autoCode = new URLSearchParams(location.search).get('join');
@@ -884,11 +859,11 @@ if (autoCode?.length === 6) {
   toast('Enter your name to join');
 }
 
-// Clean up on close
+// Clean up on page close
 window.addEventListener('beforeunload', () => {
-  if (roomCode && myPeerjsId)
-    db.collection('rooms').doc(roomCode).collection('participants').doc(myPeerjsId).delete().catch(()=>{});
-  peer?.destroy();
+  if (roomCode && cfSessionId)
+    db.collection('rooms').doc(roomCode).collection('participants').doc(cfSessionId).delete().catch(()=>{});
+  localPc?.close();
 });
 </script>
 </body>

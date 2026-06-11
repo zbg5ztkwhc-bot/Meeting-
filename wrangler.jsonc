@@ -1,6 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "hamoudaspacevideomeeting",
+  "main": "worker.js",
   "compatibility_date": "2026-05-30",
   "observability": {
     "enabled": true
