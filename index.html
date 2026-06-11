@@ -226,11 +226,13 @@ async function startMeeting(authToken, code) {
   roomCode = code;
   showLoading('Connecting to meeting…');
 
-  // RealtimeKit is loaded globally via the browser bundle above
   const meeting = await RealtimeKit.init({
     authToken,
     defaults: { audio: true, video: true }
   });
+
+  // Actually join the room (init only sets up the client)
+  await meeting.join();
 
   // Attach to the <cloudflare-meeting> web component
   document.getElementById('rtkEl').meeting = meeting;
@@ -240,7 +242,6 @@ async function startMeeting(authToken, code) {
   document.getElementById('view-room').classList.remove('hidden');
   hideLoading();
 
-  // Return to lobby when the participant leaves or the meeting ends
   const backToLobby = () => {
     document.getElementById('view-room').classList.add('hidden');
     document.getElementById('view-lobby').classList.remove('hidden');
