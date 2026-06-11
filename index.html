@@ -171,11 +171,6 @@ body { height:100%; overflow:hidden; font-family:-apple-system,BlinkMacSystemFon
 <script>
 'use strict';
 
-// Use absolute worker URL when opening as a local file
-const API_BASE = location.protocol === 'file:'
-  ? 'https://hamoudaspacevideomeeting.workers.dev'
-  : '';
-
 // ─── Firebase (room code ↔ RealtimeKit meeting ID) ────────────────────────────
 firebase.initializeApp({
   apiKey:            'AIzaSyCra3IgsAaQlf3INjRn04DdX3KWwb8zdlo',
@@ -283,7 +278,7 @@ async function doCreate() {
 
   let data;
   try {
-    const res = await fetch(`${API_BASE}/api/rtk/create`, {
+    const res = await fetch('/api/rtk/create', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ title: rn, userName: un })
@@ -354,7 +349,7 @@ async function doJoin() {
 
   let data;
   try {
-    const res = await fetch(`${API_BASE}/api/rtk/join`, {
+    const res = await fetch('/api/rtk/join', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ meetingId: rtkRoomId, userName: un })
