@@ -300,7 +300,7 @@ body { height:100%; overflow:hidden; font-family:-apple-system,BlinkMacSystemFon
     <span class="code" id="roomCodeDisplay" onclick="copyCode()"></span>
     <span class="hint">· tap to copy</span>
   </div>
-  <rtk-meeting id="rtkEl" style="width:100%;height:100%;display:block;"></rtk-meeting>
+  <rtk-meeting id="rtkEl" show-setup-screen="true" style="width:100%;height:100%;display:block;"></rtk-meeting>
 </div>
 
 <!-- ── Create modal ───────────────────────────────────────────────────── -->
@@ -403,8 +403,8 @@ async function startMeeting(authToken, code) {
     console.log('[RTK] authToken (first 40 chars) =', authToken?.slice(0, 40));
 
     const meeting = await RealtimeKitClient.init({
+      baseURI: 'realtime.cloudflare.com',
       authToken,
-      defaults: { audio: true, video: true }
     });
 
     console.log('[RTK] init resolved, meeting =', meeting);
