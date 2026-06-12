@@ -436,62 +436,53 @@ function closeModals() {
 
 // ─── Video grid helpers ───────────────────────────────────────────────────────
 function attachTrack(videoEl, track) {
-  videoEl.srcObject = track ? new MediaStream([track]) : null;
+  if (track) {
+    videoEl.srcObject = new MediaStream([track]);
+    videoEl.play().catch(() => {});
+  } else {
+    videoEl.srcObject = null;
+  }
 }
 
 function createTile(participant, isSelf) {
+  console.log('[RTK] createTile', isSelf ? 'self' : participant.id,
+    '| name=', participant.name, '| videoTrack=', participant.videoTrack);
+
   const tile = document.createElement('div');
-  tile.id   = 'tile-' + (isSelf ? 'self' : participant.id);
+  tile.id        = 'tile-' + (isSelf ? 'self' : participant.id);
   tile.className = 'vtile';
 
   const video = document.createElement('video');
-  video.autoplay   = true;
+  video.autoplay    = true;
   video.playsInline = true;
   if (isSelf) video.muted = true;
 
   const label = document.createElement('div');
-  label.className  = 'vname';
+  label.className   = 'vname';
   label.textContent = participant.name || (isSelf ? 'You' : 'Participant');
 
   tile.appendChild(video);
   tile.appendChild(label);
 
-  attachTrack(video, participant.videoTrack);
-  participant.on('videoUpdate', ({ videoTrack }) => attachTrack(video, videoTrack));
+  if (participant.videoTrack) attachTrack(video, participant.videoTrack);
 
-  // Audio for remote participants
+  participant.on('videoUpdate', ({ videoEnabled, videoTrack }) => {
+    console.log('[RTK] videoUpdate', isSelf ? 'self' : participant.id,
+      '| enabled=', videoEnabled, '| track=', videoTrack);
+    attachTrack(video, videoEnabled ? videoTrack : null);
+  });
+
   if (!isSelf) {
     const audio = document.createElement('audio');
     audio.autoplay = true;
     if (participant.audioTrack) audio.srcObject = new MediaStream([participant.audioTrack]);
-    participant.on('audioUpdate', ({ audioTrack }) => {
-      audio.srcObject = audioTrack ? new MediaStream([audioTrack]) : null;
+    participant.on('audioUpdate', ({ audioEnabled, audioTrack }) => {
+      audio.srcObject = audioEnabled && audioTrack ? new MediaStream([audioTrack]) : null;
     });
     tile.appendChild(audio);
   }
 
   return tile;
-}
-
-function initVideoGrid(meeting) {
-  const grid = document.getElementById('videoGrid');
-  grid.innerHTML = '';
-
-  // Always show self tile first
-  grid.appendChild(createTile(meeting.self, true));
-
-  // Existing remote participants (try both .toArray() and plain iteration)
-  const existing = meeting.participants.active.toArray?.()
-    || [...(meeting.participants.active.values?.() ?? [])];
-  existing.forEach(p => grid.appendChild(createTile(p, false)));
-
-  meeting.participants.active.on('participantJoined', p => {
-    if (!document.getElementById('tile-' + p.id))
-      grid.appendChild(createTile(p, false));
-  });
-  meeting.participants.active.on('participantLeft', p => {
-    document.getElementById('tile-' + p.id)?.remove();
-  });
 }
 
 // ─── Start the RealtimeKit meeting ────────────────────────────────────────────
@@ -506,9 +497,13 @@ async function startMeeting(authToken, code) {
       defaults: { video: true, audio: true },
     });
     activeMeeting = meeting;
-    console.log('[RTK] init OK');
 
-    meeting.self.on('roomLeft', () => {
+    console.log('[RTK] init OK | videoTrack=', meeting.self?.videoTrack,
+      '| videoEnabled=', meeting.self?.videoEnabled,
+      '| join=', typeof meeting.join,
+      '| leaveRoom=', typeof meeting.leaveRoom);
+
+    const backToLobby = () => {
       document.getElementById('view-room').classList.add('hidden');
       document.getElementById('view-lobby').classList.remove('hidden');
       document.getElementById('videoGrid').innerHTML = '';
@@ -518,20 +513,65 @@ async function startMeeting(authToken, code) {
       document.getElementById('camBtn').classList.remove('muted');
       activeMeeting = null;
       roomCode = '';
-    });
-
+    };
+    meeting.self.on('roomLeft', backToLobby);
     meeting.meta?.on?.('meetingEnded', () => meeting.leaveRoom?.());
 
-    await meeting.join();
-    console.log('[RTK] joined room');
-
-    // Show room view after successfully joining
+    // Show room and build the grid BEFORE joining so listeners are registered
+    // before the SDK fires videoUpdate / participantJoined events
     document.getElementById('roomCodeDisplay').textContent = code;
     document.getElementById('view-lobby').classList.add('hidden');
     document.getElementById('view-room').classList.remove('hidden');
     hideLoading();
 
-    initVideoGrid(meeting);
+    const grid = document.getElementById('videoGrid');
+    grid.innerHTML = '';
+    const selfTile = createTile(meeting.self, true);
+    grid.appendChild(selfTile);
+
+    meeting.participants.active.on('participantJoined', p => {
+      console.log('[RTK] participantJoined', p.id, p.name);
+      if (!document.getElementById('tile-' + p.id))
+        grid.appendChild(createTile(p, false));
+    });
+    meeting.participants.active.on('participantLeft', p => {
+      document.getElementById('tile-' + p.id)?.remove();
+    });
+
+    // Join the room
+    await meeting.join();
+
+    // Explicitly enable video/audio – defaults may be silently ignored
+    try {
+      if (!meeting.self.videoEnabled) {
+        await meeting.self.enableVideo();
+        console.log('[RTK] enableVideo done');
+      }
+      if (!meeting.self.audioEnabled) {
+        await meeting.self.enableAudio();
+        console.log('[RTK] enableAudio done');
+      }
+    } catch(e) {
+      console.warn('[RTK] media enable:', e.message);
+    }
+
+    console.log('[RTK] post-join | videoTrack=', meeting.self?.videoTrack,
+      '| videoEnabled=', meeting.self?.videoEnabled);
+
+    // Re-attach in case videoUpdate fired before the tile existed
+    const selfVideo = selfTile.querySelector('video');
+    if (meeting.self.videoTrack && !selfVideo.srcObject) {
+      attachTrack(selfVideo, meeting.self.videoTrack);
+    }
+
+    // Participants already in the room
+    const existing = meeting.participants.active.toArray?.()
+      || [...(meeting.participants.active.values?.() ?? [])];
+    existing.forEach(p => {
+      if (!document.getElementById('tile-' + p.id))
+        grid.appendChild(createTile(p, false));
+    });
+
   } catch (err) {
     console.error('[RTK] startMeeting error:', err);
     hideLoading();
