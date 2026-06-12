@@ -14,11 +14,6 @@
 <!-- Cloudflare RealtimeKit SDK (exposes RealtimeKitClient global) -->
 <script src="https://cdn.jsdelivr.net/npm/@cloudflare/realtimekit@latest/dist/browser.js"></script>
 
-<!-- Cloudflare RealtimeKit UI Kit (registers <rtk-meeting> web component) -->
-<script type="module">
-  import { defineCustomElements } from 'https://cdn.jsdelivr.net/npm/@cloudflare/realtimekit-ui@latest/loader/index.es2017.js';
-  defineCustomElements();
-</script>
 
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
@@ -68,8 +63,39 @@ body { height:100%; overflow:hidden; font-family:-apple-system,BlinkMacSystemFon
 .overlay-msg { color:var(--text-secondary); font-size:14px; }
 @keyframes spin { to { transform:rotate(360deg); } }
 
-/* Room — full-screen RealtimeKit meeting */
-#view-room { position:fixed; inset:0; z-index:100; }
+/* Room — full-screen custom video meeting */
+#view-room { position:fixed; inset:0; z-index:100; display:flex; flex-direction:column; background:#000; }
+
+/* Video grid */
+#videoGrid {
+  flex:1; display:flex; flex-wrap:wrap; align-items:center; justify-content:center;
+  gap:4px; padding:4px; overflow:hidden; background:#111;
+}
+.vtile {
+  position:relative; flex:1; min-width:140px; min-height:110px;
+  background:#1a1a2e; border-radius:10px; overflow:hidden;
+}
+.vtile video { width:100%; height:100%; object-fit:cover; display:block; }
+.vtile .vname {
+  position:absolute; bottom:6px; left:8px;
+  background:rgba(0,0,0,.65); color:#fff;
+  padding:2px 9px; border-radius:12px; font-size:11px; pointer-events:none;
+}
+
+/* Call controls bar */
+#callControls {
+  display:flex; align-items:center; justify-content:center; gap:16px;
+  padding:14px; padding-bottom:max(14px,env(safe-area-inset-bottom));
+  background:rgba(0,0,0,.85); backdrop-filter:blur(10px); flex-shrink:0;
+}
+.ctrl-btn {
+  width:54px; height:54px; border-radius:50%; border:none; cursor:pointer;
+  font-size:22px; background:#2a2f3e; color:#fff; transition:background .15s;
+  display:flex; align-items:center; justify-content:center;
+}
+.ctrl-btn.muted  { background:#b91c1c; }
+.ctrl-end { background:#ef4444; }
+.ctrl-end:hover  { background:#dc2626; }
 
 /* Floating room-code chip */
 #roomChip {
@@ -124,14 +150,19 @@ body { height:100%; overflow:hidden; font-family:-apple-system,BlinkMacSystemFon
   </div>
 </div>
 
-<!-- ── Room (Cloudflare RealtimeKit prebuilt UI) ──────────────────────── -->
+<!-- ── Room (custom video grid) ───────────────────────────────────────── -->
 <div id="view-room" class="hidden">
   <div id="roomChip">
     <span class="label">Room</span>
     <span class="code" id="roomCodeDisplay" onclick="copyCode()"></span>
     <span class="hint">· tap to copy</span>
   </div>
-  <rtk-meeting id="rtkEl" show-setup-screen="true" style="width:100%;height:100%;display:block;"></rtk-meeting>
+  <div id="videoGrid"></div>
+  <div id="callControls">
+    <button id="micBtn"  class="ctrl-btn" onclick="toggleMic()" title="Toggle mic">🎙️</button>
+    <button id="camBtn"  class="ctrl-btn" onclick="toggleCam()" title="Toggle camera">📹</button>
+    <button class="ctrl-btn ctrl-end"     onclick="leaveCall()"  title="Leave">📵</button>
+  </div>
 </div>
 
 <!-- ── Create modal ───────────────────────────────────────────────────── -->
@@ -184,6 +215,7 @@ const db = firebase.firestore();
 
 // ─── State ────────────────────────────────────────────────────────────────────
 let roomCode = '';
+let activeMeeting = null;
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
 function genCode() { return Math.random().toString(36).slice(2,8).toUpperCase(); }
@@ -224,55 +256,138 @@ function closeModals() {
   document.getElementById('joinModal').classList.add('hidden');
 }
 
-// ─── Start the RealtimeKit meeting in the room view ───────────────────────────
+// ─── Video grid helpers ───────────────────────────────────────────────────────
+function attachTrack(videoEl, track) {
+  videoEl.srcObject = track ? new MediaStream([track]) : null;
+}
+
+function createTile(participant, isSelf) {
+  const tile = document.createElement('div');
+  tile.id   = 'tile-' + (isSelf ? 'self' : participant.id);
+  tile.className = 'vtile';
+
+  const video = document.createElement('video');
+  video.autoplay   = true;
+  video.playsInline = true;
+  if (isSelf) video.muted = true;
+
+  const label = document.createElement('div');
+  label.className  = 'vname';
+  label.textContent = participant.name || (isSelf ? 'You' : 'Participant');
+
+  tile.appendChild(video);
+  tile.appendChild(label);
+
+  attachTrack(video, participant.videoTrack);
+  participant.on('videoUpdate', ({ videoTrack }) => attachTrack(video, videoTrack));
+
+  // Audio for remote participants
+  if (!isSelf) {
+    const audio = document.createElement('audio');
+    audio.autoplay = true;
+    if (participant.audioTrack) audio.srcObject = new MediaStream([participant.audioTrack]);
+    participant.on('audioUpdate', ({ audioTrack }) => {
+      audio.srcObject = audioTrack ? new MediaStream([audioTrack]) : null;
+    });
+    tile.appendChild(audio);
+  }
+
+  return tile;
+}
+
+function initVideoGrid(meeting) {
+  const grid = document.getElementById('videoGrid');
+  grid.innerHTML = '';
+
+  // Always show self tile first
+  grid.appendChild(createTile(meeting.self, true));
+
+  // Existing remote participants (try both .toArray() and plain iteration)
+  const existing = meeting.participants.active.toArray?.()
+    || [...(meeting.participants.active.values?.() ?? [])];
+  existing.forEach(p => grid.appendChild(createTile(p, false)));
+
+  meeting.participants.active.on('participantJoined', p => {
+    if (!document.getElementById('tile-' + p.id))
+      grid.appendChild(createTile(p, false));
+  });
+  meeting.participants.active.on('participantLeft', p => {
+    document.getElementById('tile-' + p.id)?.remove();
+  });
+}
+
+// ─── Start the RealtimeKit meeting ────────────────────────────────────────────
 async function startMeeting(authToken, code) {
   roomCode = code;
   showLoading('Connecting to meeting…');
 
   try {
-    console.log('[RTK] RealtimeKitClient =', typeof RealtimeKitClient);
-    console.log('[RTK] authToken (first 40 chars) =', authToken?.slice(0, 40));
-
     const meeting = await RealtimeKitClient.init({
-      baseURI: 'realtime.cloudflare.com',
       authToken,
+      baseURI: 'realtime.cloudflare.com',
+      defaults: { video: true, audio: true },
+    });
+    activeMeeting = meeting;
+    console.log('[RTK] init OK');
+
+    meeting.self.on('roomLeft', () => {
+      document.getElementById('view-room').classList.add('hidden');
+      document.getElementById('view-lobby').classList.remove('hidden');
+      document.getElementById('videoGrid').innerHTML = '';
+      document.getElementById('micBtn').textContent = '🎙️';
+      document.getElementById('camBtn').textContent = '📹';
+      document.getElementById('micBtn').classList.remove('muted');
+      document.getElementById('camBtn').classList.remove('muted');
+      activeMeeting = null;
+      roomCode = '';
     });
 
-    console.log('[RTK] init resolved, meeting =', meeting);
+    meeting.meta?.on?.('meetingEnded', () => meeting.leaveRoom?.());
 
-    // Show room FIRST so the component renders into a visible container with real dimensions
+    await meeting.join();
+    console.log('[RTK] joined room');
+
+    // Show room view after successfully joining
     document.getElementById('roomCodeDisplay').textContent = code;
     document.getElementById('view-lobby').classList.add('hidden');
     document.getElementById('view-room').classList.remove('hidden');
     hideLoading();
 
-    // Ensure <rtk-meeting> custom element is registered before use
-    await customElements.whenDefined('rtk-meeting');
-
-    // Recreate the element fresh — the old one was in a display:none container
-    // and may have initialised with zero dimensions
-    const oldEl = document.getElementById('rtkEl');
-    const rtkEl = document.createElement('rtk-meeting');
-    rtkEl.id = 'rtkEl';
-    rtkEl.setAttribute('show-setup-screen', 'true');
-    rtkEl.style.cssText = 'width:100%;height:100%;display:block;';
-    oldEl.parentNode.replaceChild(rtkEl, oldEl);
-
-    // Assign meeting to the fresh, visible element
-    rtkEl.meeting = meeting;
-
-    const backToLobby = () => {
-      document.getElementById('view-room').classList.add('hidden');
-      document.getElementById('view-lobby').classList.remove('hidden');
-      roomCode = '';
-    };
-    meeting.self.on('roomLeft',        backToLobby);
-    meeting.meta?.on?.('meetingEnded', backToLobby);
+    initVideoGrid(meeting);
   } catch (err) {
     console.error('[RTK] startMeeting error:', err);
     hideLoading();
     showLobbyErr('Meeting error: ' + err.message);
   }
+}
+
+// ─── Call controls ────────────────────────────────────────────────────────────
+function toggleMic() {
+  if (!activeMeeting) return;
+  const btn = document.getElementById('micBtn');
+  if (activeMeeting.self.audioEnabled) {
+    activeMeeting.self.disableAudio();
+    btn.textContent = '🔇'; btn.classList.add('muted');
+  } else {
+    activeMeeting.self.enableAudio();
+    btn.textContent = '🎙️'; btn.classList.remove('muted');
+  }
+}
+
+function toggleCam() {
+  if (!activeMeeting) return;
+  const btn = document.getElementById('camBtn');
+  if (activeMeeting.self.videoEnabled) {
+    activeMeeting.self.disableVideo();
+    btn.textContent = '🚫'; btn.classList.add('muted');
+  } else {
+    activeMeeting.self.enableVideo();
+    btn.textContent = '📹'; btn.classList.remove('muted');
+  }
+}
+
+function leaveCall() {
+  activeMeeting?.leaveRoom?.();
 }
 
 // ─── Create room ──────────────────────────────────────────────────────────────
