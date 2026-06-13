@@ -232,7 +232,8 @@ const db = firebase.firestore();
 // ─── State ────────────────────────────────────────────────────────────────────
 let roomCode      = '';
 let activeMeeting = null;
-let localStream   = null;  // raw getUserMedia stream for preview / self-tile
+let pendingToken  = null;  // authToken waiting for joinNow()
+let localStream   = null;
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
 function genCode() { return Math.random().toString(36).slice(2,8).toUpperCase(); }
@@ -321,9 +322,10 @@ function showRoomErr(msg) {
 
 // ─── Start the RealtimeKit meeting ────────────────────────────────────────────
 async function startMeeting(authToken, code) {
-  roomCode = code;
+  roomCode      = code;
+  pendingToken  = authToken;  // init() will use this when user taps Join
+  activeMeeting = null;
 
-  // ── Show the room UI IMMEDIATELY — no black-screen gap ───────────────────
   hideLoading();
   document.getElementById('view-lobby').classList.add('hidden');
   document.getElementById('view-room').classList.remove('hidden');
@@ -331,115 +333,124 @@ async function startMeeting(authToken, code) {
   document.getElementById('callScreen').classList.add('hidden');
   document.getElementById('videoGrid').innerHTML = '';
   document.getElementById('joinNowBtn').disabled = true;
+  document.getElementById('setupStatus').textContent = 'Starting camera…';
 
-  // ── 1. Camera preview ────────────────────────────────────────────────────
   try {
     localStream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: 'user' },
       audio: true,
     });
     document.getElementById('previewVid').srcObject = localStream;
-    document.getElementById('setupStatus').textContent = 'Connecting…';
+    document.getElementById('setupStatus').textContent = 'Ready — tap Join to enter';
+    document.getElementById('joinNowBtn').disabled = false;  // enable immediately
   } catch (camErr) {
     showRoomErr('Camera error: ' + camErr.message);
-    return;
-  }
-
-  // ── 2. Init SDK in background while user sees camera ─────────────────────
-  try {
-    const meeting = await RealtimeKitClient.init({
-      authToken,
-      baseURI: 'realtime.cloudflare.com',
-    });
-    activeMeeting = meeting;
-    document.getElementById('setupStatus').textContent = 'Ready — tap Join to enter';
-    document.getElementById('joinNowBtn').disabled = false;
-
-    meeting.self.on('roomLeft', () => {
-      localStream?.getTracks().forEach(t => t.stop());
-      localStream = null;
-      activeMeeting = null;
-      roomCode = '';
-      document.getElementById('view-room').classList.add('hidden');
-      document.getElementById('view-lobby').classList.remove('hidden');
-      document.getElementById('setupScreen').classList.add('hidden');
-      document.getElementById('callScreen').classList.add('hidden');
-      document.getElementById('videoGrid').innerHTML = '';
-    });
-    meeting.meta?.on?.('meetingEnded', () => activeMeeting?.leaveRoom?.());
-
-  } catch (initErr) {
-    showRoomErr('Connection error: ' + initErr.message);
   }
 }
 
 // ─── User taps "Join Meeting" on the setup screen ─────────────────────────────
 async function joinNow() {
-  if (!activeMeeting) return;
-  const meeting = activeMeeting;
+  if (!pendingToken) return;
   document.getElementById('joinNowBtn').disabled = true;
-  showLoading('Joining…');
+  showLoading('Connecting…');
 
+  // ── 1. Init SDK (deferred until user actually taps Join) ──────────────────
+  let meeting;
   try {
-    // Join the room
-    await meeting.join();
-
-    // Switch to call screen
-    document.getElementById('setupScreen').classList.add('hidden');
-    document.getElementById('callScreen').classList.remove('hidden');
-    hideLoading();
-
-    const grid = document.getElementById('videoGrid');
-
-    // ── Self tile: use the live localStream we already captured ──────────────
-    const selfTile  = makeTile('self', meeting.self.name || 'You', true);
-    const selfVideo = makeVideo(true);
-    selfTile.insertBefore(selfVideo, selfTile.firstChild);
-    selfVideo.srcObject = localStream;
-    grid.appendChild(selfTile);
-
-    // Update self video if SDK provides a different track later
-    meeting.self.on('videoUpdate', ({ videoEnabled, videoTrack }) => {
-      if (videoEnabled && videoTrack) {
-        selfVideo.srcObject = new MediaStream([videoTrack]);
-        selfVideo.play().catch(() => {});
-      }
+    meeting = await RealtimeKitClient.init({
+      authToken: pendingToken,
+      baseURI:   'realtime.cloudflare.com',
     });
-
-    // ── Remote participants ───────────────────────────────────────────────────
-    function addRemote(p) {
-      if (document.getElementById('tile-' + p.id)) return;
-      const tile  = makeTile(p.id, p.name, false);
-      const video = makeVideo(false);
-      const audio = document.createElement('audio');
-      audio.autoplay = true;
-      tile.insertBefore(video, tile.firstChild);
-      tile.appendChild(audio);
-      grid.appendChild(tile);
-
-      if (p.videoTrack) setStream(video, p.videoTrack);
-      if (p.audioTrack) audio.srcObject = new MediaStream([p.audioTrack]);
-
-      p.on('videoUpdate', ({ videoEnabled, videoTrack }) => {
-        setStream(video, videoEnabled ? videoTrack : null);
-      });
-      p.on('audioUpdate', ({ audioEnabled, audioTrack }) => {
-        audio.srcObject = audioEnabled && audioTrack ? new MediaStream([audioTrack]) : null;
-      });
-    }
-
-    meeting.participants.active.on('participantJoined', addRemote);
-    meeting.participants.active.on('participantLeft',   p => document.getElementById('tile-' + p.id)?.remove());
-
-    // Participants already in the room
-    (meeting.participants.active.toArray?.() ?? []).forEach(addRemote);
-
-  } catch (err) {
-    console.error('[RTK] joinNow error:', err);
+  } catch (initErr) {
+    console.error('[RTK] init error:', initErr);
     hideLoading();
     document.getElementById('joinNowBtn').disabled = false;
-    showLobbyErr('Join error: ' + err.message);
+    showRoomErr('Connection error: ' + initErr.message);
+    return;
   }
+
+  activeMeeting = meeting;
+
+  function cleanupAndGoHome() {
+    localStream?.getTracks().forEach(t => t.stop());
+    localStream   = null;
+    activeMeeting = null;
+    pendingToken  = null;
+    roomCode      = '';
+    document.getElementById('view-room').classList.add('hidden');
+    document.getElementById('view-lobby').classList.remove('hidden');
+    document.getElementById('setupScreen').classList.add('hidden');
+    document.getElementById('callScreen').classList.add('hidden');
+    document.getElementById('videoGrid').innerHTML = '';
+  }
+
+  meeting.self.on('roomLeft', cleanupAndGoHome);
+  meeting.meta?.on?.('meetingEnded', () => activeMeeting?.leaveRoom?.());
+
+  // ── 2. Join the room ──────────────────────────────────────────────────────
+  showLoading('Joining…');
+  try {
+    await meeting.join();
+  } catch (joinErr) {
+    console.error('[RTK] join error:', joinErr);
+    hideLoading();
+    activeMeeting = null;
+    document.getElementById('joinNowBtn').disabled = false;
+    showRoomErr('Join error: ' + joinErr.message);
+    return;
+  }
+
+  // Stop preview tracks — SDK now owns the camera
+  localStream?.getTracks().forEach(t => t.stop());
+  localStream = null;
+  document.getElementById('previewVid').srcObject = null;
+
+  document.getElementById('setupScreen').classList.add('hidden');
+  document.getElementById('callScreen').classList.remove('hidden');
+  hideLoading();
+
+  const grid = document.getElementById('videoGrid');
+
+  // ── Self tile: use SDK's video track (not localStream) ────────────────────
+  const selfTile  = makeTile('self', meeting.self.name || 'You', true);
+  const selfVideo = makeVideo(true);
+  selfTile.insertBefore(selfVideo, selfTile.firstChild);
+  grid.appendChild(selfTile);
+
+  if (meeting.self.videoEnabled && meeting.self.videoTrack) {
+    selfVideo.srcObject = new MediaStream([meeting.self.videoTrack]);
+    selfVideo.play().catch(() => {});
+  }
+  meeting.self.on('videoUpdate', ({ videoEnabled, videoTrack }) => {
+    selfVideo.srcObject = videoEnabled && videoTrack ? new MediaStream([videoTrack]) : null;
+    if (videoEnabled && videoTrack) selfVideo.play().catch(() => {});
+  });
+
+  // ── Remote participants ───────────────────────────────────────────────────
+  function addRemote(p) {
+    if (document.getElementById('tile-' + p.id)) return;
+    const tile  = makeTile(p.id, p.name, false);
+    const video = makeVideo(false);
+    const audio = document.createElement('audio');
+    audio.autoplay = true;
+    tile.insertBefore(video, tile.firstChild);
+    tile.appendChild(audio);
+    grid.appendChild(tile);
+
+    if (p.videoTrack) setStream(video, p.videoTrack);
+    if (p.audioTrack) audio.srcObject = new MediaStream([p.audioTrack]);
+
+    p.on('videoUpdate', ({ videoEnabled, videoTrack }) => {
+      setStream(video, videoEnabled ? videoTrack : null);
+    });
+    p.on('audioUpdate', ({ audioEnabled, audioTrack }) => {
+      audio.srcObject = audioEnabled && audioTrack ? new MediaStream([audioTrack]) : null;
+    });
+  }
+
+  meeting.participants.active.on('participantJoined', addRemote);
+  meeting.participants.active.on('participantLeft',   p => document.getElementById('tile-' + p.id)?.remove());
+  (meeting.participants.active.toArray?.() ?? []).forEach(addRemote);
 }
 
 // ─── Call controls ────────────────────────────────────────────────────────────
@@ -476,12 +487,14 @@ function leaveCall() {
   if (activeMeeting) {
     activeMeeting.leaveRoom?.();
   } else {
-    // called from setup screen before join
+    // called from setup screen before joining
     localStream?.getTracks().forEach(t => t.stop());
-    localStream = null;
-    roomCode = '';
+    localStream  = null;
+    pendingToken = null;
+    roomCode     = '';
     document.getElementById('view-room').classList.add('hidden');
     document.getElementById('view-lobby').classList.remove('hidden');
+    document.getElementById('setupScreen').classList.add('hidden');
   }
 }
 
