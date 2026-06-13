@@ -553,6 +553,12 @@ body {
 
   <!-- In-call: video grid + controls -->
   <div id="callScreen" class="hidden">
+    <div id="callHeader" style="display:flex;align-items:center;justify-content:space-between;padding:8px 14px;background:rgba(5,7,15,.97);border-bottom:1px solid rgba(255,255,255,.06);flex-shrink:0;">
+      <span style="font-size:12px;color:#94a3b8;font-family:ui-monospace,monospace;letter-spacing:.05em;">HamoudaSpace</span>
+      <button onclick="shareMeeting()" style="background:rgba(37,99,235,.18);border:1px solid rgba(37,99,235,.4);color:#93c5fd;font-size:12px;padding:4px 12px;cursor:pointer;letter-spacing:.04em;font-family:ui-monospace,monospace;">
+        🔗 <span id="callCodeLabel">Share</span>
+      </button>
+    </div>
     <div id="audioUnlockBar" class="hidden" onclick="unlockAudio()">
       🔇 Tap here to enable audio
     </div>
@@ -562,8 +568,9 @@ body {
       <button id="micBtn"   class="ctrl-btn" onclick="toggleMic()"   title="Mute/unmute">🎙️</button>
       <button id="camBtn"   class="ctrl-btn" onclick="toggleCam()"   title="Camera on/off">📹</button>
       <button id="shareBtn" class="ctrl-btn" onclick="toggleShare()" title="Share screen">🖥️</button>
-      <button id="recBtn"   class="ctrl-btn" onclick="toggleRec()"   title="Record">⏺️</button>
-      <button class="ctrl-btn ctrl-end" onclick="leaveCall()" title="Leave">📵</button>
+      <button id="recBtn"   class="ctrl-btn" onclick="toggleRec()"      title="Record">⏺️</button>
+      <button class="ctrl-btn"          onclick="shareMeeting()"         title="Share invite">🔗</button>
+      <button class="ctrl-btn ctrl-end" onclick="leaveCall()"            title="Leave">📵</button>
     </div>
   </div>
 
@@ -667,6 +674,8 @@ function showSetup() {
 function showCall() {
   document.getElementById('setupScreen').classList.add('hidden');
   document.getElementById('callScreen').classList.remove('hidden');
+  const label = document.getElementById('callCodeLabel');
+  if (label && roomCode) label.textContent = roomCode;
 }
 
 // ─── Cleanup & go home ────────────────────────────────────────────────────────
@@ -1003,6 +1012,20 @@ function toggleRec() {
         dbg('Recording started ⏺');
       })
       .catch(e => dbg('Start recording: ' + (e.message || e)));
+  }
+}
+
+// ─── Share meeting invite ─────────────────────────────────────────────────────
+function shareMeeting() {
+  if (!roomCode) return;
+  const link = location.origin + '/?join=' + roomCode;
+  const text = 'Join my meeting — code: ' + roomCode + '\n' + link;
+  if (navigator.share) {
+    navigator.share({ title: 'HamoudaSpace Meeting', text, url: link }).catch(() => {});
+  } else {
+    navigator.clipboard?.writeText(text)
+      .then(() => toast('Invite copied! Code: ' + roomCode))
+      .catch(() => toast('Code: ' + roomCode));
   }
 }
 
