@@ -162,8 +162,9 @@ body { height:100%; overflow:hidden; font-family:-apple-system,BlinkMacSystemFon
   <!-- Setup: local camera preview before joining -->
   <div id="setupScreen" class="hidden">
     <video id="previewVid" autoplay muted playsinline></video>
-    <div class="setup-label">Camera ready — tap Join to enter</div>
-    <button id="joinNowBtn" onclick="joinNow()">Join Meeting</button>
+    <div class="setup-label" id="setupStatus">Starting camera…</div>
+    <button id="joinNowBtn" onclick="joinNow()" disabled>Join Meeting</button>
+    <button onclick="leaveCall()" style="background:none;border:none;color:#9ca3af;font-size:13px;cursor:pointer;margin-top:4px;">← Back to lobby</button>
   </div>
 
   <!-- In-call: custom video grid we fully control -->
@@ -214,37 +215,6 @@ body { height:100%; overflow:hidden; font-family:-apple-system,BlinkMacSystemFon
 
 <script>
 'use strict';
-
-// ─── Global playsinline patch (must run before any video is created) ──────────
-// iOS Safari and iOS Chrome refuse to play <video> without the playsinline
-// attribute — they show a black rectangle even when the stream is live.
-// The <rtk-meeting> component renders in a shadow DOM we cannot reach directly,
-// so we patch at the prototype level: every video element on the page (including
-// those inside closed shadow roots) automatically gets playsinline applied.
-(function patchPlaysinline() {
-  // Intercept srcObject assignment — fires before autoplay triggers
-  const desc = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'srcObject');
-  if (desc) {
-    Object.defineProperty(HTMLMediaElement.prototype, 'srcObject', {
-      configurable: true,
-      get() { return desc.get.call(this); },
-      set(v) {
-        if (this.tagName === 'VIDEO') {
-          this.setAttribute('playsinline', '');
-          this.playsInline = true;
-        }
-        desc.set.call(this, v);
-      },
-    });
-  }
-  // Intercept explicit play() calls as a second safety net
-  const origPlay = HTMLVideoElement.prototype.play;
-  HTMLVideoElement.prototype.play = function() {
-    this.setAttribute('playsinline', '');
-    this.playsInline = true;
-    return origPlay.call(this);
-  };
-}());
 
 // ─── Firebase (room code ↔ RealtimeKit meeting ID) ────────────────────────────
 firebase.initializeApp({
@@ -334,40 +304,55 @@ function makeTile(id, name, isSelf) {
   return tile;
 }
 
+// ─── Show an error inside the room view (visible on mobile) ──────────────────
+function showRoomErr(msg) {
+  let el = document.getElementById('roomError');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'roomError';
+    el.style.cssText = 'color:#f87171;background:rgba(239,68,68,.15);border:1px solid #f87171;'
+      + 'border-radius:12px;padding:14px 18px;font-size:14px;max-width:320px;text-align:center;';
+    document.getElementById('setupScreen').appendChild(el);
+  }
+  el.textContent = '⚠️ ' + msg;
+}
+
 // ─── Start the RealtimeKit meeting ────────────────────────────────────────────
 async function startMeeting(authToken, code) {
   roomCode = code;
-  showLoading('Starting camera…');
 
-  // Reset room UI
-  document.getElementById('setupScreen').classList.add('hidden');
+  // ── Show the room UI IMMEDIATELY — no black-screen gap ───────────────────
+  hideLoading();
+  document.getElementById('view-lobby').classList.add('hidden');
+  document.getElementById('view-room').classList.remove('hidden');
+  document.getElementById('setupScreen').classList.remove('hidden');
   document.getElementById('callScreen').classList.add('hidden');
   document.getElementById('videoGrid').innerHTML = '';
+  document.getElementById('joinNowBtn').disabled = true;
 
+  // ── 1. Camera preview ────────────────────────────────────────────────────
   try {
-    // 1. Get local camera — we know getUserMedia works on iOS (setup screen proved it)
     localStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+      video: { facingMode: 'user' },
       audio: true,
     });
+    document.getElementById('previewVid').srcObject = localStream;
+    document.getElementById('setupStatus').textContent = 'Connecting…';
+  } catch (camErr) {
+    showRoomErr('Camera error: ' + camErr.message);
+    return;
+  }
 
-    const previewVid = document.getElementById('previewVid');
-    previewVid.srcObject = localStream;
-
-    // 2. Init SDK (no join yet)
+  // ── 2. Init SDK in background while user sees camera ─────────────────────
+  try {
     const meeting = await RealtimeKitClient.init({
       authToken,
       baseURI: 'realtime.cloudflare.com',
     });
     activeMeeting = meeting;
+    document.getElementById('setupStatus').textContent = 'Ready — tap Join to enter';
+    document.getElementById('joinNowBtn').disabled = false;
 
-    // 3. Show setup screen
-    document.getElementById('view-lobby').classList.add('hidden');
-    document.getElementById('view-room').classList.remove('hidden');
-    document.getElementById('setupScreen').classList.remove('hidden');
-    hideLoading();
-
-    // 4. Back-to-lobby handler
     meeting.self.on('roomLeft', () => {
       localStream?.getTracks().forEach(t => t.stop());
       localStream = null;
@@ -381,12 +366,8 @@ async function startMeeting(authToken, code) {
     });
     meeting.meta?.on?.('meetingEnded', () => activeMeeting?.leaveRoom?.());
 
-  } catch (err) {
-    console.error('[RTK] startMeeting error:', err);
-    hideLoading();
-    document.getElementById('view-room').classList.add('hidden');
-    document.getElementById('view-lobby').classList.remove('hidden');
-    showLobbyErr('Error: ' + err.message);
+  } catch (initErr) {
+    showRoomErr('Connection error: ' + initErr.message);
   }
 }
 
@@ -490,7 +471,16 @@ function toggleCam() {
 }
 
 function leaveCall() {
-  activeMeeting?.leaveRoom?.();
+  if (activeMeeting) {
+    activeMeeting.leaveRoom?.();
+  } else {
+    // called from setup screen before join
+    localStream?.getTracks().forEach(t => t.stop());
+    localStream = null;
+    roomCode = '';
+    document.getElementById('view-room').classList.add('hidden');
+    document.getElementById('view-lobby').classList.remove('hidden');
+  }
 }
 
 // ─── Create room ──────────────────────────────────────────────────────────────
