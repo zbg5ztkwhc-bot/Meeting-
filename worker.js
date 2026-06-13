@@ -850,10 +850,12 @@ async function joinNow() {
     return stream;
   }
 
-  meeting.participants.active.on('screenShareUpdate', (p) => {
-    const stream = remoteScreenStream(p);
-    dbg('RemSS: ' + p.name + ' on=' + p.screenShareEnabled + ' trk=' + !!p.screenShareTrack + ' str=' + !!p.screenShareStream + ' got=' + !!stream);
-    updateScreenTile(p.id + '-screen', (p.name || 'Guest') + ' · Screen', p.screenShareEnabled, stream, false);
+  // Probe every likely event name so the debug bar shows which one fires
+  const _ssEvts = ['screenShareUpdate','screenShareEnabled','screenShareOn','screenShareOff','screenShare','streamUpdate','trackUpdate','participantUpdated','update'];
+  _ssEvts.forEach(evt => {
+    meeting.participants.active.on(evt, (p) => {
+      dbg('active:' + evt + ' p=' + (p?.name||'?') + ' ss=' + p?.screenShareEnabled + ' trk=' + !!p?.screenShareTrack);
+    });
   });
 
   function addParticipant(p) {
@@ -877,10 +879,15 @@ async function joinNow() {
     setAud(p.audioEnabled, p.audioTrack);
     p.on('videoUpdate', ({ videoEnabled, videoTrack }) => setVid(videoEnabled, videoTrack));
     p.on('audioUpdate', ({ audioEnabled, audioTrack }) => setAud(audioEnabled, audioTrack));
-    p.on('screenShareUpdate', (data) => {
-      const stream = remoteScreenStream(p, data);
-      dbg('PrtSS: ' + p.name + ' on=' + p.screenShareEnabled + ' trk=' + !!p.screenShareTrack + ' str=' + !!p.screenShareStream + ' got=' + !!stream);
-      updateScreenTile(p.id + '-screen', (p.name || 'Guest') + ' · Screen', p.screenShareEnabled, stream, false);
+    _ssEvts.forEach(evt => {
+      p.on(evt, (data) => {
+        dbg('p:' + evt + ' ' + p.name + ' ss=' + p.screenShareEnabled + ' trk=' + !!p.screenShareTrack);
+        if (p.screenShareEnabled) {
+          updateScreenTile(p.id + '-screen', (p.name || 'Guest') + ' · Screen', true, remoteScreenStream(p, data), false);
+        } else {
+          updateScreenTile(p.id + '-screen', '', false, null, false);
+        }
+      });
     });
     if (p.screenShareEnabled) {
       updateScreenTile(p.id + '-screen', (p.name || 'Guest') + ' · Screen', true, remoteScreenStream(p), false);
