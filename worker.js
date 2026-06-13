@@ -585,6 +585,15 @@ body {
 <script>
 'use strict';
 
+// Catch any uncaught JS errors and show them so we can diagnose
+window.onerror = function(msg, src, line) {
+  toast('JS error: ' + msg + ' (line ' + line + ')');
+  return false;
+};
+window.onunhandledrejection = function(e) {
+  toast('Unhandled: ' + (e.reason?.message || e.reason || 'unknown'));
+};
+
 // Auto-set playsinline on every <video> element including those inside shadow DOM
 (function() {
   const _orig = document.createElement.bind(document);
@@ -1055,6 +1064,7 @@ async function doCreate() {
   document.getElementById('createBtn').disabled = true;
   hideLobbyErr();
   showLoading('Creating meeting…');
+  await new Promise(r => setTimeout(r, 0)); // let spinner render
 
   let data;
   try {
