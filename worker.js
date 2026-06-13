@@ -837,7 +837,20 @@ async function joinNow() {
     const btn = document.getElementById('shareBtn');
     if (screenShareEnabled) btn?.classList.add('share-on');
     else btn?.classList.remove('share-on');
-    updateScreenTile('self-screen', (meeting.self.name || 'You') + ' · Screen', screenShareEnabled, screenShareTrack, true);
+    // Use the passed track, fall back to reading from self directly
+    const track = screenShareTrack ?? meeting.self.screenShareTrack;
+    updateScreenTile('self-screen', (meeting.self.name || 'You') + ' · Screen', screenShareEnabled, track, true);
+  });
+
+  // Covers cases where per-participant screenShareUpdate doesn't fire
+  meeting.participants.active.on('screenShareUpdate', (p) => {
+    updateScreenTile(
+      p.id + '-screen',
+      (p.name || 'Guest') + ' · Screen',
+      p.screenShareEnabled,
+      p.screenShareTrack,
+      false
+    );
   });
 
   function addParticipant(p) {
@@ -980,12 +993,19 @@ function toggleShare() {
   const btn = document.getElementById('shareBtn');
   if (isSharing) {
     activeMeeting.self.disableScreenShare()
-      .then(() => { isSharing = false; btn.classList.remove('share-on'); })
-      .catch(() => { isSharing = false; btn.classList.remove('share-on'); });
+      .then(() => { isSharing = false; btn.classList.remove('share-on'); updateScreenTile('self-screen', '', false, null, true); })
+      .catch(() => { isSharing = false; btn.classList.remove('share-on'); updateScreenTile('self-screen', '', false, null, true); });
   } else {
     toast('Opening screen picker…');
     activeMeeting.self.enableScreenShare()
-      .then(() => { isSharing = true; btn.classList.add('share-on'); toast('Screen share started'); })
+      .then(() => {
+        isSharing = true;
+        btn.classList.add('share-on');
+        toast('Screen share started');
+        // Pull the track directly — screenShareUpdate may fire before track is ready
+        const track = activeMeeting.self.screenShareTrack;
+        updateScreenTile('self-screen', (activeMeeting.self.name || 'You') + ' · Screen', true, track, true);
+      })
       .catch(e => toast('Screen share failed: ' + (e.message || 'Not supported on this device')));
   }
 }
