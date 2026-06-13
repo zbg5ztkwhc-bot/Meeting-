@@ -185,120 +185,185 @@ const HTML = `
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <title>HamoudaSpace · Video Meetings</title>
 
-<!-- Firebase (room code ↔ RealtimeKit meeting ID mapping) -->
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-
-<!-- Cloudflare RealtimeKit SDK (exposes RealtimeKitClient global) -->
 <script src="https://cdn.jsdelivr.net/npm/@cloudflare/realtimekit@latest/dist/browser.js"></script>
 
-
-
 <style>
+/* ── Reset & tokens ────────────────────────────────────────────────────────── */
 * { margin:0; padding:0; box-sizing:border-box; }
 :root {
   --bg-dark:#05070c; --bg-card:#12161f; --bg-soft:#1a1f2c;
-  --border-dim:#2a2f3e; --text-primary:#eef2ff; --text-secondary:#9ca3af;
-  --accent:#3b82f6; --accent-hover:#2563eb; --danger:#ef4444;
+  --border:#2a2f3e; --text:#eef2ff; --muted:#9ca3af;
+  --blue:#3b82f6; --blue2:#2563eb; --red:#ef4444;
 }
-html { height:100%; overflow:hidden; -webkit-overflow-scrolling:touch; position:relative; }
-body { height:100%; overflow:hidden; position:relative; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background:var(--bg-dark); color:var(--text-primary); }
+html { height:100%; overflow:hidden; position:relative; -webkit-overflow-scrolling:touch; }
+body { height:100%; overflow:hidden; position:relative;
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  background:var(--bg-dark); color:var(--text); }
 .hidden { display:none !important; }
-.btn { padding:12px 24px; border-radius:40px; font-weight:600; border:none; cursor:pointer; font-size:16px; transition:opacity .15s; }
-.btn:disabled { opacity:.5; cursor:not-allowed; }
-.btn-primary { background:var(--accent); color:#fff; }
-.btn-primary:hover:not(:disabled) { background:var(--accent-hover); }
-.btn-secondary { background:var(--bg-card); color:var(--text-primary); border:1px solid var(--border-dim); }
-.btn-secondary:hover:not(:disabled) { background:#1c2030; }
 
-/* Lobby */
-#view-lobby { display:flex; flex-direction:column; height:100vh; height:100dvh; overflow-y:auto; background:radial-gradient(circle at 20% 30%,#0f121c,#020408); }
-.lobby-header { padding:16px 20px; padding-top:max(16px,env(safe-area-inset-top)); display:flex; justify-content:space-between; align-items:center; background:rgba(10,12,18,.7); backdrop-filter:blur(12px); border-bottom:1px solid var(--border-dim); flex-wrap:wrap; gap:10px; }
+/* ── Lobby ─────────────────────────────────────────────────────────────────── */
+#view-lobby { display:flex; flex-direction:column; height:100vh; height:100dvh; overflow-y:auto;
+  background:radial-gradient(circle at 20% 30%,#0f121c,#020408); }
+.lobby-header { padding:16px 20px; padding-top:max(16px,env(safe-area-inset-top));
+  display:flex; justify-content:space-between; align-items:center;
+  background:rgba(10,12,18,.7); backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border); flex-wrap:wrap; gap:10px; }
 .logo-area { display:flex; gap:12px; align-items:center; }
-.logo-icon { width:44px; height:44px; background:var(--accent); border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:24px; }
+.logo-icon { width:44px; height:44px; background:var(--blue); border-radius:14px;
+  display:flex; align-items:center; justify-content:center; font-size:24px; }
 .lobby-actions { display:flex; gap:10px; }
 .lobby-main { max-width:700px; margin:40px auto; padding:20px; text-align:center; }
 .hero h1 { font-size:1.8rem; margin-bottom:12px; }
-.hero p { font-size:14px; color:var(--text-secondary); }
+.hero p  { font-size:14px; color:var(--muted); }
 .action-cards { display:flex; gap:16px; justify-content:center; margin-top:32px; flex-wrap:wrap; }
-.card { background:var(--bg-card); padding:24px; border-radius:28px; width:220px; border:1px solid var(--border-dim); }
+.card { background:var(--bg-card); padding:24px; border-radius:28px; width:220px; border:1px solid var(--border); }
 .card h3 { margin-bottom:16px; }
 .card button { width:100%; padding:10px; font-size:14px; }
-.info-box { margin-top:30px; padding:16px; background:rgba(59,130,246,.1); border-radius:20px; font-size:12px; text-align:left; color:var(--text-secondary); }
-.error-box { margin-top:20px; padding:14px 18px; background:rgba(239,68,68,.12); border:1px solid rgba(239,68,68,.3); border-radius:16px; font-size:13px; color:#f87171; }
+.info-box  { margin-top:30px; padding:16px; background:rgba(59,130,246,.1); border-radius:20px; font-size:12px; text-align:left; color:var(--muted); }
+.error-box { margin-top:20px; padding:14px 18px; background:rgba(239,68,68,.12);
+  border:1px solid rgba(239,68,68,.3); border-radius:16px; font-size:13px; color:#f87171; }
+.btn { padding:12px 24px; border-radius:40px; font-weight:600; border:none; cursor:pointer; font-size:16px; transition:opacity .15s; }
+.btn:disabled { opacity:.5; cursor:not-allowed; }
+.btn-primary   { background:var(--blue); color:#fff; }
+.btn-primary:hover:not(:disabled) { background:var(--blue2); }
+.btn-secondary { background:var(--bg-card); color:var(--text); border:1px solid var(--border); }
+.btn-secondary:hover:not(:disabled) { background:#1c2030; }
 
-/* Modals */
-.modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,.85); backdrop-filter:blur(6px); display:flex; align-items:center; justify-content:center; z-index:600; padding:20px; }
+/* ── Modals ─────────────────────────────────────────────────────────────────── */
+.modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,.85); backdrop-filter:blur(6px);
+  display:flex; align-items:center; justify-content:center; z-index:600; padding:20px; }
 .modal-card { background:var(--bg-card); border-radius:28px; padding:28px; width:90%; max-width:350px; }
 .modal-title { font-size:20px; font-weight:600; margin-bottom:20px; }
-.modal-card input { width:100%; margin-bottom:12px; background:var(--bg-soft); border:1px solid var(--border-dim); border-radius:14px; padding:12px 14px; color:white; font-size:15px; outline:none; transition:border-color .2s; }
-.modal-card input:focus { border-color:var(--accent); }
+.modal-card input { width:100%; margin-bottom:12px; background:var(--bg-soft); border:1px solid var(--border);
+  border-radius:14px; padding:12px 14px; color:white; font-size:15px; outline:none; transition:border-color .2s; }
+.modal-card input:focus { border-color:var(--blue); }
 .modal-error { color:#f87171; font-size:12px; margin-bottom:10px; min-height:16px; }
 .modal-footer { display:flex; justify-content:flex-end; gap:12px; margin-top:8px; }
 
-/* Loading */
-.overlay { position:fixed; inset:0; background:rgba(0,0,0,.92); display:flex; align-items:center; justify-content:center; z-index:700; flex-direction:column; gap:16px; }
-.spinner { width:40px; height:40px; border:3px solid #2a3048; border-top-color:var(--accent); border-radius:50%; animation:spin .8s linear infinite; }
-.overlay-msg { color:var(--text-secondary); font-size:14px; }
+/* ── Loading overlay ─────────────────────────────────────────────────────────── */
+.overlay { position:fixed; inset:0; background:rgba(0,0,0,.92); display:flex; align-items:center;
+  justify-content:center; z-index:700; flex-direction:column; gap:16px; }
+.spinner { width:40px; height:40px; border:3px solid #2a3048; border-top-color:var(--blue); border-radius:50%; animation:spin .8s linear infinite; }
+.overlay-msg { color:var(--muted); font-size:14px; }
 @keyframes spin { to { transform:rotate(360deg); } }
 
-/* Room — full-screen meeting.
-   position:absolute (not fixed) because iOS Safari breaks position:fixed
-   when overflow:hidden is set on body. body has position:relative above. */
-#view-room  { position:absolute; top:0; left:0; right:0; bottom:0; z-index:100; background:#000; display:flex; flex-direction:column; }
+/* ── Toast ───────────────────────────────────────────────────────────────────── */
+.toast { position:fixed; bottom:calc(80px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%);
+  background:#1e2030; border:1px solid var(--border); padding:8px 20px; border-radius:40px; z-index:800;
+  font-size:12px; white-space:nowrap; pointer-events:none; animation:toastAnim 2.8s ease forwards; }
+@keyframes toastAnim {
+  0%{opacity:0;transform:translateX(-50%) translateY(8px)}
+  12%{opacity:1;transform:translateX(-50%) translateY(0)}
+  80%{opacity:1} 100%{opacity:0} }
 
-/* ── Setup screen ── */
+/* ════════════════════════════════════════════════════════════════════════════
+   ROOM  (position:absolute because iOS Safari breaks position:fixed when
+          overflow:hidden is set on body — body has position:relative above)
+   ════════════════════════════════════════════════════════════════════════════ */
+#view-room {
+  position:absolute; inset:0; z-index:100;
+  display:flex; flex-direction:column;
+  background:#000;
+}
+
+/* ── Setup screen ──────────────────────────────────────────────────────────── */
 #setupScreen {
   flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
-  background:#0a0c12; gap:20px; padding:20px;
+  gap:20px; padding:24px; background:linear-gradient(180deg,#080a10 0%,#0a0c16 100%);
+}
+.preview-frame {
+  width:100%; max-width:360px; border-radius:20px; overflow:hidden;
+  background:#111; aspect-ratio:4/3; position:relative; box-shadow:0 0 0 1px rgba(255,255,255,.08);
 }
 #previewVid {
-  width:100%; max-width:400px; aspect-ratio:4/3; object-fit:cover;
-  border-radius:16px; background:#111; display:block;
-  transform:scaleX(-1); /* mirror self-view */
+  width:100%; height:100%; object-fit:cover; display:block;
+  transform:scaleX(-1);
 }
-.setup-label { color:var(--text-secondary); font-size:14px; }
-#joinNowBtn  { padding:14px 40px; border-radius:40px; background:var(--accent); color:#fff; font-size:17px; font-weight:700; border:none; cursor:pointer; }
+.preview-status {
+  position:absolute; bottom:10px; left:50%; transform:translateX(-50%);
+  background:rgba(0,0,0,.72); color:#fff; padding:4px 14px; border-radius:20px;
+  font-size:12px; white-space:nowrap; backdrop-filter:blur(4px);
+}
+#setupStatus { color:var(--muted); font-size:14px; text-align:center; min-height:20px; }
+#joinNowBtn {
+  width:100%; max-width:300px; padding:16px;
+  border-radius:40px; background:var(--blue); color:#fff;
+  font-size:18px; font-weight:700; border:none; cursor:pointer;
+  transition:background .15s, opacity .15s;
+}
+#joinNowBtn:disabled { opacity:.5; cursor:not-allowed; }
+#joinNowBtn:not(:disabled):hover { background:var(--blue2); }
+.btn-back {
+  background:none; border:none; color:var(--muted); font-size:13px;
+  cursor:pointer; padding:8px 16px;
+}
 
-/* ── In-call screen ── */
-#callScreen { flex:1; display:flex; flex-direction:column; overflow:hidden; }
-#videoGrid  {
-  flex:1; display:flex; flex-wrap:wrap; align-items:center; justify-content:center;
-  gap:4px; padding:4px; background:#111; overflow:hidden;
+/* ── Call screen ───────────────────────────────────────────────────────────── */
+#callScreen { flex:1; display:flex; flex-direction:column; overflow:hidden; background:#0a0a0f; }
+
+/* iOS audio unlock banner */
+#audioUnlockBar {
+  background:rgba(220,38,38,.92); color:#fff; text-align:center;
+  padding:11px 16px; font-size:14px; font-weight:600; cursor:pointer; flex-shrink:0;
+  letter-spacing:.01em;
 }
+
+/* Video grid */
+#videoGrid {
+  flex:1; display:flex; flex-wrap:wrap; gap:3px; padding:3px;
+  overflow:hidden; align-content:stretch; align-items:stretch;
+  background:#000;
+}
+
+/* Participant tile */
 .vtile {
-  position:relative; flex:1; min-width:140px; min-height:110px;
-  background:#1a1a2e; border-radius:10px; overflow:hidden;
-  display:flex; align-items:center; justify-content:center;
+  position:relative; border-radius:12px; overflow:hidden;
+  background:#131320; display:flex; align-items:center; justify-content:center;
+  flex-grow:1; flex-shrink:1; min-height:80px;
+  transition:flex-basis .2s;
 }
-.vtile video { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block; }
+.vtile video {
+  position:absolute; inset:0; width:100%; height:100%;
+  object-fit:cover; display:block;
+}
 .vtile.self-tile video { transform:scaleX(-1); }
-.vname {
-  position:absolute; bottom:6px; left:8px; z-index:2;
-  background:rgba(0,0,0,.65); color:#fff;
-  padding:2px 9px; border-radius:12px; font-size:11px; pointer-events:none;
-}
-.no-cam-icon {
-  font-size:36px; z-index:1; opacity:.4;
+
+/* Avatar shown when camera is off */
+.vavatar {
+  width:64px; height:64px; border-radius:50%;
+  background:var(--blue); display:flex; align-items:center; justify-content:center;
+  font-size:28px; font-weight:700; color:#fff; z-index:1; flex-shrink:0;
+  text-transform:uppercase;
 }
 
-/* ── Call controls ── */
+/* Name label */
+.vname {
+  position:absolute; bottom:8px; left:8px; z-index:3;
+  background:rgba(0,0,0,.68); color:#fff;
+  padding:3px 10px; border-radius:14px; font-size:11px; font-weight:600;
+  max-width:calc(100% - 16px); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  backdrop-filter:blur(4px);
+}
+/* "You" badge on self tile */
+.vtile.self-tile .vname::after { content:' · You'; opacity:.7; }
+
+/* Call controls */
 #callControls {
-  display:flex; align-items:center; justify-content:center; gap:16px;
-  padding:14px; padding-bottom:max(14px,env(safe-area-inset-bottom));
-  background:rgba(0,0,0,.9); flex-shrink:0;
+  display:flex; align-items:center; justify-content:center; gap:20px;
+  padding:16px; padding-bottom:max(16px,env(safe-area-inset-bottom));
+  background:rgba(5,5,10,.96); flex-shrink:0; border-top:1px solid rgba(255,255,255,.06);
 }
 .ctrl-btn {
-  width:54px; height:54px; border-radius:50%; border:none; cursor:pointer;
-  font-size:22px; background:#2a2f3e; color:#fff;
+  width:58px; height:58px; border-radius:50%; border:none; cursor:pointer;
+  font-size:24px; background:#1f2336; color:#fff;
   display:flex; align-items:center; justify-content:center;
+  transition:background .15s; flex-shrink:0;
 }
-.ctrl-btn.off { background:#b91c1c; }
-.ctrl-end     { background:#ef4444; }
-
-/* Toast */
-.toast { position:fixed; bottom:calc(80px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%); background:#1e2030; border:1px solid var(--border-dim); padding:8px 20px; border-radius:40px; z-index:800; font-size:12px; white-space:nowrap; pointer-events:none; animation:toastAnim 2.8s ease forwards; }
-@keyframes toastAnim { 0%{opacity:0;transform:translateX(-50%) translateY(8px)} 12%{opacity:1;transform:translateX(-50%) translateY(0)} 80%{opacity:1} 100%{opacity:0} }
+.ctrl-btn.off  { background:#7f1d1d; }
+.ctrl-end      { background:var(--red); }
+.ctrl-end:hover { background:#dc2626; }
 </style>
 </head>
 <body>
@@ -310,7 +375,7 @@ body { height:100%; overflow:hidden; position:relative; font-family:-apple-syste
       <div class="logo-icon">🎥</div>
       <div>
         <strong>HamoudaSpace</strong>
-        <div style="font-size:10px;color:var(--text-secondary)">Powered by Cloudflare RealtimeKit</div>
+        <div style="font-size:10px;color:var(--muted)">Powered by Cloudflare RealtimeKit</div>
       </div>
     </div>
     <div class="lobby-actions">
@@ -336,30 +401,36 @@ body { height:100%; overflow:hidden; position:relative; font-family:-apple-syste
   </div>
 </div>
 
-<!-- ── Room ───────────────────────────────────────────────────────────── -->
+<!-- ── Room ───────────────────────────────────────────────────────────────── -->
 <div id="view-room" class="hidden">
 
-  <!-- Setup: local camera preview before joining -->
+  <!-- Pre-call: camera preview before joining -->
   <div id="setupScreen" class="hidden">
-    <video id="previewVid" autoplay muted playsinline></video>
-    <div class="setup-label" id="setupStatus">Starting camera…</div>
+    <div class="preview-frame">
+      <video id="previewVid" autoplay muted playsinline webkit-playsinline></video>
+      <div class="preview-status" id="previewStatusBadge">Camera preview</div>
+    </div>
+    <div id="setupStatus">Starting camera…</div>
     <button id="joinNowBtn" onclick="joinNow()" disabled>Join Meeting</button>
-    <button onclick="leaveCall()" style="background:none;border:none;color:#9ca3af;font-size:13px;cursor:pointer;margin-top:4px;">← Back to lobby</button>
+    <button class="btn-back" onclick="leaveCall()">← Back to lobby</button>
   </div>
 
-  <!-- In-call: custom video grid we fully control -->
+  <!-- In-call: video grid + controls -->
   <div id="callScreen" class="hidden">
+    <div id="audioUnlockBar" class="hidden" onclick="unlockAudio()">
+      🔇 Tap here to enable audio
+    </div>
     <div id="videoGrid"></div>
     <div id="callControls">
-      <button id="micBtn"  class="ctrl-btn" onclick="toggleMic()"  title="Mute">🎙️</button>
-      <button id="camBtn"  class="ctrl-btn" onclick="toggleCam()"  title="Camera">📹</button>
-      <button class="ctrl-btn ctrl-end"     onclick="leaveCall()"  title="Leave">📵</button>
+      <button id="micBtn" class="ctrl-btn" onclick="toggleMic()" title="Mute/unmute">🎙️</button>
+      <button id="camBtn" class="ctrl-btn" onclick="toggleCam()" title="Camera on/off">📹</button>
+      <button class="ctrl-btn ctrl-end"  onclick="leaveCall()"  title="Leave">📵</button>
     </div>
   </div>
 
 </div>
 
-<!-- ── Create modal ───────────────────────────────────────────────────── -->
+<!-- ── Create modal ───────────────────────────────────────────────────────── -->
 <div id="createModal" class="modal-backdrop hidden">
   <div class="modal-card">
     <div class="modal-title">New Meeting</div>
@@ -373,7 +444,7 @@ body { height:100%; overflow:hidden; position:relative; font-family:-apple-syste
   </div>
 </div>
 
-<!-- ── Join modal ─────────────────────────────────────────────────────── -->
+<!-- ── Join modal ─────────────────────────────────────────────────────────── -->
 <div id="joinModal" class="modal-backdrop hidden">
   <div class="modal-card">
     <div class="modal-title">Join Meeting</div>
@@ -387,16 +458,16 @@ body { height:100%; overflow:hidden; position:relative; font-family:-apple-syste
   </div>
 </div>
 
-<!-- ── Loading overlay ───────────────────────────────────────────────── -->
+<!-- ── Loading overlay ───────────────────────────────────────────────────── -->
 <div id="loadingOverlay" class="overlay hidden">
   <div class="spinner"></div>
-  <div class="overlay-msg" id="overlayMsg">Starting…</div>
+  <div class="overlay-msg" id="overlayMsg">Please wait…</div>
 </div>
 
 <script>
 'use strict';
 
-// ─── Firebase (room code ↔ RealtimeKit meeting ID) ────────────────────────────
+// ─── Firebase ─────────────────────────────────────────────────────────────────
 firebase.initializeApp({
   apiKey:            'AIzaSyCra3IgsAaQlf3INjRn04DdX3KWwb8zdlo',
   authDomain:        'hamoudaspace-meetingapp.firebaseapp.com',
@@ -410,7 +481,7 @@ const db = firebase.firestore();
 // ─── State ────────────────────────────────────────────────────────────────────
 let roomCode      = '';
 let activeMeeting = null;
-let pendingToken  = null;  // authToken waiting for joinNow()
+let pendingToken  = null;
 let localStream   = null;
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
@@ -423,6 +494,7 @@ function toast(msg) {
   document.body.appendChild(t);
   setTimeout(() => t.remove(), 3200);
 }
+
 function showLoading(msg) {
   document.getElementById('overlayMsg').textContent = msg || 'Please wait…';
   document.getElementById('loadingOverlay').classList.remove('hidden');
@@ -434,6 +506,41 @@ function showLobbyErr(msg) {
   el.textContent = '⚠️ ' + msg; el.classList.remove('hidden');
 }
 function hideLobbyErr() { document.getElementById('lobbyError').classList.add('hidden'); }
+
+function setSetupStatus(msg) {
+  document.getElementById('setupStatus').textContent = msg;
+}
+
+// ─── View switching ───────────────────────────────────────────────────────────
+function showLobby() {
+  document.getElementById('view-lobby').classList.remove('hidden');
+  document.getElementById('view-room').classList.add('hidden');
+  document.getElementById('setupScreen').classList.add('hidden');
+  document.getElementById('callScreen').classList.add('hidden');
+}
+function showSetup() {
+  document.getElementById('view-lobby').classList.add('hidden');
+  document.getElementById('view-room').classList.remove('hidden');
+  document.getElementById('setupScreen').classList.remove('hidden');
+  document.getElementById('callScreen').classList.add('hidden');
+}
+function showCall() {
+  document.getElementById('setupScreen').classList.add('hidden');
+  document.getElementById('callScreen').classList.remove('hidden');
+}
+
+// ─── Cleanup & go home ────────────────────────────────────────────────────────
+function cleanupAndGoHome() {
+  localStream?.getTracks().forEach(t => t.stop());
+  localStream   = null;
+  activeMeeting = null;
+  pendingToken  = null;
+  roomCode      = '';
+  document.getElementById('videoGrid').innerHTML = '';
+  document.getElementById('previewVid').srcObject = null;
+  document.getElementById('audioUnlockBar').classList.add('hidden');
+  showLobby();
+}
 
 // ─── Modals ───────────────────────────────────────────────────────────────────
 function openModal(type) {
@@ -452,227 +559,232 @@ function closeModals() {
   document.getElementById('joinModal').classList.add('hidden');
 }
 
-// ─── Video helpers ────────────────────────────────────────────────────────────
+// ─── Video element factory ────────────────────────────────────────────────────
 function makeVideo(muted) {
   const v = document.createElement('video');
   v.autoplay    = true;
-  v.playsInline = true;          // critical for iOS
+  v.playsInline = true;
   v.setAttribute('playsinline', '');
+  v.setAttribute('webkit-playsinline', '');
   if (muted) v.muted = true;
   return v;
 }
 
-function setStream(videoEl, track) {
-  videoEl.srcObject = track ? new MediaStream([track]) : null;
-  if (track) videoEl.play().catch(() => {});
-}
-
+// ─── Participant tile factory ─────────────────────────────────────────────────
 function makeTile(id, name, isSelf) {
-  const tile  = document.createElement('div');
+  const tile = document.createElement('div');
   tile.id        = 'tile-' + id;
   tile.className = 'vtile' + (isSelf ? ' self-tile' : '');
 
-  const icon  = document.createElement('div');
-  icon.className = 'no-cam-icon';
-  icon.textContent = '👤';
+  const avatar = document.createElement('div');
+  avatar.className   = 'vavatar';
+  avatar.textContent = (name || '?')[0];
 
   const label = document.createElement('div');
-  label.className  = 'vname';
+  label.className   = 'vname';
   label.textContent = name || (isSelf ? 'You' : 'Guest');
 
-  tile.appendChild(icon);
+  tile.appendChild(avatar);
   tile.appendChild(label);
   return tile;
 }
 
-// ─── Show an error inside the room view (visible on mobile) ──────────────────
-function showRoomErr(msg) {
-  let el = document.getElementById('roomError');
-  if (!el) {
-    el = document.createElement('div');
-    el.id = 'roomError';
-    el.style.cssText = 'color:#f87171;background:rgba(239,68,68,.15);border:1px solid #f87171;'
-      + 'border-radius:12px;padding:14px 18px;font-size:14px;max-width:320px;text-align:center;';
-    document.getElementById('setupScreen').appendChild(el);
-  }
-  el.textContent = '⚠️ ' + msg;
+// ─── Grid layout ──────────────────────────────────────────────────────────────
+function updateGridLayout() {
+  const grid  = document.getElementById('videoGrid');
+  const tiles = [...grid.querySelectorAll('.vtile')];
+  const n     = tiles.length;
+  if (n === 0) return;
+  const cols = n === 1 ? 1 : n <= 4 ? 2 : 3;
+  const gap  = 3;
+  const pct  = (100 / cols).toFixed(3);
+  tiles.forEach(t => {
+    t.style.flexBasis = `calc(${pct}% - ${gap}px)`;
+    t.style.maxWidth  = `calc(${pct}% - ${gap}px)`;
+  });
 }
 
-// ─── Start the RealtimeKit meeting ────────────────────────────────────────────
+// ─── Setup screen — camera preview before joining ─────────────────────────────
 async function startMeeting(authToken, code) {
-  roomCode      = code;
-  pendingToken  = authToken;  // init() will use this when user taps Join
+  roomCode     = code;
+  pendingToken = authToken;
   activeMeeting = null;
 
   hideLoading();
-  document.getElementById('view-lobby').classList.add('hidden');
-  document.getElementById('view-room').classList.remove('hidden');
-  document.getElementById('setupScreen').classList.remove('hidden');
-  document.getElementById('callScreen').classList.add('hidden');
-  document.getElementById('videoGrid').innerHTML = '';
+  showSetup();
   document.getElementById('joinNowBtn').disabled = true;
-  document.getElementById('setupStatus').textContent = 'Starting camera…';
+  setSetupStatus('Starting camera…');
 
   try {
     localStream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: 'user' },
       audio: true,
     });
-    document.getElementById('previewVid').srcObject = localStream;
-    document.getElementById('setupStatus').textContent = 'Ready — tap Join to enter';
-    document.getElementById('joinNowBtn').disabled = false;  // enable immediately
-  } catch (camErr) {
-    showRoomErr('Camera error: ' + camErr.message);
+    const preview = document.getElementById('previewVid');
+    preview.srcObject = localStream;
+    preview.play().catch(() => {});
+    setSetupStatus('Ready — tap Join to enter the meeting');
+    document.getElementById('joinNowBtn').disabled = false;
+  } catch (e) {
+    setSetupStatus('⚠️ Camera error: ' + e.message);
   }
 }
 
-// ─── User taps "Join Meeting" on the setup screen ─────────────────────────────
+// ─── Join the meeting ─────────────────────────────────────────────────────────
 async function joinNow() {
   if (!pendingToken) return;
   document.getElementById('joinNowBtn').disabled = true;
-  showLoading('Connecting…');
 
-  // ── 1. Init SDK (deferred until user actually taps Join) ──────────────────
+  // Stop preview stream so SDK can open the camera cleanly during join()
+  localStream?.getTracks().forEach(t => t.stop());
+  localStream = null;
+  document.getElementById('previewVid').srcObject = null;
+
+  // ── 1. Init SDK ──────────────────────────────────────────────────────────
+  showLoading('Connecting…');
   let meeting;
   try {
     meeting = await RealtimeKitClient.init({
       authToken: pendingToken,
       baseURI:   'realtime.cloudflare.com',
+      defaults: {
+        audio: true,
+        video: true,
+      },
     });
-  } catch (initErr) {
-    console.error('[RTK] init error:', initErr);
+  } catch (e) {
     hideLoading();
     document.getElementById('joinNowBtn').disabled = false;
-    showRoomErr('Connection error: ' + initErr.message);
+    setSetupStatus('⚠️ Connection error: ' + e.message);
+    localStream = null;
     return;
   }
 
   activeMeeting = meeting;
+  pendingToken  = null;
 
-  function cleanupAndGoHome() {
-    localStream?.getTracks().forEach(t => t.stop());
-    localStream   = null;
-    activeMeeting = null;
-    pendingToken  = null;
-    roomCode      = '';
-    document.getElementById('view-room').classList.add('hidden');
-    document.getElementById('view-lobby').classList.remove('hidden');
-    document.getElementById('setupScreen').classList.add('hidden');
-    document.getElementById('callScreen').classList.add('hidden');
-    document.getElementById('videoGrid').innerHTML = '';
-  }
-
+  // ── 2. Wire all event listeners BEFORE join() ────────────────────────────
   meeting.self.on('roomLeft', cleanupAndGoHome);
   meeting.meta?.on?.('meetingEnded', () => activeMeeting?.leaveRoom?.());
 
-  // ── 2. Join the room ──────────────────────────────────────────────────────
-  showLoading('Joining…');
-  try {
-    await meeting.join();
-  } catch (joinErr) {
-    console.error('[RTK] join error:', joinErr);
-    hideLoading();
-    activeMeeting = null;
-    document.getElementById('joinNowBtn').disabled = false;
-    showRoomErr('Join error: ' + joinErr.message);
-    return;
-  }
-
-  // Stop preview tracks — SDK now owns the camera
-  localStream?.getTracks().forEach(t => t.stop());
-  localStream = null;
-  document.getElementById('previewVid').srcObject = null;
-
-  document.getElementById('setupScreen').classList.add('hidden');
-  document.getElementById('callScreen').classList.remove('hidden');
-  hideLoading();
-
-  const grid = document.getElementById('videoGrid');
-
-  // ── Self tile: use SDK's video track (not localStream) ────────────────────
-  const selfTile  = makeTile('self', meeting.self.name || 'You', true);
-  const selfVideo = makeVideo(true);
-  selfTile.insertBefore(selfVideo, selfTile.firstChild);
-  grid.appendChild(selfTile);
-
-  if (meeting.self.videoEnabled && meeting.self.videoTrack) {
-    selfVideo.srcObject = new MediaStream([meeting.self.videoTrack]);
-    selfVideo.play().catch(() => {});
-  }
-  meeting.self.on('videoUpdate', ({ videoEnabled, videoTrack }) => {
-    selfVideo.srcObject = videoEnabled && videoTrack ? new MediaStream([videoTrack]) : null;
-    if (videoEnabled && videoTrack) selfVideo.play().catch(() => {});
+  // iOS audio autoplay blocked → show unlock banner
+  meeting.self.on('autoplayError', () => {
+    document.getElementById('audioUnlockBar').classList.remove('hidden');
   });
 
-  // ── Remote participants ───────────────────────────────────────────────────
-  function addRemote(p) {
+  // Build self tile now so it's ready immediately after join
+  const grid      = document.getElementById('videoGrid');
+  const selfTile  = makeTile('self', meeting.self.name || 'You', true);
+  const selfVideo = makeVideo(true); // muted self-view
+  selfTile.insertBefore(selfVideo, selfTile.firstChild);
+
+  // Remote participant handler
+  function addParticipant(p) {
     if (document.getElementById('tile-' + p.id)) return;
-    const tile  = makeTile(p.id, p.name, false);
+
+    const tile  = makeTile(p.id, p.name || 'Guest', false);
     const video = makeVideo(false);
     const audio = document.createElement('audio');
     audio.autoplay = true;
+
     tile.insertBefore(video, tile.firstChild);
     tile.appendChild(audio);
     grid.appendChild(tile);
 
-    if (p.videoTrack) setStream(video, p.videoTrack);
-    if (p.audioTrack) audio.srcObject = new MediaStream([p.audioTrack]);
+    // SDK manages video track updates automatically via registerVideoElement
+    p.registerVideoElement(video);
 
-    p.on('videoUpdate', ({ videoEnabled, videoTrack }) => {
-      setStream(video, videoEnabled ? videoTrack : null);
-    });
-    p.on('audioUpdate', ({ audioEnabled, audioTrack }) => {
-      audio.srcObject = audioEnabled && audioTrack ? new MediaStream([audioTrack]) : null;
-    });
+    // Audio: manual because SDK doesn't manage <audio> elements
+    function applyAudio(enabled, track) {
+      audio.srcObject = enabled && track ? new MediaStream([track]) : null;
+      if (enabled && track) audio.play().catch(() => {});
+    }
+    applyAudio(p.audioEnabled, p.audioTrack);
+    p.on('audioUpdate', ({ audioEnabled, audioTrack }) => applyAudio(audioEnabled, audioTrack));
   }
 
-  meeting.participants.active.on('participantJoined', addRemote);
-  meeting.participants.active.on('participantLeft',   p => document.getElementById('tile-' + p.id)?.remove());
-  (meeting.participants.active.toArray?.() ?? []).forEach(addRemote);
+  meeting.participants.active.on('participantJoined', (p) => {
+    addParticipant(p);
+    updateGridLayout();
+  });
+  meeting.participants.active.on('participantLeft', (p) => {
+    document.getElementById('tile-' + p.id)?.remove();
+    updateGridLayout();
+  });
+
+  // ── 3. Join room ─────────────────────────────────────────────────────────
+  showLoading('Joining…');
+  try {
+    await meeting.join();
+  } catch (e) {
+    hideLoading();
+    activeMeeting = null;
+    document.getElementById('joinNowBtn').disabled = false;
+    setSetupStatus('⚠️ Join error: ' + e.message);
+    showSetup();
+    return;
+  }
+
+  // ── 4. Show call screen ───────────────────────────────────────────────────
+  showCall();
+  hideLoading();
+  document.getElementById('audioUnlockBar').classList.add('hidden');
+
+  // Append self tile and let SDK fill its video element
+  grid.appendChild(selfTile);
+  // registerVideoElement tells the SDK to keep this element's srcObject
+  // in sync with the self video track (handles initial + future updates)
+  meeting.self.registerVideoElement(selfVideo);
+
+  // Add participants already in the room when we joined
+  (meeting.participants.active.toArray?.() ?? []).forEach(p => addParticipant(p));
+
+  updateGridLayout();
 }
 
-// ─── Call controls ────────────────────────────────────────────────────────────
+// ─── Unlock audio on iOS (call after user tap) ────────────────────────────────
+function unlockAudio() {
+  activeMeeting?.self?.playAudio?.();
+  document.getElementById('audioUnlockBar').classList.add('hidden');
+}
+
+// ─── Mic toggle ───────────────────────────────────────────────────────────────
 function toggleMic() {
   if (!activeMeeting) return;
   const btn = document.getElementById('micBtn');
   if (activeMeeting.self.audioEnabled) {
-    activeMeeting.self.disableAudio?.();
-    localStream?.getAudioTracks().forEach(t => { t.enabled = false; });
+    activeMeeting.self.disableAudio();
     btn.textContent = '🔇'; btn.classList.add('off');
   } else {
-    activeMeeting.self.enableAudio?.();
-    localStream?.getAudioTracks().forEach(t => { t.enabled = true; });
+    activeMeeting.self.enableAudio();
     btn.textContent = '🎙️'; btn.classList.remove('off');
   }
 }
 
+// ─── Camera toggle ────────────────────────────────────────────────────────────
 function toggleCam() {
   if (!activeMeeting) return;
   const btn = document.getElementById('camBtn');
-  const selfVideo = document.querySelector('#tile-self video');
   if (activeMeeting.self.videoEnabled) {
-    activeMeeting.self.disableVideo?.();
-    localStream?.getVideoTracks().forEach(t => { t.enabled = false; });
+    activeMeeting.self.disableVideo();
     btn.textContent = '🚫'; btn.classList.add('off');
   } else {
-    activeMeeting.self.enableVideo?.();
-    localStream?.getVideoTracks().forEach(t => { t.enabled = true; });
+    activeMeeting.self.enableVideo();
     btn.textContent = '📹'; btn.classList.remove('off');
   }
 }
 
+// ─── Leave call ───────────────────────────────────────────────────────────────
 function leaveCall() {
   if (activeMeeting) {
     activeMeeting.leaveRoom?.();
   } else {
-    // called from setup screen before joining
+    // From setup screen before joining
     localStream?.getTracks().forEach(t => t.stop());
     localStream  = null;
     pendingToken = null;
     roomCode     = '';
-    document.getElementById('view-room').classList.add('hidden');
-    document.getElementById('view-lobby').classList.remove('hidden');
-    document.getElementById('setupScreen').classList.add('hidden');
+    showLobby();
   }
 }
 
@@ -700,7 +812,7 @@ async function doCreate() {
     });
     data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Server error');
-  } catch(e) {
+  } catch (e) {
     hideLoading();
     showLobbyErr(e.message);
     document.getElementById('createBtn').disabled = false;
@@ -708,14 +820,13 @@ async function doCreate() {
   }
 
   const code = genCode();
-
   try {
     await db.collection('rooms').doc(code).set({
       name:      rn,
       rtkRoomId: data.meetingId,
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
-  } catch(e) {
+  } catch (e) {
     hideLoading();
     showLobbyErr('Could not save room: ' + e.message);
     document.getElementById('createBtn').disabled = false;
@@ -723,7 +834,7 @@ async function doCreate() {
   }
 
   await startMeeting(data.token, code);
-  toast('Room created! Share code: ' + code);
+  toast('Room created! Code: ' + code);
   document.getElementById('createBtn').disabled = false;
 }
 
@@ -745,7 +856,7 @@ async function doJoin() {
   let roomDoc;
   try {
     roomDoc = await db.collection('rooms').doc(code).get();
-  } catch(e) {
+  } catch (e) {
     hideLoading();
     showLobbyErr('Connection error: ' + e.message);
     document.getElementById('joinBtn').disabled = false;
@@ -771,7 +882,7 @@ async function doJoin() {
     });
     data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Server error');
-  } catch(e) {
+  } catch (e) {
     hideLoading();
     showLobbyErr(e.message);
     document.getElementById('joinBtn').disabled = false;
@@ -795,11 +906,11 @@ function copyCode() {
 document.getElementById('joinCode').addEventListener('input', e => {
   e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
 });
-['createRoomName', 'createUserName'].forEach(id =>
-  document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') doCreate(); })
+['createRoomName','createUserName'].forEach(id =>
+  document.getElementById(id).addEventListener('keydown', e => { if (e.key==='Enter') doCreate(); })
 );
-['joinCode', 'joinUserName'].forEach(id =>
-  document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') doJoin(); })
+['joinCode','joinUserName'].forEach(id =>
+  document.getElementById(id).addEventListener('keydown', e => { if (e.key==='Enter') doJoin(); })
 );
 
 // ─── Auto-join from ?join=XXXXXX ─────────────────────────────────────────────
