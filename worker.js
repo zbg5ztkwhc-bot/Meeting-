@@ -619,8 +619,8 @@ function updateGridLayout() {
   const gap  = 3;
   const pct  = (100 / cols).toFixed(3);
   tiles.forEach(t => {
-    t.style.flexBasis = `calc(${pct}% - ${gap}px)`;
-    t.style.maxWidth  = `calc(${pct}% - ${gap}px)`;
+    t.style.flexBasis = \`calc(\${pct}% - \${gap}px)\`;
+    t.style.maxWidth  = \`calc(\${pct}% - \${gap}px)\`;
   });
 }
 
@@ -650,32 +650,57 @@ async function startMeeting(authToken, code) {
   }
 }
 
-// ─── Debug bar ────────────────────────────────────────────────────────────────
+// ─── Debug output — visible on loading overlay, setup screen, and call bar ────
 function dbg(msg) {
-  const el = document.getElementById('dbgBar');
-  if (el) el.innerHTML = msg;
+  document.getElementById('overlayMsg').textContent = msg;
+  document.getElementById('setupStatus').textContent = msg;
+  const bar = document.getElementById('dbgBar');
+  if (bar) bar.innerHTML = msg;
 }
 
 // ─── Join the meeting ─────────────────────────────────────────────────────────
 async function joinNow() {
   if (!pendingToken) return;
   document.getElementById('joinNowBtn').disabled = true;
+
+  function withTimeout(promise, ms, label) {
+    return Promise.race([
+      promise,
+      new Promise((_, reject) => setTimeout(() => reject(new Error(label + ' timed out after ' + ms/1000 + 's')), ms))
+    ]);
+  }
+
+  // ── 0. Sanity check ───────────────────────────────────────────────────────
+  dbg('Checking SDK…');
   showLoading('Connecting…');
+  if (typeof RealtimeKitClient === 'undefined') {
+    dbg('❌ RealtimeKitClient not loaded — check network');
+    hideLoading();
+    document.getElementById('joinNowBtn').disabled = false;
+    setSetupStatus('❌ SDK failed to load. Check internet connection and reload.');
+    return;
+  }
 
   // ── 1. Init SDK — video:false so we don't compete with preview camera ──────
+  dbg('SDK init…');
   let meeting;
   try {
-    meeting = await RealtimeKitClient.init({
-      authToken: pendingToken,
-      baseURI:   'realtime.cloudflare.com',
-      defaults:  { audio: false, video: false },
-    });
+    meeting = await withTimeout(
+      RealtimeKitClient.init({
+        authToken: pendingToken,
+        baseURI:   'realtime.cloudflare.com',
+        defaults:  { audio: false, video: false },
+      }),
+      30000, 'SDK init'
+    );
   } catch (e) {
+    dbg('❌ Init: ' + (e.message || e));
     hideLoading();
     document.getElementById('joinNowBtn').disabled = false;
     setSetupStatus('⚠️ Init failed: ' + (e.message || e));
     return;
   }
+  dbg('SDK ready | joining room…');
 
   activeMeeting = meeting;
   pendingToken  = null;
@@ -727,9 +752,11 @@ async function joinNow() {
 
   // ── 3. Join ───────────────────────────────────────────────────────────────
   showLoading('Joining…');
+  dbg('Calling meeting.join()…');
   try {
-    await meeting.join();
+    await withTimeout(meeting.join(), 30000, 'meeting.join');
   } catch (e) {
+    dbg('❌ Join: ' + (e.message || e));
     hideLoading();
     activeMeeting = null;
     document.getElementById('joinNowBtn').disabled = false;
@@ -737,6 +764,7 @@ async function joinNow() {
     showSetup();
     return;
   }
+  dbg('Joined ✓ | enabling camera…');
 
   // ── 4. Stop preview → enable SDK camera ───────────────────────────────────
   localStream?.getTracks().forEach(t => t.stop());
@@ -747,8 +775,6 @@ async function joinNow() {
   grid.appendChild(selfTile);
   updateGridLayout();
   hideLoading();
-
-  dbg('Joined ✓ | enabling camera…');
 
   // Enable video — fires videoUpdate which sets srcObject on selfVid
   meeting.self.enableVideo()
@@ -948,4 +974,5 @@ if (autoCode?.length === 6) {
 </script>
 </body>
 </html>
+
 `;
