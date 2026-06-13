@@ -293,6 +293,22 @@ body { height:100%; overflow:hidden; position:relative;
 <script>
 'use strict';
 
+// Patch document.createElement so every <video> element gets playsinline
+// set at creation time — this applies to ALL video elements including those
+// created inside closed shadow DOM (custom elements use the same document).
+(function() {
+  const _orig = document.createElement.bind(document);
+  document.createElement = function(tag, opts) {
+    const el = _orig(tag, opts);
+    if (typeof tag === 'string' && tag.toLowerCase() === 'video') {
+      el.setAttribute('playsinline', '');
+      el.setAttribute('webkit-playsinline', '');
+      el.playsInline = true;
+    }
+    return el;
+  };
+})();
+
 // ─── Firebase ─────────────────────────────────────────────────────────────────
 firebase.initializeApp({
   apiKey:            'AIzaSyCra3IgsAaQlf3INjRn04DdX3KWwb8zdlo',
