@@ -54,10 +54,11 @@ async function handleRTK(request, env, url) {
   const path = url.pathname.replace('/api/rtk', '');
 
   try {
-    if (request.method === 'GET'  && path === '/debug')   return await debugRTK(env, cors);
-    if (request.method === 'GET'  && path === '/presets') return await listPresets(env, cors);
-    if (request.method === 'POST' && path === '/create') return await createMeeting(request, env, cors);
-    if (request.method === 'POST' && path === '/join')   return await joinMeeting(request, env, cors);
+    if (request.method === 'GET'  && path === '/debug')      return await debugRTK(env, cors);
+    if (request.method === 'GET'  && path === '/presets')     return await listPresets(env, cors);
+    if (request.method === 'GET'  && path === '/recordings')  return await getRecordings(request, env, cors);
+    if (request.method === 'POST' && path === '/create')      return await createMeeting(request, env, cors);
+    if (request.method === 'POST' && path === '/join')        return await joinMeeting(request, env, cors);
   } catch (err) {
     return Response.json({ error: err.message }, { status: 500, headers: cors });
   }
@@ -102,6 +103,17 @@ async function listPresets(env, cors) {
   let parsed;
   try { parsed = JSON.parse(text); } catch { parsed = null; }
   return Response.json({ status: res.status, raw: text.slice(0, 3000), parsed }, { headers: cors });
+}
+
+async function getRecordings(request, env, cors) {
+  const meetingId = new URL(request.url).searchParams.get('meetingId');
+  if (!meetingId) return Response.json({ error: 'meetingId required' }, { status: 400, headers: cors });
+  const res  = await fetch(`${rtkBase()}/recordings?meeting_id=${encodeURIComponent(meetingId)}`, {
+    headers: rtkHeaders(env)
+  });
+  const json = await safeJson(res, 'Get recordings');
+  const items = json?.result ?? json?.data ?? (Array.isArray(json) ? json : []);
+  return Response.json({ recordings: items, raw: json }, { headers: cors });
 }
 
 async function safeJson(res, label) {
@@ -488,6 +500,25 @@ body {
 .ctrl-btn.share-on { background:#1d4ed8; }
 .ctrl-btn.rec-on   { background:#dc2626; animation:recPulse 1.2s ease-in-out infinite; }
 @keyframes recPulse { 0%,100%{ opacity:1; } 50%{ opacity:.6; } }
+
+/* ── Recording download banner ───────────────────────────────────────────────── */
+.rec-download-banner {
+  position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
+  background:var(--bg-card); border:2px solid var(--accent);
+  padding:14px 20px; display:flex; align-items:center; gap:14px;
+  z-index:900; white-space:nowrap; box-shadow:0 8px 32px rgba(0,0,0,.5);
+}
+.rec-download-banner span { font-size:14px; color:var(--text); }
+.rec-dl-btn {
+  padding:8px 18px; background:var(--accent); border:2px solid var(--accent);
+  color:#fff; font-size:13px; font-weight:600; cursor:pointer;
+  transition:background .15s;
+}
+.rec-dl-btn:hover { background:var(--accent2); }
+.rec-dismiss-btn {
+  background:none; border:none; color:var(--muted);
+  font-size:18px; cursor:pointer; line-height:1; padding:0 4px;
+}
 </style>
 </head>
 <body>
@@ -571,6 +602,13 @@ body {
 
 </div>
 
+<!-- ══ Recording download banner ════════════════════════════════════════════ -->
+<div id="recDownloadBanner" class="rec-download-banner hidden">
+  <span>🎬 Your recording is ready</span>
+  <button class="rec-dl-btn" onclick="downloadRecording()">⬇ Download</button>
+  <button class="rec-dismiss-btn" onclick="dismissRecBanner()" title="Dismiss">✕</button>
+</div>
+
 <!-- ══ Loading overlay ══════════════════════════════════════════════════════ -->
 <div id="loadingOverlay" class="overlay hidden">
   <div class="spinner"></div>
@@ -612,6 +650,8 @@ let pendingToken  = null;
 let localStream   = null;
 let isSharing     = false;
 let isRecording   = false;
+let recordingDone = false;
+let rtkMeetingId  = '';
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
 function genCode() { return Math.random().toString(36).slice(2,8).toUpperCase(); }
@@ -685,6 +725,12 @@ function cleanupAndGoHome() {
   document.getElementById('audioUnlockBar').classList.add('hidden');
   isSharing   = false;
   isRecording = false;
+  if (recordingDone) {
+    document.getElementById('recDownloadBanner').classList.remove('hidden');
+  } else {
+    rtkMeetingId = '';
+  }
+  recordingDone = false;
   showLobby();
 }
 
@@ -1077,12 +1123,20 @@ function toggleRec() {
   if (!activeMeeting) return;
   const btn = document.getElementById('recBtn');
   if (isRecording) {
-    activeMeeting.recording.stop().catch(() => {});
-    isRecording = false;
-    btn.textContent = '⏺️'; btn.classList.remove('rec-on');
+    activeMeeting.recording.stop()
+      .then(() => {
+        isRecording = false; recordingDone = true;
+        btn.textContent = '⏺️'; btn.classList.remove('rec-on');
+        toast('Recording stopped — download available after leaving');
+      })
+      .catch(e => {
+        isRecording = false;
+        btn.textContent = '⏺️'; btn.classList.remove('rec-on');
+        toast('Stop recording failed: ' + (e.message || e));
+      });
   } else {
     activeMeeting.recording.start()
-      .then(() => { isRecording = true; btn.textContent = '⏹️'; btn.classList.add('rec-on'); })
+      .then(() => { isRecording = true; btn.textContent = '⏹️'; btn.classList.add('rec-on'); toast('Recording started'); })
       .catch(e => toast('Recording: ' + (e.message || e)));
   }
 }
@@ -1157,6 +1211,7 @@ async function doCreate() {
     return;
   }
 
+  rtkMeetingId = data.meetingId || '';
   await startMeeting(data.token, code);
   toast('Room created! Code: ' + code);
   document.getElementById('createBtn').disabled = false;
@@ -1212,9 +1267,34 @@ async function doJoin() {
     return;
   }
 
+  rtkMeetingId = rtkRoomId || '';
   await startMeeting(data.token, code);
   toast('Joined · ' + code);
   document.getElementById('joinBtn').disabled = false;
+}
+
+// ─── Recording download ───────────────────────────────────────────────────────
+async function downloadRecording() {
+  if (!rtkMeetingId) { toast('No meeting ID — cannot fetch recording'); return; }
+  toast('Fetching recording…');
+  try {
+    const res  = await fetch('/api/rtk/recordings?meetingId=' + encodeURIComponent(rtkMeetingId));
+    const data = await res.json();
+    const recs = Array.isArray(data.recordings) ? data.recordings : [];
+    if (!recs.length) { toast('Recording not ready yet — try again in a few minutes'); return; }
+    const rec = recs[0];
+    const url = rec.download_url ?? rec.url ?? rec.file_url ?? rec.storage_url;
+    if (!url) { toast('Recording still processing — check back in a few minutes'); return; }
+    const a = document.createElement('a');
+    a.href = url; a.download = 'meeting-recording.mp4'; a.target = '_blank';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    toast('Download started!');
+  } catch (e) { toast('Error: ' + e.message); }
+}
+
+function dismissRecBanner() {
+  document.getElementById('recDownloadBanner').classList.add('hidden');
+  rtkMeetingId = '';
 }
 
 // ─── Clipboard ────────────────────────────────────────────────────────────────
