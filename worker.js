@@ -333,6 +333,37 @@ body { height:100%; overflow:hidden; font-family:-apple-system,BlinkMacSystemFon
 <script>
 'use strict';
 
+// ─── Global playsinline patch (must run before any video is created) ──────────
+// iOS Safari and iOS Chrome refuse to play <video> without the playsinline
+// attribute — they show a black rectangle even when the stream is live.
+// The <rtk-meeting> component renders in a shadow DOM we cannot reach directly,
+// so we patch at the prototype level: every video element on the page (including
+// those inside closed shadow roots) automatically gets playsinline applied.
+(function patchPlaysinline() {
+  // Intercept srcObject assignment — fires before autoplay triggers
+  const desc = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'srcObject');
+  if (desc) {
+    Object.defineProperty(HTMLMediaElement.prototype, 'srcObject', {
+      configurable: true,
+      get() { return desc.get.call(this); },
+      set(v) {
+        if (this.tagName === 'VIDEO') {
+          this.setAttribute('playsinline', '');
+          this.playsInline = true;
+        }
+        desc.set.call(this, v);
+      },
+    });
+  }
+  // Intercept explicit play() calls as a second safety net
+  const origPlay = HTMLVideoElement.prototype.play;
+  HTMLVideoElement.prototype.play = function() {
+    this.setAttribute('playsinline', '');
+    this.playsInline = true;
+    return origPlay.call(this);
+  };
+}());
+
 // ─── Firebase (room code ↔ RealtimeKit meeting ID) ────────────────────────────
 firebase.initializeApp({
   apiKey:            'AIzaSyCra3IgsAaQlf3INjRn04DdX3KWwb8zdlo',
