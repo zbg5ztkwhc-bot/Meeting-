@@ -420,6 +420,10 @@ body { height:100%; overflow:hidden; position:relative;
     <div id="audioUnlockBar" class="hidden" onclick="unlockAudio()">
       🔇 Tap here to enable audio
     </div>
+    <!-- Debug status — shows live SDK state so we can diagnose issues -->
+    <div id="dbgBar" style="background:rgba(0,0,0,.85);color:#4ade80;font-size:11px;padding:6px 12px;font-family:monospace;line-height:1.8;flex-shrink:0;">
+      Initialising…
+    </div>
     <div id="videoGrid"></div>
     <div id="callControls">
       <button id="micBtn" class="ctrl-btn" onclick="toggleMic()" title="Mute/unmute">🎙️</button>
@@ -630,15 +634,19 @@ async function startMeeting(authToken, code) {
   }
 }
 
+// ─── Debug bar ────────────────────────────────────────────────────────────────
+function dbg(msg) {
+  const el = document.getElementById('dbgBar');
+  if (el) el.innerHTML = msg;
+}
+
 // ─── Join the meeting ─────────────────────────────────────────────────────────
 async function joinNow() {
   if (!pendingToken) return;
   document.getElementById('joinNowBtn').disabled = true;
   showLoading('Connecting…');
 
-  // ── 1. Init SDK with video/audio OFF so it doesn't compete with our preview ─
-  // (SDK opens the camera during init(), not join(). On iOS a cold camera
-  //  re-request immediately after stopping our preview fails silently.)
+  // ── 1. Init SDK — video:false so we don't compete with preview camera ──────
   let meeting;
   try {
     meeting = await RealtimeKitClient.init({
@@ -649,14 +657,14 @@ async function joinNow() {
   } catch (e) {
     hideLoading();
     document.getElementById('joinNowBtn').disabled = false;
-    setSetupStatus('⚠️ ' + e.message);
+    setSetupStatus('⚠️ Init failed: ' + (e.message || e));
     return;
   }
 
   activeMeeting = meeting;
   pendingToken  = null;
 
-  // ── 2. Wire ALL listeners BEFORE join() so no events are missed ───────────
+  // ── 2. Wire ALL listeners BEFORE join() ───────────────────────────────────
   meeting.self.on('roomLeft', cleanupAndGoHome);
   meeting.meta?.on?.('meetingEnded', () => activeMeeting?.leaveRoom?.());
   meeting.self.on('autoplayError', () => {
@@ -665,11 +673,11 @@ async function joinNow() {
 
   const grid     = document.getElementById('videoGrid');
   const selfTile = makeTile('self', meeting.self.name || 'You', true);
-  const selfVid  = makeVideo(true); // muted self-view
+  const selfVid  = makeVideo(true);
   selfTile.insertBefore(selfVid, selfTile.firstChild);
 
-  // Self video — updated by videoUpdate event
   meeting.self.on('videoUpdate', ({ videoEnabled, videoTrack }) => {
+    dbg('videoUpdate: enabled=' + videoEnabled + ' track=' + !!videoTrack);
     selfVid.srcObject = videoEnabled && videoTrack ? new MediaStream([videoTrack]) : null;
     if (videoEnabled && videoTrack) selfVid.play().catch(() => {});
   });
@@ -683,7 +691,6 @@ async function joinNow() {
     tile.insertBefore(video, tile.firstChild);
     tile.appendChild(audio);
     grid.appendChild(tile);
-
     function setVid(en, track) {
       video.srcObject = en && track ? new MediaStream([track]) : null;
       if (en && track) video.play().catch(() => {});
@@ -696,12 +703,13 @@ async function joinNow() {
     setAud(p.audioEnabled, p.audioTrack);
     p.on('videoUpdate', ({ videoEnabled, videoTrack }) => setVid(videoEnabled, videoTrack));
     p.on('audioUpdate', ({ audioEnabled, audioTrack }) => setAud(audioEnabled, audioTrack));
+    updateGridLayout();
   }
 
-  meeting.participants.active.on('participantJoined', (p) => { addParticipant(p); updateGridLayout(); });
+  meeting.participants.active.on('participantJoined', (p) => addParticipant(p));
   meeting.participants.active.on('participantLeft',   (p) => { document.getElementById('tile-' + p.id)?.remove(); updateGridLayout(); });
 
-  // ── 3. Join the room ──────────────────────────────────────────────────────
+  // ── 3. Join ───────────────────────────────────────────────────────────────
   showLoading('Joining…');
   try {
     await meeting.join();
@@ -709,28 +717,38 @@ async function joinNow() {
     hideLoading();
     activeMeeting = null;
     document.getElementById('joinNowBtn').disabled = false;
-    setSetupStatus('⚠️ ' + e.message);
+    setSetupStatus('⚠️ Join failed: ' + (e.message || e));
     showSetup();
     return;
   }
 
-  // ── 4. Free the camera THEN ask the SDK to enable video/audio ─────────────
-  // (preview is still running up to this point; now hand camera to the SDK)
+  // ── 4. Stop preview → enable SDK camera ───────────────────────────────────
   localStream?.getTracks().forEach(t => t.stop());
   localStream = null;
   document.getElementById('previewVid').srcObject = null;
 
   showCall();
   grid.appendChild(selfTile);
+  updateGridLayout();
   hideLoading();
 
-  // Enable camera and mic — these fire videoUpdate/audioUpdate with the tracks
-  meeting.self.enableVideo().catch(() => {});
+  dbg('Joined ✓ | enabling camera…');
+
+  // Enable video — fires videoUpdate which sets srcObject on selfVid
+  meeting.self.enableVideo()
+    .then(() => dbg('Camera on ✓ | videoEnabled=' + meeting.self.videoEnabled + ' track=' + !!meeting.self.videoTrack))
+    .catch(e => {
+      dbg('❌ enableVideo: ' + (e.message || e));
+      // Fallback: show raw preview stream in self tile
+      navigator.mediaDevices.getUserMedia({ video: { facingMode:'user' }, audio: false })
+        .then(s => { selfVid.srcObject = s; selfVid.play().catch(() => {}); dbg('Fallback cam ✓'); })
+        .catch(e2 => dbg('❌ fallback cam: ' + e2.message));
+    });
+
   meeting.self.enableAudio().catch(() => {});
 
-  // Add participants already in the room
+  // Existing participants
   (meeting.participants.active.toArray?.() ?? []).forEach(p => addParticipant(p));
-  updateGridLayout();
 }
 
 // ─── Unlock audio on iOS (call after user tap) ────────────────────────────────
