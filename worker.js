@@ -1,4 +1,8 @@
 // Cloudflare Worker — serves the app HTML and proxies Cloudflare RealtimeKit REST API.
+const RTK_ACCOUNT_ID = 'ab5bdefc1a1abd85f78c1a80ac0db805';
+const RTK_APP_ID     = 'c1e04640-67d7-4f7b-83c5-85420c1bb65b';
+const RTK_PRESET     = 'group_call_host';
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -22,8 +26,8 @@ export default {
   }
 };
 
-function rtkBase(env) {
-  return `https://api.cloudflare.com/client/v4/accounts/${env.REALTIMEKIT_ACCOUNT_ID}/realtime/kit/${env.REALTIMEKIT_APP_ID}`;
+function rtkBase() {
+  return `https://api.cloudflare.com/client/v4/accounts/${RTK_ACCOUNT_ID}/realtime/kit/${RTK_APP_ID}`;
 }
 
 function rtkHeaders(env) {
@@ -75,7 +79,7 @@ function assertSuccess(json, label) {
 }
 
 async function debugRTK(env, cors) {
-  const base = rtkBase(env);
+  const base = rtkBase();
   const headers = rtkHeaders(env);
 
   // Attempt to list meetings (GET) so we get a real response without side effects
@@ -93,7 +97,7 @@ async function debugRTK(env, cors) {
 }
 
 async function listPresets(env, cors) {
-  const res = await fetch(`${rtkBase(env)}/presets`, { method: 'GET', headers: rtkHeaders(env) });
+  const res = await fetch(`${rtkBase()}/presets`, { method: 'GET', headers: rtkHeaders(env) });
   const text = await res.text();
   let parsed;
   try { parsed = JSON.parse(text); } catch { parsed = null; }
@@ -113,7 +117,7 @@ async function createMeeting(request, env, cors) {
   const { title, userName } = await request.json();
 
   // 1. Create the meeting
-  const meetRes  = await fetch(`${rtkBase(env)}/meetings`, {
+  const meetRes  = await fetch(`${rtkBase()}/meetings`, {
     method: 'POST',
     headers: rtkHeaders(env),
     body: JSON.stringify({ title })
@@ -125,12 +129,12 @@ async function createMeeting(request, env, cors) {
   if (!meetingId) throw new Error('No meeting ID in response: ' + JSON.stringify(meetJson));
 
   // 2. Add the host as a participant and receive their auth token
-  const partRes  = await fetch(`${rtkBase(env)}/meetings/${meetingId}/participants`, {
+  const partRes  = await fetch(`${rtkBase()}/meetings/${meetingId}/participants`, {
     method: 'POST',
     headers: rtkHeaders(env),
     body: JSON.stringify({
       name:                  userName,
-      presetName:            env.REALTIMEKIT_PRESET_NAME || 'group_call_host',
+      presetName:            RTK_PRESET,
       custom_participant_id: crypto.randomUUID()
     })
   });
@@ -146,12 +150,12 @@ async function createMeeting(request, env, cors) {
 async function joinMeeting(request, env, cors) {
   const { meetingId, userName } = await request.json();
 
-  const partRes  = await fetch(`${rtkBase(env)}/meetings/${meetingId}/participants`, {
+  const partRes  = await fetch(`${rtkBase()}/meetings/${meetingId}/participants`, {
     method: 'POST',
     headers: rtkHeaders(env),
     body: JSON.stringify({
       name:                  userName,
-      presetName:            env.REALTIMEKIT_PRESET_NAME || 'group_call_host',
+      presetName:            RTK_PRESET,
       custom_participant_id: crypto.randomUUID()
     })
   });
