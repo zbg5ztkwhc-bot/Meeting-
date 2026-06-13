@@ -208,13 +208,27 @@ function closeModals() {
   document.getElementById('joinModal').classList.add('hidden');
 }
 
+// ─── iOS Safari: inject playsinline into shadow DOM videos ───────────────────
+function fixIOSVideo(rootEl) {
+  function walk(el) {
+    const sr = el.shadowRoot;
+    if (!sr) return;
+    sr.querySelectorAll('video').forEach(v => {
+      v.setAttribute('playsinline', '');
+      v.playsInline = true;
+      if (v.srcObject && v.paused) v.play().catch(() => {});
+    });
+    sr.querySelectorAll('*').forEach(walk);
+  }
+  walk(rootEl);
+}
+
 // ─── Start the RealtimeKit meeting ────────────────────────────────────────────
 async function startMeeting(authToken, code) {
   roomCode = code;
   showLoading('Connecting to meeting…');
 
   try {
-    // Ensure the web component is registered before we need it
     await customElements.whenDefined('rtk-meeting');
 
     const meeting = await RealtimeKitClient.init({
@@ -222,17 +236,23 @@ async function startMeeting(authToken, code) {
       baseURI: 'realtime.cloudflare.com',
     });
 
-    // Show room container FIRST and wait one animation frame so the browser
-    // computes real layout dimensions before the component initialises
+    // Show room container first and wait one rAF so the browser computes
+    // real layout dimensions before the component initialises
     document.getElementById('view-lobby').classList.add('hidden');
     document.getElementById('view-room').classList.remove('hidden');
     hideLoading();
     await new Promise(r => requestAnimationFrame(r));
 
-    // Assign meeting — the <rtk-meeting> component takes it from here:
-    // shows setup screen, lets user configure camera/mic, then joins on click
     const rtkEl = document.getElementById('rtkEl');
     rtkEl.meeting = meeting;
+
+    // When the room is joined, repeatedly inject playsinline into the
+    // component's shadow DOM videos — iOS Safari refuses to play any
+    // video element that lacks this attribute, causing a black screen
+    meeting.self.on('roomJoined', () => {
+      const delays = [200, 600, 1200, 2500, 5000];
+      delays.forEach(ms => setTimeout(() => fixIOSVideo(rtkEl), ms));
+    });
 
     const backToLobby = () => {
       document.getElementById('view-room').classList.add('hidden');
@@ -246,7 +266,6 @@ async function startMeeting(authToken, code) {
   } catch (err) {
     console.error('[RTK] startMeeting error:', err);
     hideLoading();
-    // Put lobby back and show error (room might have been revealed)
     document.getElementById('view-lobby').classList.remove('hidden');
     document.getElementById('view-room').classList.add('hidden');
     showLobbyErr('Meeting error: ' + err.message);
