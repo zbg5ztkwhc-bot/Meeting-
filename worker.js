@@ -843,13 +843,17 @@ async function joinNow() {
     updateScreenTile('self-screen', (meeting.self.name || 'You') + ' · Screen', screenShareEnabled, stream, true);
   });
 
-  function remoteScreenStream(p) {
-    return p.screenShareStream
-      ?? (p.screenShareTrack ? new MediaStream([p.screenShareTrack]) : null);
+  function remoteScreenStream(p, data) {
+    const track  = data?.screenShareTrack ?? p.screenShareTrack;
+    const stream = data?.screenShareStream ?? p.screenShareStream
+      ?? (track ? new MediaStream([track]) : null);
+    return stream;
   }
 
   meeting.participants.active.on('screenShareUpdate', (p) => {
-    updateScreenTile(p.id + '-screen', (p.name || 'Guest') + ' · Screen', p.screenShareEnabled, remoteScreenStream(p), false);
+    const stream = remoteScreenStream(p);
+    dbg('RemSS: ' + p.name + ' on=' + p.screenShareEnabled + ' trk=' + !!p.screenShareTrack + ' str=' + !!p.screenShareStream + ' got=' + !!stream);
+    updateScreenTile(p.id + '-screen', (p.name || 'Guest') + ' · Screen', p.screenShareEnabled, stream, false);
   });
 
   function addParticipant(p) {
@@ -873,8 +877,10 @@ async function joinNow() {
     setAud(p.audioEnabled, p.audioTrack);
     p.on('videoUpdate', ({ videoEnabled, videoTrack }) => setVid(videoEnabled, videoTrack));
     p.on('audioUpdate', ({ audioEnabled, audioTrack }) => setAud(audioEnabled, audioTrack));
-    p.on('screenShareUpdate', () => {
-      updateScreenTile(p.id + '-screen', (p.name || 'Guest') + ' · Screen', p.screenShareEnabled, remoteScreenStream(p), false);
+    p.on('screenShareUpdate', (data) => {
+      const stream = remoteScreenStream(p, data);
+      dbg('PrtSS: ' + p.name + ' on=' + p.screenShareEnabled + ' trk=' + !!p.screenShareTrack + ' str=' + !!p.screenShareStream + ' got=' + !!stream);
+      updateScreenTile(p.id + '-screen', (p.name || 'Guest') + ' · Screen', p.screenShareEnabled, stream, false);
     });
     if (p.screenShareEnabled) {
       updateScreenTile(p.id + '-screen', (p.name || 'Guest') + ' · Screen', true, remoteScreenStream(p), false);
