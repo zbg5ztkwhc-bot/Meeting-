@@ -18,7 +18,11 @@ export default {
     // Serve the app for all other GET requests
     if (request.method === 'GET') {
       return new Response(HTML, {
-        headers: { 'Content-Type': 'text/html; charset=utf-8' }
+        headers: {
+          'Content-Type':  'text/html; charset=utf-8',
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+          'Pragma':        'no-cache'
+        }
       });
     }
 
@@ -497,6 +501,7 @@ body {
   <header class="lobby-header">
     <span class="logo-icon">🎥</span>
     <span class="logo-name">HamoudaSpace</span>
+    <span style="font-size:10px;color:#334155;font-family:monospace;">v13</span>
   </header>
 
   <main class="lobby-main">
