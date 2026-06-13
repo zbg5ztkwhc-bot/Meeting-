@@ -190,77 +190,177 @@ const HTML = `
 <script src="https://cdn.jsdelivr.net/npm/@cloudflare/realtimekit@latest/dist/browser.js"></script>
 
 <style>
-/* ── Reset & tokens ────────────────────────────────────────────────────────── */
-* { margin:0; padding:0; box-sizing:border-box; }
+/* ── Reset ──────────────────────────────────────────────────────────────────── */
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
 :root {
-  --bg-dark:#05070c; --bg-card:#12161f; --bg-soft:#1a1f2c;
-  --border:#2a2f3e; --text:#eef2ff; --muted:#9ca3af;
-  --blue:#3b82f6; --blue2:#2563eb; --red:#ef4444;
+  --bg:      #0b1220;
+  --bg-card: #0f172a;
+  --bg-inp:  #1e293b;
+  --border:  #334155;
+  --text:    #f1f5f9;
+  --muted:   #94a3b8;
+  --accent:  #2563eb;
+  --accent2: #1d4ed8;
+  --red:     #ef4444;
+  --green:   #4ade80;
 }
-html { height:100%; overflow:hidden; position:relative; -webkit-overflow-scrolling:touch; }
-body { height:100%; overflow:hidden; position:relative;
+
+html, body { height:100%; overflow:hidden; }
+body {
   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
-  background:var(--bg-dark); color:var(--text); }
+  background:var(--bg); color:var(--text);
+  -webkit-font-smoothing:antialiased;
+}
 .hidden { display:none !important; }
 
-/* ── Lobby ─────────────────────────────────────────────────────────────────── */
-#view-lobby { display:flex; flex-direction:column; height:100vh; height:100dvh; overflow-y:auto;
-  background:radial-gradient(circle at 20% 30%,#0f121c,#020408); }
-.lobby-header { padding:16px 20px; padding-top:max(16px,env(safe-area-inset-top));
-  display:flex; justify-content:space-between; align-items:center;
-  background:rgba(10,12,18,.7); backdrop-filter:blur(12px);
-  border-bottom:1px solid var(--border); flex-wrap:wrap; gap:10px; }
-.logo-area { display:flex; gap:12px; align-items:center; }
-.logo-icon { width:44px; height:44px; background:var(--blue); border-radius:14px;
-  display:flex; align-items:center; justify-content:center; font-size:24px; }
-.lobby-actions { display:flex; gap:10px; }
-.lobby-main { max-width:700px; margin:40px auto; padding:20px; text-align:center; }
-.hero h1 { font-size:1.8rem; margin-bottom:12px; }
-.hero p  { font-size:14px; color:var(--muted); }
-.action-cards { display:flex; gap:16px; justify-content:center; margin-top:32px; flex-wrap:wrap; }
-.card { background:var(--bg-card); padding:24px; border-radius:28px; width:220px; border:1px solid var(--border); }
-.card h3 { margin-bottom:16px; }
-.card button { width:100%; padding:10px; font-size:14px; }
-.info-box  { margin-top:30px; padding:16px; background:rgba(59,130,246,.1); border-radius:20px; font-size:12px; text-align:left; color:var(--muted); }
-.error-box { margin-top:20px; padding:14px 18px; background:rgba(239,68,68,.12);
-  border:1px solid rgba(239,68,68,.3); border-radius:16px; font-size:13px; color:#f87171; }
-.btn { padding:12px 24px; border-radius:40px; font-weight:600; border:none; cursor:pointer; font-size:16px; transition:opacity .15s; }
-.btn:disabled { opacity:.5; cursor:not-allowed; }
-.btn-primary   { background:var(--blue); color:#fff; }
-.btn-primary:hover:not(:disabled) { background:var(--blue2); }
-.btn-secondary { background:var(--bg-card); color:var(--text); border:1px solid var(--border); }
-.btn-secondary:hover:not(:disabled) { background:#1c2030; }
+/* ── Animated tetris grid (from Learnly) ────────────────────────────────────── */
+.tetris-grid {
+  background-color:var(--bg);
+  background-image:
+    linear-gradient(to right,  rgba(148,163,184,.12) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(148,163,184,.12) 1px, transparent 1px);
+  background-size:32px 32px;
+  animation:tetris-pan 30s linear infinite;
+}
+@keyframes tetris-pan {
+  0%   { background-position:0 0; }
+  100% { background-position:256px 256px; }
+}
+@media (prefers-reduced-motion:reduce) { .tetris-grid { animation:none; } }
 
-/* ── Modals ─────────────────────────────────────────────────────────────────── */
-.modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,.85); backdrop-filter:blur(6px);
-  display:flex; align-items:center; justify-content:center; z-index:600; padding:20px; }
-.modal-card { background:var(--bg-card); border-radius:28px; padding:28px; width:90%; max-width:350px; }
-.modal-title { font-size:20px; font-weight:600; margin-bottom:20px; }
-.modal-card input { width:100%; margin-bottom:12px; background:var(--bg-soft); border:1px solid var(--border);
-  border-radius:14px; padding:12px 14px; color:white; font-size:15px; outline:none; transition:border-color .2s; }
-.modal-card input:focus { border-color:var(--blue); }
-.modal-error { color:#f87171; font-size:12px; margin-bottom:10px; min-height:16px; }
-.modal-footer { display:flex; justify-content:flex-end; gap:12px; margin-top:8px; }
+/* ── Lobby ───────────────────────────────────────────────────────────────────── */
+#view-lobby {
+  height:100vh; height:100dvh;
+  display:flex; flex-direction:column;
+  overflow-y:auto; -webkit-overflow-scrolling:touch;
+}
 
-/* ── Loading overlay ─────────────────────────────────────────────────────────── */
-.overlay { position:fixed; inset:0; background:rgba(0,0,0,.92); display:flex; align-items:center;
-  justify-content:center; z-index:700; flex-direction:column; gap:16px; }
-.spinner { width:40px; height:40px; border:3px solid #2a3048; border-top-color:var(--blue); border-radius:50%; animation:spin .8s linear infinite; }
+.lobby-header {
+  padding:18px 24px;
+  padding-top:max(18px,env(safe-area-inset-top));
+  display:flex; align-items:center; gap:10px;
+  border-bottom:1px solid rgba(148,163,184,.12);
+}
+.logo-icon { font-size:26px; line-height:1; }
+.logo-name  { font-size:22px; font-weight:700; letter-spacing:-.5px; color:var(--text); }
+
+.lobby-main {
+  flex:1;
+  display:flex; flex-direction:column; align-items:center;
+  text-align:center;
+  padding:48px 20px 60px;
+}
+
+.hero-title {
+  font-size:clamp(2rem,8vw,3.5rem);
+  font-weight:600; line-height:1.18;
+  letter-spacing:-.02em;
+  color:var(--text);
+  max-width:640px;
+}
+.hero-sub {
+  margin-top:16px;
+  font-size:16px; color:var(--muted);
+  max-width:480px;
+}
+
+/* ── Tab panel ───────────────────────────────────────────────────────────────── */
+.tab-panel {
+  margin-top:40px;
+  width:100%; max-width:460px;
+  text-align:left;
+}
+
+.tab-switcher {
+  display:flex; gap:6px;
+  background:var(--bg-card);
+  padding:4px; width:fit-content; margin:0 auto 20px;
+  border:2px solid var(--border);
+}
+.tab-btn {
+  padding:8px 24px; font-size:14px; font-weight:500;
+  border:2px solid transparent; cursor:pointer;
+  background:transparent; color:var(--muted);
+  transition:background .15s, color .15s, border-color .15s;
+}
+.tab-btn.active {
+  background:var(--accent); border-color:var(--accent); color:#fff;
+}
+
+.tab-form {
+  background:var(--bg-card);
+  border:2px solid var(--border);
+  padding:24px;
+}
+.tab-form label {
+  display:block; font-size:13px; color:var(--muted); margin-bottom:6px;
+}
+.tab-form input {
+  width:100%; padding:11px 14px;
+  background:var(--bg-inp); color:var(--text);
+  border:2px solid var(--border);
+  font-size:15px; outline:none;
+  transition:border-color .15s;
+  margin-bottom:16px;
+}
+.tab-form input:focus { border-color:var(--accent); }
+.tab-form input::placeholder { color:var(--muted); }
+
+.tab-form .form-error {
+  color:#f87171; font-size:12px; min-height:18px; margin-bottom:8px;
+}
+
+.lobby-btn {
+  width:100%; padding:13px;
+  background:var(--accent); border:2px solid var(--accent);
+  color:#fff; font-size:15px; font-weight:600;
+  cursor:pointer; transition:background .15s, border-color .15s;
+}
+.lobby-btn:hover:not(:disabled) { background:var(--accent2); border-color:var(--accent2); }
+.lobby-btn:disabled { opacity:.55; cursor:not-allowed; }
+
+/* Error banner below tab panel */
+.lobby-error {
+  margin-top:16px;
+  padding:12px 16px;
+  background:rgba(239,68,68,.1); border:1px solid rgba(239,68,68,.3);
+  color:#f87171; font-size:13px;
+}
+
+/* ── Toast ───────────────────────────────────────────────────────────────────── */
+.toast {
+  position:fixed; bottom:calc(80px + env(safe-area-inset-bottom));
+  left:50%; transform:translateX(-50%);
+  background:var(--bg-card); border:1px solid var(--border);
+  padding:8px 20px; font-size:12px;
+  white-space:nowrap; pointer-events:none; z-index:800;
+  animation:toastAnim 2.8s ease forwards;
+}
+@keyframes toastAnim {
+  0%  { opacity:0; transform:translateX(-50%) translateY(8px); }
+  12% { opacity:1; transform:translateX(-50%) translateY(0); }
+  80% { opacity:1; }
+  100%{ opacity:0; }
+}
+
+/* ── Loading overlay ──────────────────────────────────────────────────────────── */
+.overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,.9);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:18px; z-index:700;
+}
+.spinner {
+  width:40px; height:40px;
+  border:3px solid rgba(255,255,255,.1);
+  border-top-color:var(--accent);
+  border-radius:50%; animation:spin .7s linear infinite;
+}
 .overlay-msg { color:var(--muted); font-size:14px; }
 @keyframes spin { to { transform:rotate(360deg); } }
 
-/* ── Toast ───────────────────────────────────────────────────────────────────── */
-.toast { position:fixed; bottom:calc(80px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%);
-  background:#1e2030; border:1px solid var(--border); padding:8px 20px; border-radius:40px; z-index:800;
-  font-size:12px; white-space:nowrap; pointer-events:none; animation:toastAnim 2.8s ease forwards; }
-@keyframes toastAnim {
-  0%{opacity:0;transform:translateX(-50%) translateY(8px)}
-  12%{opacity:1;transform:translateX(-50%) translateY(0)}
-  80%{opacity:1} 100%{opacity:0} }
-
 /* ════════════════════════════════════════════════════════════════════════════
-   ROOM  (position:absolute because iOS Safari breaks position:fixed when
-          overflow:hidden is set on body — body has position:relative above)
+   ROOM  (position:absolute → iOS Safari fix for overflow:hidden + fixed)
    ════════════════════════════════════════════════════════════════════════════ */
 #view-room {
   position:absolute; inset:0; z-index:100;
@@ -268,46 +368,65 @@ body { height:100%; overflow:hidden; position:relative;
   background:#000;
 }
 
-/* ── Setup screen ──────────────────────────────────────────────────────────── */
+/* ── Setup screen ───────────────────────────────────────────────────────────── */
 #setupScreen {
   flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
-  gap:20px; padding:24px; background:linear-gradient(180deg,#080a10 0%,#0a0c16 100%);
+  gap:20px; padding:24px;
+  background:var(--bg);
 }
-.preview-frame {
-  width:100%; max-width:360px; border-radius:20px; overflow:hidden;
-  background:#111; aspect-ratio:4/3; position:relative; box-shadow:0 0 0 1px rgba(255,255,255,.08);
+
+.setup-title {
+  font-size:22px; font-weight:600; letter-spacing:-.01em; text-align:center;
+}
+
+.preview-wrap {
+  width:100%; max-width:340px;
+  aspect-ratio:4/3; position:relative;
+  background:#0a0f1c; overflow:hidden;
+  border:2px solid var(--border);
 }
 #previewVid {
   width:100%; height:100%; object-fit:cover; display:block;
   transform:scaleX(-1);
 }
-.preview-status {
+.preview-badge {
   position:absolute; bottom:10px; left:50%; transform:translateX(-50%);
-  background:rgba(0,0,0,.72); color:#fff; padding:4px 14px; border-radius:20px;
-  font-size:12px; white-space:nowrap; backdrop-filter:blur(4px);
-}
-#setupStatus { color:var(--muted); font-size:14px; text-align:center; min-height:20px; }
-#joinNowBtn {
-  width:100%; max-width:300px; padding:16px;
-  border-radius:40px; background:var(--blue); color:#fff;
-  font-size:18px; font-weight:700; border:none; cursor:pointer;
-  transition:background .15s, opacity .15s;
-}
-#joinNowBtn:disabled { opacity:.5; cursor:not-allowed; }
-#joinNowBtn:not(:disabled):hover { background:var(--blue2); }
-.btn-back {
-  background:none; border:none; color:var(--muted); font-size:13px;
-  cursor:pointer; padding:8px 16px;
+  background:rgba(0,0,0,.75); color:#fff; font-size:11px;
+  padding:3px 12px; backdrop-filter:blur(4px);
+  white-space:nowrap;
 }
 
-/* ── Call screen ───────────────────────────────────────────────────────────── */
+#setupStatus { color:var(--muted); font-size:13px; text-align:center; min-height:18px; }
+
+#joinNowBtn {
+  width:100%; max-width:300px; padding:15px;
+  background:var(--accent); border:2px solid var(--accent);
+  color:#fff; font-size:17px; font-weight:700;
+  cursor:pointer; transition:background .15s, opacity .15s;
+}
+#joinNowBtn:not(:disabled):hover { background:var(--accent2); }
+#joinNowBtn:disabled { opacity:.5; cursor:not-allowed; }
+
+.btn-back {
+  background:none; border:none; color:var(--muted);
+  font-size:13px; cursor:pointer; padding:6px 12px;
+}
+.btn-back:hover { color:var(--text); }
+
+/* ── Call screen ────────────────────────────────────────────────────────────── */
 #callScreen { flex:1; display:flex; flex-direction:column; overflow:hidden; background:#0a0a0f; }
 
-/* iOS audio unlock banner */
 #audioUnlockBar {
   background:rgba(220,38,38,.92); color:#fff; text-align:center;
-  padding:11px 16px; font-size:14px; font-weight:600; cursor:pointer; flex-shrink:0;
-  letter-spacing:.01em;
+  padding:12px 16px; font-size:14px; font-weight:600;
+  cursor:pointer; flex-shrink:0; letter-spacing:.01em;
+}
+
+/* Debug bar */
+#dbgBar {
+  background:rgba(0,0,0,.88); color:var(--green);
+  font-size:11px; padding:6px 14px;
+  font-family:ui-monospace,monospace; line-height:1.8; flex-shrink:0;
 }
 
 /* Video grid */
@@ -317,10 +436,9 @@ body { height:100%; overflow:hidden; position:relative;
   background:#000;
 }
 
-/* Participant tile */
 .vtile {
-  position:relative; border-radius:12px; overflow:hidden;
-  background:#131320; display:flex; align-items:center; justify-content:center;
+  position:relative; overflow:hidden;
+  background:#0d1017; display:flex; align-items:center; justify-content:center;
   flex-grow:1; flex-shrink:1; min-height:80px;
   transition:flex-basis .2s;
 }
@@ -330,34 +448,33 @@ body { height:100%; overflow:hidden; position:relative;
 }
 .vtile.self-tile video { transform:scaleX(-1); }
 
-/* Avatar shown when camera is off */
 .vavatar {
   width:64px; height:64px; border-radius:50%;
-  background:var(--blue); display:flex; align-items:center; justify-content:center;
-  font-size:28px; font-weight:700; color:#fff; z-index:1; flex-shrink:0;
-  text-transform:uppercase;
+  background:var(--accent); display:flex; align-items:center; justify-content:center;
+  font-size:28px; font-weight:700; color:#fff; z-index:1;
+  flex-shrink:0; text-transform:uppercase;
 }
 
-/* Name label */
 .vname {
   position:absolute; bottom:8px; left:8px; z-index:3;
   background:rgba(0,0,0,.68); color:#fff;
-  padding:3px 10px; border-radius:14px; font-size:11px; font-weight:600;
-  max-width:calc(100% - 16px); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  padding:3px 10px; font-size:11px; font-weight:600;
+  max-width:calc(100% - 16px); overflow:hidden;
+  text-overflow:ellipsis; white-space:nowrap;
   backdrop-filter:blur(4px);
 }
-/* "You" badge on self tile */
 .vtile.self-tile .vname::after { content:' · You'; opacity:.7; }
 
 /* Call controls */
 #callControls {
   display:flex; align-items:center; justify-content:center; gap:20px;
   padding:16px; padding-bottom:max(16px,env(safe-area-inset-bottom));
-  background:rgba(5,5,10,.96); flex-shrink:0; border-top:1px solid rgba(255,255,255,.06);
+  background:rgba(5,7,15,.97); flex-shrink:0;
+  border-top:1px solid rgba(255,255,255,.06);
 }
 .ctrl-btn {
   width:58px; height:58px; border-radius:50%; border:none; cursor:pointer;
-  font-size:24px; background:#1f2336; color:#fff;
+  font-size:22px; background:#1e2433; color:#fff;
   display:flex; align-items:center; justify-content:center;
   transition:background .15s; flex-shrink:0;
 }
@@ -368,47 +485,60 @@ body { height:100%; overflow:hidden; position:relative;
 </head>
 <body>
 
-<!-- ── Lobby ─────────────────────────────────────────────────────────────── -->
-<div id="view-lobby">
-  <div class="lobby-header">
-    <div class="logo-area">
-      <div class="logo-icon">🎥</div>
-      <div>
-        <strong>HamoudaSpace</strong>
-        <div style="font-size:10px;color:var(--muted)">Powered by Cloudflare RealtimeKit</div>
+<!-- ══ Lobby ════════════════════════════════════════════════════════════════ -->
+<div id="view-lobby" class="tetris-grid">
+
+  <header class="lobby-header">
+    <span class="logo-icon">🎥</span>
+    <span class="logo-name">HamoudaSpace</span>
+  </header>
+
+  <main class="lobby-main">
+    <h1 class="hero-title">Simple, secure<br>video meetings</h1>
+    <p class="hero-sub">Powered by Cloudflare RealtimeKit · Encrypted WebRTC · Works everywhere</p>
+
+    <div class="tab-panel">
+      <!-- Tab switcher -->
+      <div class="tab-switcher">
+        <button class="tab-btn active" id="tabBtnCreate" onclick="setTab('create')">Create</button>
+        <button class="tab-btn"       id="tabBtnJoin"   onclick="setTab('join')">Join</button>
       </div>
+
+      <!-- Create form -->
+      <div class="tab-form" id="tab-create">
+        <label for="createRoomName">Meeting name</label>
+        <input id="createRoomName" placeholder="What's this meeting about?" maxlength="50" />
+        <label for="createUserName">Your name</label>
+        <input id="createUserName" placeholder="Your display name" maxlength="30" />
+        <div id="createError" class="form-error"></div>
+        <button class="lobby-btn" id="createBtn" onclick="doCreate()">Start Meeting</button>
+      </div>
+
+      <!-- Join form -->
+      <div class="tab-form hidden" id="tab-join">
+        <label for="joinCode">Room code</label>
+        <input id="joinCode" placeholder="6-letter code" maxlength="6"
+               style="text-transform:uppercase;letter-spacing:4px;font-size:18px;" />
+        <label for="joinUserName">Your name</label>
+        <input id="joinUserName" placeholder="Your display name" maxlength="30" />
+        <div id="joinError" class="form-error"></div>
+        <button class="lobby-btn" id="joinBtn" onclick="doJoin()">Join Meeting</button>
+      </div>
+
+      <div id="lobbyError" class="lobby-error hidden"></div>
     </div>
-    <div class="lobby-actions">
-      <button class="btn btn-secondary" onclick="openModal('join')">🔗 Join</button>
-      <button class="btn btn-primary"   onclick="openModal('create')">✨ New Meeting</button>
-    </div>
-  </div>
-  <div class="lobby-main">
-    <div class="hero">
-      <h1>Video Meetings That Work</h1>
-      <p>Powered by Cloudflare RealtimeKit · Encrypted WebRTC · Works on all browsers</p>
-    </div>
-    <div class="action-cards">
-      <div class="card"><h3>Start a Meeting</h3><button class="btn btn-primary"   onclick="openModal('create')">Create Room</button></div>
-      <div class="card"><h3>Join a Meeting</h3> <button class="btn btn-secondary" onclick="openModal('join')">Enter Code</button></div>
-    </div>
-    <div id="lobbyError" class="error-box hidden"></div>
-    <div class="info-box">
-      <strong>How it works:</strong> Create a room and share the 6-letter code.
-      Media is relayed through Cloudflare's global network — fully encrypted,
-      works on Chrome, Firefox, Safari, Edge, and all mobile browsers.
-    </div>
-  </div>
+  </main>
 </div>
 
-<!-- ── Room ───────────────────────────────────────────────────────────────── -->
+<!-- ══ Room ═════════════════════════════════════════════════════════════════ -->
 <div id="view-room" class="hidden">
 
-  <!-- Pre-call: camera preview before joining -->
+  <!-- Pre-call camera preview -->
   <div id="setupScreen" class="hidden">
-    <div class="preview-frame">
+    <div class="setup-title">Ready to join?</div>
+    <div class="preview-wrap">
       <video id="previewVid" autoplay muted playsinline webkit-playsinline></video>
-      <div class="preview-status" id="previewStatusBadge">Camera preview</div>
+      <div class="preview-badge" id="previewStatusBadge">Camera preview</div>
     </div>
     <div id="setupStatus">Starting camera…</div>
     <button id="joinNowBtn" onclick="joinNow()" disabled>Join Meeting</button>
@@ -420,49 +550,18 @@ body { height:100%; overflow:hidden; position:relative;
     <div id="audioUnlockBar" class="hidden" onclick="unlockAudio()">
       🔇 Tap here to enable audio
     </div>
-    <!-- Debug status — shows live SDK state so we can diagnose issues -->
-    <div id="dbgBar" style="background:rgba(0,0,0,.85);color:#4ade80;font-size:11px;padding:6px 12px;font-family:monospace;line-height:1.8;flex-shrink:0;">
-      Initialising…
-    </div>
+    <div id="dbgBar">Initialising…</div>
     <div id="videoGrid"></div>
     <div id="callControls">
       <button id="micBtn" class="ctrl-btn" onclick="toggleMic()" title="Mute/unmute">🎙️</button>
       <button id="camBtn" class="ctrl-btn" onclick="toggleCam()" title="Camera on/off">📹</button>
-      <button class="ctrl-btn ctrl-end"  onclick="leaveCall()"  title="Leave">📵</button>
+      <button class="ctrl-btn ctrl-end"   onclick="leaveCall()"  title="Leave">📵</button>
     </div>
   </div>
 
 </div>
 
-<!-- ── Create modal ───────────────────────────────────────────────────────── -->
-<div id="createModal" class="modal-backdrop hidden">
-  <div class="modal-card">
-    <div class="modal-title">New Meeting</div>
-    <input id="createRoomName" placeholder="Meeting name"      maxlength="50" />
-    <input id="createUserName" placeholder="Your display name" maxlength="30" />
-    <div id="createError" class="modal-error"></div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModals()">Cancel</button>
-      <button class="btn btn-primary"   id="createBtn" onclick="doCreate()">Create</button>
-    </div>
-  </div>
-</div>
-
-<!-- ── Join modal ─────────────────────────────────────────────────────────── -->
-<div id="joinModal" class="modal-backdrop hidden">
-  <div class="modal-card">
-    <div class="modal-title">Join Meeting</div>
-    <input id="joinCode"     placeholder="6-letter room code" maxlength="6" style="text-transform:uppercase;letter-spacing:3px" />
-    <input id="joinUserName" placeholder="Your display name"  maxlength="30" />
-    <div id="joinError" class="modal-error"></div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModals()">Cancel</button>
-      <button class="btn btn-primary"   id="joinBtn" onclick="doJoin()">Join</button>
-    </div>
-  </div>
-</div>
-
-<!-- ── Loading overlay ───────────────────────────────────────────────────── -->
+<!-- ══ Loading overlay ══════════════════════════════════════════════════════ -->
 <div id="loadingOverlay" class="overlay hidden">
   <div class="spinner"></div>
   <div class="overlay-msg" id="overlayMsg">Please wait…</div>
@@ -471,9 +570,7 @@ body { height:100%; overflow:hidden; position:relative;
 <script>
 'use strict';
 
-// Patch document.createElement so every <video> element gets playsinline
-// set at creation time — this applies to ALL video elements including those
-// created inside closed shadow DOM (custom elements use the same document).
+// Auto-set playsinline on every <video> element including those inside shadow DOM
 (function() {
   const _orig = document.createElement.bind(document);
   document.createElement = function(tag, opts) {
@@ -523,12 +620,27 @@ function hideLoading() { document.getElementById('loadingOverlay').classList.add
 
 function showLobbyErr(msg) {
   const el = document.getElementById('lobbyError');
-  el.textContent = '⚠️ ' + msg; el.classList.remove('hidden');
+  el.textContent = '⚠️ ' + msg;
+  el.classList.remove('hidden');
 }
 function hideLobbyErr() { document.getElementById('lobbyError').classList.add('hidden'); }
 
 function setSetupStatus(msg) {
   document.getElementById('setupStatus').textContent = msg;
+}
+
+// ─── Tab switcher ─────────────────────────────────────────────────────────────
+function setTab(tab) {
+  document.getElementById('tab-create').classList.toggle('hidden', tab !== 'create');
+  document.getElementById('tab-join').classList.toggle('hidden',   tab !== 'join');
+  document.getElementById('tabBtnCreate').classList.toggle('active', tab === 'create');
+  document.getElementById('tabBtnJoin').classList.toggle('active',   tab === 'join');
+  // Focus first input
+  setTimeout(() => {
+    (tab === 'create'
+      ? document.getElementById('createRoomName')
+      : document.getElementById('joinCode'))?.focus();
+  }, 60);
 }
 
 // ─── View switching ───────────────────────────────────────────────────────────
@@ -560,23 +672,6 @@ function cleanupAndGoHome() {
   document.getElementById('previewVid').srcObject = null;
   document.getElementById('audioUnlockBar').classList.add('hidden');
   showLobby();
-}
-
-// ─── Modals ───────────────────────────────────────────────────────────────────
-function openModal(type) {
-  document.getElementById('createError').textContent = '';
-  document.getElementById('joinError').textContent   = '';
-  document.getElementById('createModal').classList.toggle('hidden', type !== 'create');
-  document.getElementById('joinModal').classList.toggle('hidden',   type !== 'join');
-  setTimeout(() => {
-    (type === 'create'
-      ? document.getElementById('createRoomName')
-      : document.getElementById('joinCode'))?.focus();
-  }, 60);
-}
-function closeModals() {
-  document.getElementById('createModal').classList.add('hidden');
-  document.getElementById('joinModal').classList.add('hidden');
 }
 
 // ─── Video element factory ────────────────────────────────────────────────────
@@ -776,24 +871,20 @@ async function joinNow() {
   updateGridLayout();
   hideLoading();
 
-  // Enable video — fires videoUpdate which sets srcObject on selfVid
   meeting.self.enableVideo()
     .then(() => dbg('Camera on ✓ | videoEnabled=' + meeting.self.videoEnabled + ' track=' + !!meeting.self.videoTrack))
     .catch(e => {
       dbg('❌ enableVideo: ' + (e.message || e));
-      // Fallback: show raw preview stream in self tile
       navigator.mediaDevices.getUserMedia({ video: { facingMode:'user' }, audio: false })
         .then(s => { selfVid.srcObject = s; selfVid.play().catch(() => {}); dbg('Fallback cam ✓'); })
         .catch(e2 => dbg('❌ fallback cam: ' + e2.message));
     });
 
   meeting.self.enableAudio().catch(() => {});
-
-  // Existing participants
   (meeting.participants.active.toArray?.() ?? []).forEach(p => addParticipant(p));
 }
 
-// ─── Unlock audio on iOS (call after user tap) ────────────────────────────────
+// ─── Unlock audio on iOS ──────────────────────────────────────────────────────
 function unlockAudio() {
   activeMeeting?.self?.playAudio?.();
   document.getElementById('audioUnlockBar').classList.add('hidden');
@@ -830,7 +921,6 @@ function leaveCall() {
   if (activeMeeting) {
     activeMeeting.leaveRoom?.();
   } else {
-    // From setup screen before joining
     localStream?.getTracks().forEach(t => t.stop());
     localStream  = null;
     pendingToken = null;
@@ -850,7 +940,6 @@ async function doCreate() {
   }
 
   document.getElementById('createBtn').disabled = true;
-  closeModals();
   hideLobbyErr();
   showLoading('Creating meeting…');
 
@@ -900,7 +989,6 @@ async function doJoin() {
   }
 
   document.getElementById('joinBtn').disabled = true;
-  closeModals();
   hideLobbyErr();
   showLoading('Looking up room…');
 
@@ -968,7 +1056,7 @@ document.getElementById('joinCode').addEventListener('input', e => {
 const autoCode = new URLSearchParams(location.search).get('join');
 if (autoCode?.length === 6) {
   document.getElementById('joinCode').value = autoCode.toUpperCase();
-  openModal('join');
+  setTab('join');
   toast('Enter your name to join');
 }
 </script>
