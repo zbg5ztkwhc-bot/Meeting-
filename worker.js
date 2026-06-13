@@ -1058,10 +1058,12 @@ function leaveCall() {
 
 // ─── Create room ──────────────────────────────────────────────────────────────
 async function doCreate() {
+  toast('▶ doCreate called');
   const rn = document.getElementById('createRoomName').value.trim();
   const un = document.getElementById('createUserName').value.trim();
   document.getElementById('createError').textContent = '';
   if (!rn || !un) {
+    toast('⚠ Fill both fields: name=' + !!rn + ' user=' + !!un);
     document.getElementById('createError').textContent = 'Please fill in both fields.';
     return;
   }
