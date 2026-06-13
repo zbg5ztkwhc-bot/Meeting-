@@ -303,6 +303,9 @@ body {
 .ctrl-btn.off  { background:#7f1d1d; }
 .ctrl-end      { background:var(--red); }
 .ctrl-end:hover { background:#dc2626; }
+.ctrl-btn.share-on { background:#1d4ed8; }
+.ctrl-btn.rec-on   { background:#dc2626; animation:recPulse 1.2s ease-in-out infinite; }
+@keyframes recPulse { 0%,100%{ opacity:1; } 50%{ opacity:.6; } }
 </style>
 </head>
 <body>
@@ -375,9 +378,12 @@ body {
     <div id="dbgBar">Initialising…</div>
     <div id="videoGrid"></div>
     <div id="callControls">
-      <button id="micBtn" class="ctrl-btn" onclick="toggleMic()" title="Mute/unmute">🎙️</button>
-      <button id="camBtn" class="ctrl-btn" onclick="toggleCam()" title="Camera on/off">📹</button>
-      <button class="ctrl-btn ctrl-end"   onclick="leaveCall()"  title="Leave">📵</button>
+      <button id="micBtn"      class="ctrl-btn"           onclick="toggleMic()"    title="Mute/unmute">🎙️</button>
+      <button id="camBtn"      class="ctrl-btn"           onclick="toggleCam()"    title="Camera on/off">📹</button>
+      <button id="shareBtn"    class="ctrl-btn"           onclick="toggleShare()"  title="Screen share">🖥️</button>
+      <button id="recBtn"      class="ctrl-btn"           onclick="toggleRec()"    title="Record">⏺️</button>
+      <button id="shareLinkBtn" class="ctrl-btn"          onclick="shareMeeting()" title="Share invite">🔗</button>
+      <button class="ctrl-btn ctrl-end"                   onclick="leaveCall()"    title="Leave">📵</button>
     </div>
   </div>
 
@@ -422,6 +428,8 @@ let roomCode      = '';
 let activeMeeting = null;
 let pendingToken  = null;
 let localStream   = null;
+let isSharing     = false;
+let isRecording   = false;
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
 function genCode() { return Math.random().toString(36).slice(2,8).toUpperCase(); }
@@ -493,6 +501,8 @@ function cleanupAndGoHome() {
   document.getElementById('videoGrid').innerHTML = '';
   document.getElementById('previewVid').srcObject = null;
   document.getElementById('audioUnlockBar').classList.add('hidden');
+  isSharing   = false;
+  isRecording = false;
   showLobby();
 }
 
@@ -735,6 +745,49 @@ function toggleCam() {
   } else {
     activeMeeting.self.enableVideo();
     btn.textContent = '📹'; btn.classList.remove('off');
+  }
+}
+
+// ─── Screen share ────────────────────────────────────────────────────────────
+function toggleShare() {
+  if (!activeMeeting) return;
+  const btn = document.getElementById('shareBtn');
+  if (isSharing) {
+    activeMeeting.self.disableScreenShare().catch(() => {});
+    isSharing = false;
+    btn.classList.remove('share-on');
+  } else {
+    activeMeeting.self.enableScreenShare()
+      .then(() => { isSharing = true; btn.classList.add('share-on'); })
+      .catch(e => toast('Screen share: ' + (e.message || 'Not supported on this device')));
+  }
+}
+
+// ─── Recording ───────────────────────────────────────────────────────────────
+function toggleRec() {
+  if (!activeMeeting) return;
+  const btn = document.getElementById('recBtn');
+  if (isRecording) {
+    activeMeeting.recording.stop().catch(() => {});
+    isRecording = false;
+    btn.textContent = '⏺️'; btn.classList.remove('rec-on');
+  } else {
+    activeMeeting.recording.start()
+      .then(() => { isRecording = true; btn.textContent = '⏹️'; btn.classList.add('rec-on'); })
+      .catch(e => toast('Recording: ' + (e.message || e)));
+  }
+}
+
+// ─── Share meeting link ───────────────────────────────────────────────────────
+function shareMeeting() {
+  if (!roomCode) return;
+  const url = location.origin + '/?join=' + roomCode;
+  if (navigator.share) {
+    navigator.share({ title: 'Join my meeting', url }).catch(() => {});
+  } else {
+    navigator.clipboard?.writeText(url)
+      .then(() => toast('Invite link copied!'))
+      .catch(() => toast('Room code: ' + roomCode));
   }
 }
 
