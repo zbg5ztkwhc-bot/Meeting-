@@ -661,13 +661,23 @@ async function joinNow() {
     updateScreenTile('self-screen', (meeting.self.name || 'You') + ' · Screen', screenShareEnabled, stream, true);
   });
 
-  function remoteScreenStream(p) {
-    return p.screenShareStream
-      ?? (p.screenShareTrack ? new MediaStream([p.screenShareTrack]) : null);
+  function findUnclaimedVideoStream() {
+    const usedTracks = new Set(
+      [...document.querySelectorAll('video')]
+        .flatMap(v => v.srcObject ? v.srcObject.getVideoTracks() : [])
+    );
+    const entry = [..._remoteVideoTracks].reverse()
+      .find(({track}) => !usedTracks.has(track) && track.readyState !== 'ended');
+    return entry?.stream ?? null;
   }
 
   meeting.participants.active.on('screenShareUpdate', (p) => {
-    updateScreenTile(p.id + '-screen', (p.name || 'Guest') + ' · Screen', p.screenShareEnabled, remoteScreenStream(p), false);
+    if (!p.screenShareEnabled) {
+      updateScreenTile(p.id + '-screen', '', false, null, false);
+      return;
+    }
+    const stream = findUnclaimedVideoStream();
+    updateScreenTile(p.id + '-screen', (p.name || 'Guest') + ' · Screen', true, stream, false);
   });
 
   function addParticipant(p) {
@@ -692,10 +702,11 @@ async function joinNow() {
     p.on('videoUpdate', ({ videoEnabled, videoTrack }) => setVid(videoEnabled, videoTrack));
     p.on('audioUpdate', ({ audioEnabled, audioTrack }) => setAud(audioEnabled, audioTrack));
     p.on('screenShareUpdate', () => {
-      updateScreenTile(p.id + '-screen', (p.name || 'Guest') + ' · Screen', p.screenShareEnabled, remoteScreenStream(p), false);
+      if (!p.screenShareEnabled) { updateScreenTile(p.id + '-screen', '', false, null, false); return; }
+      updateScreenTile(p.id + '-screen', (p.name || 'Guest') + ' · Screen', true, findUnclaimedVideoStream(), false);
     });
     if (p.screenShareEnabled) {
-      updateScreenTile(p.id + '-screen', (p.name || 'Guest') + ' · Screen', true, remoteScreenStream(p), false);
+      updateScreenTile(p.id + '-screen', (p.name || 'Guest') + ' · Screen', true, findUnclaimedVideoStream(), false);
     }
     updateGridLayout();
   }
@@ -777,6 +788,26 @@ function toggleCam() {
     btn.textContent = '📹'; btn.classList.remove('off');
   }
 }
+
+// ─── Intercept RTCPeerConnection to capture all incoming video tracks ─────────
+const _remoteVideoTracks = [];
+(function() {
+  const _Orig = window.RTCPeerConnection;
+  if (!_Orig) return;
+  function PatchedPC(...args) {
+    const pc = new _Orig(...args);
+    pc.addEventListener('track', (e) => {
+      if (e.track.kind === 'video') {
+        const stream = e.streams?.[0] ?? new MediaStream([e.track]);
+        _remoteVideoTracks.push({ track: e.track, stream });
+      }
+    });
+    return pc;
+  }
+  PatchedPC.prototype = _Orig.prototype;
+  Object.setPrototypeOf(PatchedPC, _Orig);
+  window.RTCPeerConnection = PatchedPC;
+})();
 
 // ─── Intercept getDisplayMedia to capture the screen stream the SDK uses ──────
 let _capturedScreenStream = null;

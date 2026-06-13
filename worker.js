@@ -843,19 +843,24 @@ async function joinNow() {
     updateScreenTile('self-screen', (meeting.self.name || 'You') + ' · Screen', screenShareEnabled, stream, true);
   });
 
-  function remoteScreenStream(p, data) {
-    const track  = data?.screenShareTrack ?? p.screenShareTrack;
-    const stream = data?.screenShareStream ?? p.screenShareStream
-      ?? (track ? new MediaStream([track]) : null);
-    return stream;
+  function findUnclaimedVideoStream() {
+    const usedTracks = new Set(
+      [...document.querySelectorAll('video')]
+        .flatMap(v => v.srcObject ? v.srcObject.getVideoTracks() : [])
+    );
+    const entry = [..._remoteVideoTracks].reverse()
+      .find(({track}) => !usedTracks.has(track) && track.readyState !== 'ended');
+    return entry?.stream ?? null;
   }
 
-  // Probe every likely event name so the debug bar shows which one fires
-  const _ssEvts = ['screenShareUpdate','screenShareEnabled','screenShareOn','screenShareOff','screenShare','streamUpdate','trackUpdate','participantUpdated','update'];
-  _ssEvts.forEach(evt => {
-    meeting.participants.active.on(evt, (p) => {
-      dbg('active:' + evt + ' p=' + (p?.name||'?') + ' ss=' + p?.screenShareEnabled + ' trk=' + !!p?.screenShareTrack);
-    });
+  meeting.participants.active.on('screenShareUpdate', (p) => {
+    if (!p.screenShareEnabled) {
+      updateScreenTile(p.id + '-screen', '', false, null, false);
+      return;
+    }
+    const stream = findUnclaimedVideoStream();
+    dbg('RemSS: ' + p.name + ' unclaimed=' + !!stream + ' total=' + _remoteVideoTracks.length);
+    updateScreenTile(p.id + '-screen', (p.name || 'Guest') + ' · Screen', true, stream, false);
   });
 
   function addParticipant(p) {
@@ -879,18 +884,17 @@ async function joinNow() {
     setAud(p.audioEnabled, p.audioTrack);
     p.on('videoUpdate', ({ videoEnabled, videoTrack }) => setVid(videoEnabled, videoTrack));
     p.on('audioUpdate', ({ audioEnabled, audioTrack }) => setAud(audioEnabled, audioTrack));
-    _ssEvts.forEach(evt => {
-      p.on(evt, (data) => {
-        dbg('p:' + evt + ' ' + p.name + ' ss=' + p.screenShareEnabled + ' trk=' + !!p.screenShareTrack);
-        if (p.screenShareEnabled) {
-          updateScreenTile(p.id + '-screen', (p.name || 'Guest') + ' · Screen', true, remoteScreenStream(p, data), false);
-        } else {
-          updateScreenTile(p.id + '-screen', '', false, null, false);
-        }
-      });
+    p.on('screenShareUpdate', () => {
+      if (!p.screenShareEnabled) {
+        updateScreenTile(p.id + '-screen', '', false, null, false);
+        return;
+      }
+      const stream = findUnclaimedVideoStream();
+      updateScreenTile(p.id + '-screen', (p.name || 'Guest') + ' · Screen', true, stream, false);
     });
     if (p.screenShareEnabled) {
-      updateScreenTile(p.id + '-screen', (p.name || 'Guest') + ' · Screen', true, remoteScreenStream(p), false);
+      const stream = findUnclaimedVideoStream();
+      updateScreenTile(p.id + '-screen', (p.name || 'Guest') + ' · Screen', true, stream, false);
     }
     updateGridLayout();
   }
@@ -972,6 +976,26 @@ function toggleCam() {
     btn.textContent = '📹'; btn.classList.remove('off');
   }
 }
+
+// ─── Intercept RTCPeerConnection to capture all incoming video tracks ─────────
+const _remoteVideoTracks = [];
+(function() {
+  const _Orig = window.RTCPeerConnection;
+  if (!_Orig) return;
+  function PatchedPC(...args) {
+    const pc = new _Orig(...args);
+    pc.addEventListener('track', (e) => {
+      if (e.track.kind === 'video') {
+        const stream = e.streams?.[0] ?? new MediaStream([e.track]);
+        _remoteVideoTracks.push({ track: e.track, stream });
+      }
+    });
+    return pc;
+  }
+  PatchedPC.prototype = _Orig.prototype;
+  Object.setPrototypeOf(PatchedPC, _Orig);
+  window.RTCPeerConnection = PatchedPC;
+})();
 
 // ─── Intercept getDisplayMedia to capture the screen stream the SDK uses ──────
 let _capturedScreenStream = null;
