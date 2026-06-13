@@ -511,8 +511,8 @@ body {
     <div class="tab-panel">
       <!-- Tab switcher -->
       <div class="tab-switcher">
-        <button class="tab-btn active" id="tabBtnCreate" onclick="setTab('create')">Create</button>
-        <button class="tab-btn"       id="tabBtnJoin"   onclick="setTab('join')">Join</button>
+        <button class="tab-btn active" id="tabBtnCreate">Create</button>
+        <button class="tab-btn"       id="tabBtnJoin">Join</button>
       </div>
 
       <!-- Create form -->
@@ -522,7 +522,7 @@ body {
         <label for="createUserName">Your name</label>
         <input id="createUserName" placeholder="Your display name" maxlength="30" />
         <div id="createError" class="form-error"></div>
-        <button class="lobby-btn" id="createBtn" onclick="doCreate()">Start Meeting</button>
+        <button class="lobby-btn" id="createBtn">Start Meeting</button>
       </div>
 
       <!-- Join form -->
@@ -533,7 +533,7 @@ body {
         <label for="joinUserName">Your name</label>
         <input id="joinUserName" placeholder="Your display name" maxlength="30" />
         <div id="joinError" class="form-error"></div>
-        <button class="lobby-btn" id="joinBtn" onclick="doJoin()">Join Meeting</button>
+        <button class="lobby-btn" id="joinBtn">Join Meeting</button>
       </div>
 
       <div id="lobbyError" class="lobby-error hidden"></div>
@@ -1174,6 +1174,17 @@ function copyCode() {
     .then(() => toast('Code copied!'))
     .catch(() => {});
 }
+
+// ─── iOS touch-activation fix ────────────────────────────────────────────────
+// Without this, iOS Safari doesn't fire click events on non-anchor elements
+// in overflow:hidden/auto scroll containers.
+document.addEventListener('touchstart', function(){}, {passive: true});
+
+// ─── Wire all lobby buttons via addEventListener (bypasses iOS onclick issues)
+document.getElementById('createBtn').addEventListener('click',      doCreate);
+document.getElementById('joinBtn').addEventListener('click',        doJoin);
+document.getElementById('tabBtnCreate').addEventListener('click',   () => setTab('create'));
+document.getElementById('tabBtnJoin').addEventListener('click',     () => setTab('join'));
 
 // ─── Input wiring ─────────────────────────────────────────────────────────────
 document.getElementById('joinCode').addEventListener('input', e => {
