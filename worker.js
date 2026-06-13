@@ -837,20 +837,19 @@ async function joinNow() {
     const btn = document.getElementById('shareBtn');
     if (screenShareEnabled) btn?.classList.add('share-on');
     else btn?.classList.remove('share-on');
-    // Use the passed track, fall back to reading from self directly
-    const track = screenShareTrack ?? meeting.self.screenShareTrack;
-    updateScreenTile('self-screen', (meeting.self.name || 'You') + ' · Screen', screenShareEnabled, track, true);
+    const stream = _capturedScreenStream
+      ?? screenShareTrack ?? meeting.self.screenShareTrack
+      ?? meeting.self.screenShareStream;
+    updateScreenTile('self-screen', (meeting.self.name || 'You') + ' · Screen', screenShareEnabled, stream, true);
   });
 
-  // Covers cases where per-participant screenShareUpdate doesn't fire
+  function remoteScreenStream(p) {
+    return p.screenShareStream
+      ?? (p.screenShareTrack ? new MediaStream([p.screenShareTrack]) : null);
+  }
+
   meeting.participants.active.on('screenShareUpdate', (p) => {
-    updateScreenTile(
-      p.id + '-screen',
-      (p.name || 'Guest') + ' · Screen',
-      p.screenShareEnabled,
-      p.screenShareTrack,
-      false
-    );
+    updateScreenTile(p.id + '-screen', (p.name || 'Guest') + ' · Screen', p.screenShareEnabled, remoteScreenStream(p), false);
   });
 
   function addParticipant(p) {
@@ -874,11 +873,11 @@ async function joinNow() {
     setAud(p.audioEnabled, p.audioTrack);
     p.on('videoUpdate', ({ videoEnabled, videoTrack }) => setVid(videoEnabled, videoTrack));
     p.on('audioUpdate', ({ audioEnabled, audioTrack }) => setAud(audioEnabled, audioTrack));
-    p.on('screenShareUpdate', ({ screenShareEnabled, screenShareTrack }) => {
-      updateScreenTile(p.id + '-screen', (p.name || 'Guest') + ' · Screen', screenShareEnabled, screenShareTrack, false);
+    p.on('screenShareUpdate', () => {
+      updateScreenTile(p.id + '-screen', (p.name || 'Guest') + ' · Screen', p.screenShareEnabled, remoteScreenStream(p), false);
     });
-    if (p.screenShareEnabled && p.screenShareTrack) {
-      updateScreenTile(p.id + '-screen', (p.name || 'Guest') + ' · Screen', true, p.screenShareTrack, false);
+    if (p.screenShareEnabled) {
+      updateScreenTile(p.id + '-screen', (p.name || 'Guest') + ' · Screen', true, remoteScreenStream(p), false);
     }
     updateGridLayout();
   }
@@ -961,15 +960,40 @@ function toggleCam() {
   }
 }
 
+// ─── Intercept getDisplayMedia to capture the screen stream the SDK uses ──────
+let _capturedScreenStream = null;
+(function() {
+  const _orig = navigator.mediaDevices.getDisplayMedia?.bind(navigator.mediaDevices);
+  if (!_orig) return;
+  navigator.mediaDevices.getDisplayMedia = async function(constraints) {
+    const stream = await _orig(constraints);
+    _capturedScreenStream = stream;
+    // When user clicks the browser's "Stop sharing" button
+    stream.getVideoTracks()[0]?.addEventListener('ended', () => {
+      _capturedScreenStream = null;
+      if (isSharing && activeMeeting) {
+        activeMeeting.self.disableScreenShare().catch(() => {});
+      }
+      isSharing = false;
+      document.getElementById('shareBtn')?.classList.remove('share-on');
+      updateScreenTile('self-screen', '', false, null, true);
+    });
+    return stream;
+  };
+})();
+
 // ─── Screen share tile helper ─────────────────────────────────────────────────
-function updateScreenTile(id, label, enabled, track, muted) {
+function updateScreenTile(id, label, enabled, trackOrStream, muted) {
   const grid = document.getElementById('videoGrid');
   let tile = document.getElementById('tile-' + id);
-  if (!enabled || !track) {
+  if (!enabled || !trackOrStream) {
     tile?.remove();
     updateGridLayout();
     return;
   }
+  const stream = (trackOrStream instanceof MediaStream)
+    ? trackOrStream
+    : new MediaStream([trackOrStream]);
   if (!tile) {
     tile = document.createElement('div');
     tile.id = 'tile-' + id;
@@ -983,7 +1007,7 @@ function updateScreenTile(id, label, enabled, track, muted) {
     grid.appendChild(tile);
   }
   const vid = tile.querySelector('video');
-  if (vid) { vid.srcObject = new MediaStream([track]); vid.play().catch(() => {}); }
+  if (vid) { vid.srcObject = stream; vid.play().catch(() => {}); }
   updateGridLayout();
 }
 
@@ -993,8 +1017,7 @@ function toggleShare() {
   const btn = document.getElementById('shareBtn');
   if (isSharing) {
     activeMeeting.self.disableScreenShare()
-      .then(() => { isSharing = false; btn.classList.remove('share-on'); updateScreenTile('self-screen', '', false, null, true); })
-      .catch(() => { isSharing = false; btn.classList.remove('share-on'); updateScreenTile('self-screen', '', false, null, true); });
+      .finally(() => { isSharing = false; btn.classList.remove('share-on'); updateScreenTile('self-screen', '', false, null, true); });
   } else {
     toast('Opening screen picker…');
     activeMeeting.self.enableScreenShare()
@@ -1002,9 +1025,11 @@ function toggleShare() {
         isSharing = true;
         btn.classList.add('share-on');
         toast('Screen share started');
-        // Pull the track directly — screenShareUpdate may fire before track is ready
-        const track = activeMeeting.self.screenShareTrack;
-        updateScreenTile('self-screen', (activeMeeting.self.name || 'You') + ' · Screen', true, track, true);
+        // Use the intercepted stream — most reliable source of the actual track
+        const stream = _capturedScreenStream
+          ?? (activeMeeting.self.screenShareTrack ? new MediaStream([activeMeeting.self.screenShareTrack]) : null)
+          ?? activeMeeting.self.screenShareStream;
+        updateScreenTile('self-screen', (activeMeeting.self.name || 'You') + ' · Screen', true, stream, true);
       })
       .catch(e => toast('Screen share failed: ' + (e.message || 'Not supported on this device')));
   }
