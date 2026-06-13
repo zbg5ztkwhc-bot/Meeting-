@@ -485,6 +485,8 @@ body {
 .ctrl-btn.off  { background:#7f1d1d; }
 .ctrl-end      { background:var(--red); }
 .ctrl-end:hover { background:#dc2626; }
+.ctrl-btn.rec-active { background:#dc2626; animation:recPulse 1.4s ease-in-out infinite; }
+@keyframes recPulse { 0%,100%{opacity:1} 50%{opacity:.55} }
 </style>
 </head>
 <body>
@@ -557,9 +559,11 @@ body {
     <div id="dbgBar">Initialising…</div>
     <div id="videoGrid"></div>
     <div id="callControls">
-      <button id="micBtn" class="ctrl-btn" onclick="toggleMic()" title="Mute/unmute">🎙️</button>
-      <button id="camBtn" class="ctrl-btn" onclick="toggleCam()" title="Camera on/off">📹</button>
-      <button class="ctrl-btn ctrl-end"   onclick="leaveCall()"  title="Leave">📵</button>
+      <button id="micBtn"   class="ctrl-btn" onclick="toggleMic()"   title="Mute/unmute">🎙️</button>
+      <button id="camBtn"   class="ctrl-btn" onclick="toggleCam()"   title="Camera on/off">📹</button>
+      <button id="shareBtn" class="ctrl-btn" onclick="toggleShare()" title="Share screen">🖥️</button>
+      <button id="recBtn"   class="ctrl-btn" onclick="toggleRec()"   title="Record">⏺️</button>
+      <button class="ctrl-btn ctrl-end" onclick="leaveCall()" title="Leave">📵</button>
     </div>
   </div>
 
@@ -822,6 +826,27 @@ async function joinNow() {
     if (videoEnabled && videoTrack) selfVid.play().catch(() => {});
   });
 
+  // ── Self screen share tile ─────────────────────────────────────────────────
+  meeting.self.on('screenShareUpdate', ({ screenShareEnabled, screenShareTracks }) => {
+    const existingTile = document.getElementById('tile-self-screen');
+    if (screenShareEnabled && screenShareTracks?.video) {
+      if (!existingTile) {
+        const tile = makeTile('self-screen', (meeting.self.name || 'You') + ' (screen)', false);
+        const vid  = makeVideo(false);
+        tile.id = 'tile-self-screen';
+        tile.insertBefore(vid, tile.firstChild);
+        grid.appendChild(tile);
+        vid.srcObject = new MediaStream([screenShareTracks.video]);
+        vid.play().catch(() => {});
+        updateGridLayout();
+      }
+    } else {
+      existingTile?.remove();
+      updateGridLayout();
+      document.getElementById('shareBtn')?.classList.remove('off');
+    }
+  });
+
   function addParticipant(p) {
     if (document.getElementById('tile-' + p.id)) return;
     const tile  = makeTile(p.id, p.name || 'Guest', false);
@@ -843,11 +868,34 @@ async function joinNow() {
     setAud(p.audioEnabled, p.audioTrack);
     p.on('videoUpdate', ({ videoEnabled, videoTrack }) => setVid(videoEnabled, videoTrack));
     p.on('audioUpdate', ({ audioEnabled, audioTrack }) => setAud(audioEnabled, audioTrack));
+    p.on('screenShareUpdate', ({ screenShareEnabled, screenShareTracks }) => {
+      const screenTileId = 'tile-' + p.id + '-screen';
+      const existing = document.getElementById(screenTileId);
+      if (screenShareEnabled && screenShareTracks?.video) {
+        if (!existing) {
+          const sTile = makeTile(p.id + '-screen', (p.name || 'Guest') + ' (screen)', false);
+          sTile.id = screenTileId;
+          const sVid = makeVideo(false);
+          sTile.insertBefore(sVid, sTile.firstChild);
+          grid.appendChild(sTile);
+          sVid.srcObject = new MediaStream([screenShareTracks.video]);
+          sVid.play().catch(() => {});
+          updateGridLayout();
+        }
+      } else {
+        existing?.remove();
+        updateGridLayout();
+      }
+    });
     updateGridLayout();
   }
 
   meeting.participants.active.on('participantJoined', (p) => addParticipant(p));
-  meeting.participants.active.on('participantLeft',   (p) => { document.getElementById('tile-' + p.id)?.remove(); updateGridLayout(); });
+  meeting.participants.active.on('participantLeft',   (p) => {
+    document.getElementById('tile-' + p.id)?.remove();
+    document.getElementById('tile-' + p.id + '-screen')?.remove();
+    updateGridLayout();
+  });
 
   // ── 3. Join ───────────────────────────────────────────────────────────────
   showLoading('Joining…');
@@ -917,6 +965,44 @@ function toggleCam() {
   } else {
     activeMeeting.self.enableVideo();
     btn.textContent = '📹'; btn.classList.remove('off');
+  }
+}
+
+// ─── Screen share toggle ──────────────────────────────────────────────────────
+function toggleShare() {
+  if (!activeMeeting) return;
+  const btn = document.getElementById('shareBtn');
+  if (activeMeeting.self.screenShareEnabled) {
+    activeMeeting.self.disableScreenShare().catch(() => {});
+    btn.classList.remove('off');
+  } else {
+    activeMeeting.self.enableScreenShare()
+      .then(() => { btn.classList.add('off'); })
+      .catch(e => { dbg('Screen share: ' + (e.message || e)); });
+  }
+}
+
+// ─── Recording toggle ─────────────────────────────────────────────────────────
+let activeRecordingId = null;
+function toggleRec() {
+  if (!activeMeeting) return;
+  const btn = document.getElementById('recBtn');
+  if (activeRecordingId) {
+    activeMeeting.recording.stop(activeRecordingId)
+      .then(() => {
+        activeRecordingId = null;
+        btn.classList.remove('rec-active');
+        dbg('Recording stopped');
+      })
+      .catch(e => dbg('Stop recording: ' + (e.message || e)));
+  } else {
+    activeMeeting.recording.start()
+      .then(() => {
+        activeRecordingId = activeMeeting.recording.recordings?.[0]?.id ?? 'active';
+        btn.classList.add('rec-active');
+        dbg('Recording started ⏺');
+      })
+      .catch(e => dbg('Start recording: ' + (e.message || e)));
   }
 }
 
