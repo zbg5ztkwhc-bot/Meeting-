@@ -650,6 +650,14 @@ async function joinNow() {
     if (videoEnabled && videoTrack) selfVid.play().catch(() => {});
   });
 
+  meeting.self.on('screenShareUpdate', ({ screenShareEnabled, screenShareTrack }) => {
+    isSharing = screenShareEnabled;
+    const btn = document.getElementById('shareBtn');
+    if (screenShareEnabled) btn?.classList.add('share-on');
+    else btn?.classList.remove('share-on');
+    updateScreenTile('self-screen', (meeting.self.name || 'You') + ' · Screen', screenShareEnabled, screenShareTrack, true);
+  });
+
   function addParticipant(p) {
     if (document.getElementById('tile-' + p.id)) return;
     const tile  = makeTile(p.id, p.name || 'Guest', false);
@@ -671,11 +679,21 @@ async function joinNow() {
     setAud(p.audioEnabled, p.audioTrack);
     p.on('videoUpdate', ({ videoEnabled, videoTrack }) => setVid(videoEnabled, videoTrack));
     p.on('audioUpdate', ({ audioEnabled, audioTrack }) => setAud(audioEnabled, audioTrack));
+    p.on('screenShareUpdate', ({ screenShareEnabled, screenShareTrack }) => {
+      updateScreenTile(p.id + '-screen', (p.name || 'Guest') + ' · Screen', screenShareEnabled, screenShareTrack, false);
+    });
+    if (p.screenShareEnabled && p.screenShareTrack) {
+      updateScreenTile(p.id + '-screen', (p.name || 'Guest') + ' · Screen', true, p.screenShareTrack, false);
+    }
     updateGridLayout();
   }
 
   meeting.participants.active.on('participantJoined', (p) => addParticipant(p));
-  meeting.participants.active.on('participantLeft',   (p) => { document.getElementById('tile-' + p.id)?.remove(); updateGridLayout(); });
+  meeting.participants.active.on('participantLeft',   (p) => {
+    document.getElementById('tile-' + p.id)?.remove();
+    document.getElementById('tile-' + p.id + '-screen')?.remove();
+    updateGridLayout();
+  });
 
   // ── 3. Join ───────────────────────────────────────────────────────────────
   showLoading('Joining…');
@@ -748,18 +766,45 @@ function toggleCam() {
   }
 }
 
+// ─── Screen share tile helper ─────────────────────────────────────────────────
+function updateScreenTile(id, label, enabled, track, muted) {
+  const grid = document.getElementById('videoGrid');
+  let tile = document.getElementById('tile-' + id);
+  if (!enabled || !track) {
+    tile?.remove();
+    updateGridLayout();
+    return;
+  }
+  if (!tile) {
+    tile = document.createElement('div');
+    tile.id = 'tile-' + id;
+    tile.className = 'vtile';
+    const vid = makeVideo(!!muted);
+    const lbl = document.createElement('div');
+    lbl.className = 'vname';
+    lbl.textContent = label;
+    tile.appendChild(vid);
+    tile.appendChild(lbl);
+    grid.appendChild(tile);
+  }
+  const vid = tile.querySelector('video');
+  if (vid) { vid.srcObject = new MediaStream([track]); vid.play().catch(() => {}); }
+  updateGridLayout();
+}
+
 // ─── Screen share ────────────────────────────────────────────────────────────
 function toggleShare() {
   if (!activeMeeting) return;
   const btn = document.getElementById('shareBtn');
   if (isSharing) {
-    activeMeeting.self.disableScreenShare().catch(() => {});
-    isSharing = false;
-    btn.classList.remove('share-on');
+    activeMeeting.self.disableScreenShare()
+      .then(() => { isSharing = false; btn.classList.remove('share-on'); })
+      .catch(() => { isSharing = false; btn.classList.remove('share-on'); });
   } else {
+    toast('Opening screen picker…');
     activeMeeting.self.enableScreenShare()
-      .then(() => { isSharing = true; btn.classList.add('share-on'); })
-      .catch(e => toast('Screen share: ' + (e.message || 'Not supported on this device')));
+      .then(() => { isSharing = true; btn.classList.add('share-on'); toast('Screen share started'); })
+      .catch(e => toast('Screen share failed: ' + (e.message || 'Not supported on this device')));
   }
 }
 
