@@ -9,7 +9,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ab5bdefc1a1abd85f78c1a80ac0db805
+
+      - name: Sync REALTIMEKIT_API_TOKEN secret
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          echo "${{ secrets.REALTIMEKIT_API_TOKEN }}" | \
+          npx wrangler secret put REALTIMEKIT_API_TOKEN --name hamoudaspace
