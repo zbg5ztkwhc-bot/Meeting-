@@ -201,8 +201,8 @@ const HTML = `
   --border-dim:#2a2f3e; --text-primary:#eef2ff; --text-secondary:#9ca3af;
   --accent:#3b82f6; --accent-hover:#2563eb; --danger:#ef4444;
 }
-html { height:100%; overflow:hidden; -webkit-overflow-scrolling:touch; }
-body { height:100%; overflow:hidden; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background:var(--bg-dark); color:var(--text-primary); }
+html { height:100%; overflow:hidden; -webkit-overflow-scrolling:touch; position:relative; }
+body { height:100%; overflow:hidden; position:relative; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background:var(--bg-dark); color:var(--text-primary); }
 .hidden { display:none !important; }
 .btn { padding:12px 24px; border-radius:40px; font-weight:600; border:none; cursor:pointer; font-size:16px; transition:opacity .15s; }
 .btn:disabled { opacity:.5; cursor:not-allowed; }
@@ -242,8 +242,10 @@ body { height:100%; overflow:hidden; font-family:-apple-system,BlinkMacSystemFon
 .overlay-msg { color:var(--text-secondary); font-size:14px; }
 @keyframes spin { to { transform:rotate(360deg); } }
 
-/* Room — full-screen meeting */
-#view-room  { position:fixed; inset:0; z-index:100; background:#000; display:flex; flex-direction:column; }
+/* Room — full-screen meeting.
+   position:absolute (not fixed) because iOS Safari breaks position:fixed
+   when overflow:hidden is set on body. body has position:relative above. */
+#view-room  { position:absolute; top:0; left:0; right:0; bottom:0; z-index:100; background:#000; display:flex; flex-direction:column; }
 
 /* ── Setup screen ── */
 #setupScreen {
