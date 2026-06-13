@@ -18,11 +18,7 @@ export default {
     // Serve the app for all other GET requests
     if (request.method === 'GET') {
       return new Response(HTML, {
-        headers: {
-          'Content-Type':  'text/html; charset=utf-8',
-          'Cache-Control': 'no-store, no-cache, must-revalidate',
-          'Pragma':        'no-cache'
-        }
+        headers: { 'Content-Type': 'text/html; charset=utf-8' }
       });
     }
 
@@ -489,8 +485,6 @@ body {
 .ctrl-btn.off  { background:#7f1d1d; }
 .ctrl-end      { background:var(--red); }
 .ctrl-end:hover { background:#dc2626; }
-.ctrl-btn.rec-active { background:#dc2626; animation:recPulse 1.4s ease-in-out infinite; }
-@keyframes recPulse { 0%,100%{opacity:1} 50%{opacity:.55} }
 </style>
 </head>
 <body>
@@ -501,7 +495,6 @@ body {
   <header class="lobby-header">
     <span class="logo-icon">🎥</span>
     <span class="logo-name">HamoudaSpace</span>
-    <span style="font-size:10px;color:#334155;font-family:monospace;">v13</span>
   </header>
 
   <main class="lobby-main">
@@ -511,8 +504,8 @@ body {
     <div class="tab-panel">
       <!-- Tab switcher -->
       <div class="tab-switcher">
-        <button class="tab-btn active" id="tabBtnCreate">Create</button>
-        <button class="tab-btn"       id="tabBtnJoin">Join</button>
+        <button class="tab-btn active" id="tabBtnCreate" onclick="setTab('create')">Create</button>
+        <button class="tab-btn"       id="tabBtnJoin"   onclick="setTab('join')">Join</button>
       </div>
 
       <!-- Create form -->
@@ -522,7 +515,7 @@ body {
         <label for="createUserName">Your name</label>
         <input id="createUserName" placeholder="Your display name" maxlength="30" />
         <div id="createError" class="form-error"></div>
-        <button class="lobby-btn" id="createBtn">Start Meeting</button>
+        <button class="lobby-btn" id="createBtn" onclick="doCreate()">Start Meeting</button>
       </div>
 
       <!-- Join form -->
@@ -533,7 +526,7 @@ body {
         <label for="joinUserName">Your name</label>
         <input id="joinUserName" placeholder="Your display name" maxlength="30" />
         <div id="joinError" class="form-error"></div>
-        <button class="lobby-btn" id="joinBtn">Join Meeting</button>
+        <button class="lobby-btn" id="joinBtn" onclick="doJoin()">Join Meeting</button>
       </div>
 
       <div id="lobbyError" class="lobby-error hidden"></div>
@@ -558,24 +551,15 @@ body {
 
   <!-- In-call: video grid + controls -->
   <div id="callScreen" class="hidden">
-    <div id="callHeader" style="display:flex;align-items:center;justify-content:space-between;padding:8px 14px;background:rgba(5,7,15,.97);border-bottom:1px solid rgba(255,255,255,.06);flex-shrink:0;">
-      <span style="font-size:12px;color:#94a3b8;font-family:ui-monospace,monospace;letter-spacing:.05em;">HamoudaSpace</span>
-      <button onclick="shareMeeting()" style="background:rgba(37,99,235,.18);border:1px solid rgba(37,99,235,.4);color:#93c5fd;font-size:12px;padding:4px 12px;cursor:pointer;letter-spacing:.04em;font-family:ui-monospace,monospace;">
-        🔗 <span id="callCodeLabel">Share</span>
-      </button>
-    </div>
     <div id="audioUnlockBar" class="hidden" onclick="unlockAudio()">
       🔇 Tap here to enable audio
     </div>
     <div id="dbgBar">Initialising…</div>
     <div id="videoGrid"></div>
     <div id="callControls">
-      <button id="micBtn"   class="ctrl-btn" onclick="toggleMic()"   title="Mute/unmute">🎙️</button>
-      <button id="camBtn"   class="ctrl-btn" onclick="toggleCam()"   title="Camera on/off">📹</button>
-      <button id="shareBtn" class="ctrl-btn" onclick="toggleShare()" title="Share screen">🖥️</button>
-      <button id="recBtn"   class="ctrl-btn" onclick="toggleRec()"      title="Record">⏺️</button>
-      <button class="ctrl-btn"          onclick="shareMeeting()"         title="Share invite">🔗</button>
-      <button class="ctrl-btn ctrl-end" onclick="leaveCall()"            title="Leave">📵</button>
+      <button id="micBtn" class="ctrl-btn" onclick="toggleMic()" title="Mute/unmute">🎙️</button>
+      <button id="camBtn" class="ctrl-btn" onclick="toggleCam()" title="Camera on/off">📹</button>
+      <button class="ctrl-btn ctrl-end"   onclick="leaveCall()"  title="Leave">📵</button>
     </div>
   </div>
 
@@ -589,15 +573,6 @@ body {
 
 <script>
 'use strict';
-
-// Catch any uncaught JS errors and show them so we can diagnose
-window.onerror = function(msg, src, line) {
-  toast('JS error: ' + msg + ' (line ' + line + ')');
-  return false;
-};
-window.onunhandledrejection = function(e) {
-  toast('Unhandled: ' + (e.reason?.message || e.reason || 'unknown'));
-};
 
 // Auto-set playsinline on every <video> element including those inside shadow DOM
 (function() {
@@ -688,8 +663,6 @@ function showSetup() {
 function showCall() {
   document.getElementById('setupScreen').classList.add('hidden');
   document.getElementById('callScreen').classList.remove('hidden');
-  const label = document.getElementById('callCodeLabel');
-  if (label && roomCode) label.textContent = roomCode;
 }
 
 // ─── Cleanup & go home ────────────────────────────────────────────────────────
@@ -849,27 +822,6 @@ async function joinNow() {
     if (videoEnabled && videoTrack) selfVid.play().catch(() => {});
   });
 
-  // ── Self screen share tile ─────────────────────────────────────────────────
-  meeting.self.on('screenShareUpdate', ({ screenShareEnabled, screenShareTracks }) => {
-    const existingTile = document.getElementById('tile-self-screen');
-    if (screenShareEnabled && screenShareTracks?.video) {
-      if (!existingTile) {
-        const tile = makeTile('self-screen', (meeting.self.name || 'You') + ' (screen)', false);
-        const vid  = makeVideo(false);
-        tile.id = 'tile-self-screen';
-        tile.insertBefore(vid, tile.firstChild);
-        grid.appendChild(tile);
-        vid.srcObject = new MediaStream([screenShareTracks.video]);
-        vid.play().catch(() => {});
-        updateGridLayout();
-      }
-    } else {
-      existingTile?.remove();
-      updateGridLayout();
-      document.getElementById('shareBtn')?.classList.remove('off');
-    }
-  });
-
   function addParticipant(p) {
     if (document.getElementById('tile-' + p.id)) return;
     const tile  = makeTile(p.id, p.name || 'Guest', false);
@@ -891,34 +843,11 @@ async function joinNow() {
     setAud(p.audioEnabled, p.audioTrack);
     p.on('videoUpdate', ({ videoEnabled, videoTrack }) => setVid(videoEnabled, videoTrack));
     p.on('audioUpdate', ({ audioEnabled, audioTrack }) => setAud(audioEnabled, audioTrack));
-    p.on('screenShareUpdate', ({ screenShareEnabled, screenShareTracks }) => {
-      const screenTileId = 'tile-' + p.id + '-screen';
-      const existing = document.getElementById(screenTileId);
-      if (screenShareEnabled && screenShareTracks?.video) {
-        if (!existing) {
-          const sTile = makeTile(p.id + '-screen', (p.name || 'Guest') + ' (screen)', false);
-          sTile.id = screenTileId;
-          const sVid = makeVideo(false);
-          sTile.insertBefore(sVid, sTile.firstChild);
-          grid.appendChild(sTile);
-          sVid.srcObject = new MediaStream([screenShareTracks.video]);
-          sVid.play().catch(() => {});
-          updateGridLayout();
-        }
-      } else {
-        existing?.remove();
-        updateGridLayout();
-      }
-    });
     updateGridLayout();
   }
 
   meeting.participants.active.on('participantJoined', (p) => addParticipant(p));
-  meeting.participants.active.on('participantLeft',   (p) => {
-    document.getElementById('tile-' + p.id)?.remove();
-    document.getElementById('tile-' + p.id + '-screen')?.remove();
-    updateGridLayout();
-  });
+  meeting.participants.active.on('participantLeft',   (p) => { document.getElementById('tile-' + p.id)?.remove(); updateGridLayout(); });
 
   // ── 3. Join ───────────────────────────────────────────────────────────────
   showLoading('Joining…');
@@ -991,58 +920,6 @@ function toggleCam() {
   }
 }
 
-// ─── Screen share toggle ──────────────────────────────────────────────────────
-function toggleShare() {
-  if (!activeMeeting) return;
-  const btn = document.getElementById('shareBtn');
-  if (activeMeeting.self.screenShareEnabled) {
-    activeMeeting.self.disableScreenShare().catch(() => {});
-    btn.classList.remove('off');
-  } else {
-    activeMeeting.self.enableScreenShare()
-      .then(() => { btn.classList.add('off'); })
-      .catch(e => { dbg('Screen share: ' + (e.message || e)); });
-  }
-}
-
-// ─── Recording toggle ─────────────────────────────────────────────────────────
-let activeRecordingId = null;
-function toggleRec() {
-  if (!activeMeeting) return;
-  const btn = document.getElementById('recBtn');
-  if (activeRecordingId) {
-    activeMeeting.recording.stop(activeRecordingId)
-      .then(() => {
-        activeRecordingId = null;
-        btn.classList.remove('rec-active');
-        dbg('Recording stopped');
-      })
-      .catch(e => dbg('Stop recording: ' + (e.message || e)));
-  } else {
-    activeMeeting.recording.start()
-      .then(() => {
-        activeRecordingId = activeMeeting.recording.recordings?.[0]?.id ?? 'active';
-        btn.classList.add('rec-active');
-        dbg('Recording started ⏺');
-      })
-      .catch(e => dbg('Start recording: ' + (e.message || e)));
-  }
-}
-
-// ─── Share meeting invite ─────────────────────────────────────────────────────
-function shareMeeting() {
-  if (!roomCode) return;
-  const link = location.origin + '/?join=' + roomCode;
-  const text = 'Join my meeting — code: ' + roomCode + '\n' + link;
-  if (navigator.share) {
-    navigator.share({ title: 'HamoudaSpace Meeting', text, url: link }).catch(() => {});
-  } else {
-    navigator.clipboard?.writeText(text)
-      .then(() => toast('Invite copied! Code: ' + roomCode))
-      .catch(() => toast('Code: ' + roomCode));
-  }
-}
-
 // ─── Leave call ───────────────────────────────────────────────────────────────
 function leaveCall() {
   if (activeMeeting) {
@@ -1058,12 +935,10 @@ function leaveCall() {
 
 // ─── Create room ──────────────────────────────────────────────────────────────
 async function doCreate() {
-  toast('▶ doCreate called');
   const rn = document.getElementById('createRoomName').value.trim();
   const un = document.getElementById('createUserName').value.trim();
   document.getElementById('createError').textContent = '';
   if (!rn || !un) {
-    toast('⚠ Fill both fields: name=' + !!rn + ' user=' + !!un);
     document.getElementById('createError').textContent = 'Please fill in both fields.';
     return;
   }
@@ -1071,7 +946,6 @@ async function doCreate() {
   document.getElementById('createBtn').disabled = true;
   hideLobbyErr();
   showLoading('Creating meeting…');
-  await new Promise(r => setTimeout(r, 0)); // let spinner render
 
   let data;
   try {
@@ -1081,12 +955,10 @@ async function doCreate() {
       body: JSON.stringify({ title: rn, userName: un })
     });
     data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Server error ' + res.status);
+    if (!res.ok) throw new Error(data.error || 'Server error');
   } catch (e) {
-    const msg = '⚠️ ' + (e.message || 'Network error');
     hideLoading();
-    document.getElementById('createError').textContent = msg;
-    toast(msg);
+    showLobbyErr(e.message);
     document.getElementById('createBtn').disabled = false;
     return;
   }
@@ -1152,12 +1024,10 @@ async function doJoin() {
       body: JSON.stringify({ meetingId: rtkRoomId, userName: un })
     });
     data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Server error ' + res.status);
+    if (!res.ok) throw new Error(data.error || 'Server error');
   } catch (e) {
-    const msg = '⚠️ ' + (e.message || 'Network error');
     hideLoading();
-    document.getElementById('joinError').textContent = msg;
-    toast(msg);
+    showLobbyErr(e.message);
     document.getElementById('joinBtn').disabled = false;
     return;
   }
@@ -1174,17 +1044,6 @@ function copyCode() {
     .then(() => toast('Code copied!'))
     .catch(() => {});
 }
-
-// ─── iOS touch-activation fix ────────────────────────────────────────────────
-// Without this, iOS Safari doesn't fire click events on non-anchor elements
-// in overflow:hidden/auto scroll containers.
-document.addEventListener('touchstart', function(){}, {passive: true});
-
-// ─── Wire all lobby buttons via addEventListener (bypasses iOS onclick issues)
-document.getElementById('createBtn').addEventListener('click',      doCreate);
-document.getElementById('joinBtn').addEventListener('click',        doJoin);
-document.getElementById('tabBtnCreate').addEventListener('click',   () => setTab('create'));
-document.getElementById('tabBtnJoin').addEventListener('click',     () => setTab('join'));
 
 // ─── Input wiring ─────────────────────────────────────────────────────────────
 document.getElementById('joinCode').addEventListener('input', e => {
