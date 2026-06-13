@@ -1064,10 +1064,12 @@ async function doCreate() {
       body: JSON.stringify({ title: rn, userName: un })
     });
     data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Server error');
+    if (!res.ok) throw new Error(data.error || 'Server error ' + res.status);
   } catch (e) {
+    const msg = '⚠️ ' + (e.message || 'Network error');
     hideLoading();
-    showLobbyErr(e.message);
+    document.getElementById('createError').textContent = msg;
+    toast(msg);
     document.getElementById('createBtn').disabled = false;
     return;
   }
@@ -1133,10 +1135,12 @@ async function doJoin() {
       body: JSON.stringify({ meetingId: rtkRoomId, userName: un })
     });
     data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Server error');
+    if (!res.ok) throw new Error(data.error || 'Server error ' + res.status);
   } catch (e) {
+    const msg = '⚠️ ' + (e.message || 'Network error');
     hideLoading();
-    showLobbyErr(e.message);
+    document.getElementById('joinError').textContent = msg;
+    toast(msg);
     document.getElementById('joinBtn').disabled = false;
     return;
   }
