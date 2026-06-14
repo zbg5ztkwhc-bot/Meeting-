@@ -10,6 +10,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@cloudflare/realtimekit@latest/dist/browser.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
 
 <style>
 /* ── Reset ──────────────────────────────────────────────────────────────────── */
@@ -326,6 +327,21 @@ body {
   background:none; border:none; color:var(--muted);
   font-size:18px; cursor:pointer; line-height:1; padding:0 4px;
 }
+
+/* ── PDF slide controls overlay ──────────────────────────────────────────────── */
+.pdf-controls {
+  position:absolute; bottom:0; left:0; right:0; z-index:5;
+  display:flex; align-items:center; justify-content:center; gap:10px;
+  padding:7px 12px; background:rgba(0,0,0,.72);
+}
+.pdf-controls button {
+  padding:4px 14px; background:rgba(255,255,255,.18);
+  border:1px solid rgba(255,255,255,.3); color:#fff;
+  font-size:14px; cursor:pointer;
+}
+.pdf-controls button:active { background:rgba(255,255,255,.35); }
+.pdf-controls span { color:rgba(255,255,255,.85); font-size:11px; }
+.ctrl-btn.pres-on { background:#7c3aed; }
 </style>
 </head>
 <body>
@@ -402,8 +418,9 @@ body {
       <button id="camBtn"      class="ctrl-btn"           onclick="toggleCam()"    title="Camera on/off">📹</button>
       <button id="flipBtn"     class="ctrl-btn"           onclick="flipCamera()"   title="Flip camera">🔄</button>
       <button id="speakerBtn"  class="ctrl-btn"           onclick="toggleSpeaker()" title="Speaker/earpiece">🔊</button>
-      <button id="shareBtn"    class="ctrl-btn"           onclick="toggleShare()"  title="Screen share">🖥️</button>
-      <button id="recBtn"      class="ctrl-btn"           onclick="toggleRec()"    title="Record">⏺️</button>
+      <button id="shareBtn"    class="ctrl-btn"           onclick="toggleShare()"   title="Screen share">🖥️</button>
+      <button id="presentBtn"  class="ctrl-btn"           onclick="togglePresent()" title="Share PDF/slides">📄</button>
+      <button id="recBtn"      class="ctrl-btn"           onclick="toggleRec()"     title="Record">⏺️</button>
       <button id="shareLinkBtn" class="ctrl-btn"          onclick="shareMeeting()" title="Share invite">🔗</button>
       <button class="ctrl-btn ctrl-end"                   onclick="leaveCall()"    title="Leave">📵</button>
     </div>
@@ -426,6 +443,12 @@ body {
 
 <script>
 'use strict';
+
+// PDF.js worker
+if (window.pdfjsLib) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+}
 
 // Auto-set playsinline on every <video> element including those inside shadow DOM
 (function() {
@@ -459,6 +482,11 @@ let pendingToken  = null;
 let localStream   = null;
 let isSharing              = false;
 let isRecording            = false;
+let isPresenting           = false;
+let _pdfDoc                = null;
+let _pdfPage               = 1;
+let _pdfCanvas             = null;
+let _pdfStream             = null;
 let recordingDone          = false;
 let recordingInitiatedByMe = false;
 let rtkMeetingId           = '';
@@ -540,6 +568,7 @@ function cleanupAndGoHome() {
   document.getElementById('videoGrid').innerHTML = '';
   document.getElementById('previewVid').srcObject = null;
   document.getElementById('audioUnlockBar').classList.add('hidden');
+  if (isPresenting) stopPresentation();
   isSharing = false; isRecording = false;
   cameraFacing = 'user'; isSpeaker = true;
   recordingInitiatedByMe = false;
@@ -905,21 +934,120 @@ let _capturedScreenStream = null;
   };
 })();
 
-// ─── Flip camera ─────────────────────────────────────────────────────────────
+// ─── Flip camera (replaces track directly in RTCPeerConnection senders) ───────
 async function flipCamera() {
   if (!activeMeeting) return;
   const next = cameraFacing === 'user' ? 'environment' : 'user';
-  _overrideFacingMode = next;
   try {
-    await activeMeeting.self.disableVideo();
-    await activeMeeting.self.enableVideo();
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: next },
+      audio: false
+    });
+    const newTrack = stream.getVideoTracks()[0];
+    const screenTrack = _capturedScreenStream?.getVideoTracks()[0];
+    for (const pc of _allPCs) {
+      if (pc.signalingState === 'closed') continue;
+      for (const sender of pc.getSenders()) {
+        if (sender.track?.kind === 'video' && sender.track !== screenTrack) {
+          await sender.replaceTrack(newTrack).catch(() => {});
+        }
+      }
+    }
+    const selfVid = document.querySelector('#tile-self video');
+    if (selfVid) {
+      selfVid.srcObject = new MediaStream([newTrack]);
+      selfVid.style.transform = next === 'environment' ? 'scaleX(1)' : 'scaleX(-1)';
+      selfVid.play().catch(() => {});
+    }
     cameraFacing = next;
     toast(next === 'environment' ? 'Rear camera' : 'Front camera');
   } catch (e) {
-    toast('Camera flip failed: ' + (e.message || 'Not supported'));
-  } finally {
-    _overrideFacingMode = null;
+    toast('Camera flip failed: ' + (e.message || 'Rear camera not available'));
   }
+}
+
+// ─── PDF / Slides presentation ────────────────────────────────────────────────
+async function togglePresent() {
+  if (isPresenting) { stopPresentation(); return; }
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.pdf';
+  input.onchange = async e => {
+    const file = e.target.files?.[0];
+    if (file) await startPresentation(file);
+  };
+  input.click();
+}
+
+async function startPresentation(file) {
+  if (!window.pdfjsLib) { toast('PDF viewer not ready — try again'); return; }
+  toast('Loading PDF…');
+  try {
+    _pdfDoc    = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+    _pdfPage   = 1;
+    _pdfCanvas = document.createElement('canvas');
+    await _renderPdfPage();
+    _pdfStream = _pdfCanvas.captureStream(10);
+    const grid = document.getElementById('videoGrid');
+    const tile = document.createElement('div');
+    tile.id = 'tile-presentation'; tile.className = 'vtile';
+    const vid = makeVideo(true);
+    vid.srcObject = _pdfStream; vid.play().catch(() => {});
+    const lbl = document.createElement('div');
+    lbl.className = 'vname';
+    lbl.textContent = '📄 ' + file.name.replace(/\.pdf$/i, '');
+    const nav = document.createElement('div');
+    nav.className = 'pdf-controls';
+    nav.innerHTML =
+      '<button onclick="prevSlide()">&#9664;</button>' +
+      '<span id="pdfInfo">1 / ' + _pdfDoc.numPages + '</span>' +
+      '<button onclick="nextSlide()">&#9654;</button>';
+    tile.append(vid, lbl, nav);
+    grid.appendChild(tile);
+    updateGridLayout();
+    _capturedScreenStream = _pdfStream;
+    isPresenting = true;
+    document.getElementById('presentBtn').classList.add('pres-on');
+    toast('PDF ready (' + _pdfDoc.numPages + ' slides) — tap 🖥️ to share with participants');
+  } catch (e) {
+    toast('PDF load failed: ' + (e.message || e));
+  }
+}
+
+async function _renderPdfPage() {
+  if (!_pdfDoc || !_pdfCanvas) return;
+  const page = await _pdfDoc.getPage(_pdfPage);
+  const vp = page.getViewport({ scale: 1.5 });
+  _pdfCanvas.width = vp.width; _pdfCanvas.height = vp.height;
+  await page.render({ canvasContext: _pdfCanvas.getContext('2d'), viewport: vp }).promise;
+  const info = document.getElementById('pdfInfo');
+  if (info) info.textContent = _pdfPage + ' / ' + _pdfDoc.numPages;
+}
+
+async function nextSlide() {
+  if (!_pdfDoc || _pdfPage >= _pdfDoc.numPages) return;
+  _pdfPage++; await _renderPdfPage();
+}
+async function prevSlide() {
+  if (!_pdfDoc || _pdfPage <= 1) return;
+  _pdfPage--; await _renderPdfPage();
+}
+
+function stopPresentation() {
+  const wasStream = _pdfStream;
+  _pdfDoc = null; _pdfPage = 1; _pdfCanvas = null; _pdfStream = null;
+  wasStream?.getTracks().forEach(t => t.stop());
+  document.getElementById('tile-presentation')?.remove();
+  updateGridLayout();
+  if (_capturedScreenStream === wasStream) _capturedScreenStream = null;
+  if (isSharing) {
+    activeMeeting?.self?.disableScreenShare().catch(() => {});
+    isSharing = false;
+    document.getElementById('shareBtn')?.classList.remove('share-on');
+  }
+  isPresenting = false;
+  document.getElementById('presentBtn')?.classList.remove('pres-on');
+  toast('Presentation ended');
 }
 
 // ─── Speaker / earpiece toggle ────────────────────────────────────────────────
