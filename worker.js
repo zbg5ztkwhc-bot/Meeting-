@@ -465,10 +465,10 @@ body {
 .vtile.self-tile video { transform:scaleX(-1); }
 
 .vavatar {
-  width:64px; height:64px; border-radius:50%;
+  position:absolute; bottom:28px; left:8px; z-index:2;
+  width:32px; height:32px; border-radius:50%;
   background:var(--accent); display:flex; align-items:center; justify-content:center;
-  font-size:28px; font-weight:700; color:#fff; z-index:1;
-  flex-shrink:0; text-transform:uppercase;
+  font-size:14px; font-weight:700; color:#fff; text-transform:uppercase;
 }
 
 .vname {
@@ -483,14 +483,15 @@ body {
 
 /* Call controls */
 #callControls {
-  display:flex; align-items:center; justify-content:center; gap:20px;
-  padding:16px; padding-bottom:max(16px,env(safe-area-inset-bottom));
+  display:flex; align-items:center; justify-content:center; gap:10px;
+  padding:12px 16px; padding-bottom:max(12px,env(safe-area-inset-bottom));
   background:rgba(5,7,15,.97); flex-shrink:0;
   border-top:1px solid rgba(255,255,255,.06);
+  overflow-x:auto; -webkit-overflow-scrolling:touch;
 }
 .ctrl-btn {
-  width:58px; height:58px; border-radius:50%; border:none; cursor:pointer;
-  font-size:22px; background:#1e2433; color:#fff;
+  width:50px; height:50px; border-radius:50%; border:none; cursor:pointer;
+  font-size:20px; background:#1e2433; color:#fff;
   display:flex; align-items:center; justify-content:center;
   transition:background .15s; flex-shrink:0;
 }
@@ -593,6 +594,8 @@ body {
     <div id="callControls">
       <button id="micBtn"      class="ctrl-btn"           onclick="toggleMic()"    title="Mute/unmute">🎙️</button>
       <button id="camBtn"      class="ctrl-btn"           onclick="toggleCam()"    title="Camera on/off">📹</button>
+      <button id="flipBtn"     class="ctrl-btn"           onclick="flipCamera()"   title="Flip camera">🔄</button>
+      <button id="speakerBtn"  class="ctrl-btn"           onclick="toggleSpeaker()" title="Speaker/earpiece">🔊</button>
       <button id="shareBtn"    class="ctrl-btn"           onclick="toggleShare()"  title="Screen share">🖥️</button>
       <button id="recBtn"      class="ctrl-btn"           onclick="toggleRec()"    title="Record">⏺️</button>
       <button id="shareLinkBtn" class="ctrl-btn"          onclick="shareMeeting()" title="Share invite">🔗</button>
@@ -648,10 +651,18 @@ let roomCode      = '';
 let activeMeeting = null;
 let pendingToken  = null;
 let localStream   = null;
-let isSharing     = false;
-let isRecording   = false;
-let recordingDone = false;
-let rtkMeetingId  = '';
+let isSharing              = false;
+let isRecording            = false;
+let recordingDone          = false;
+let recordingInitiatedByMe = false;
+let rtkMeetingId           = '';
+let cameraFacing           = 'user';
+let isSpeaker              = true;
+let _localRecorder         = null;
+let _localChunks           = [];
+let _canvasRecInterval     = null;
+let _audioCtx              = null;
+const _audioEls            = new Set();
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
 function genCode() { return Math.random().toString(36).slice(2,8).toUpperCase(); }
@@ -723,8 +734,11 @@ function cleanupAndGoHome() {
   document.getElementById('videoGrid').innerHTML = '';
   document.getElementById('previewVid').srcObject = null;
   document.getElementById('audioUnlockBar').classList.add('hidden');
-  isSharing   = false;
-  isRecording = false;
+  isSharing = false; isRecording = false;
+  cameraFacing = 'user'; isSpeaker = true;
+  recordingInitiatedByMe = false;
+  _audioEls.clear();
+  if (_audioCtx) { _audioCtx.close().catch(() => {}); _audioCtx = null; }
   if (recordingDone) {
     document.getElementById('recDownloadBanner').classList.remove('hidden');
   } else {
@@ -915,6 +929,7 @@ async function joinNow() {
     const video = makeVideo(false);
     const audio = document.createElement('audio');
     audio.autoplay = true;
+    _audioEls.add(audio);
     tile.insertBefore(video, tile.firstChild);
     tile.appendChild(audio);
     grid.appendChild(tile);
@@ -923,8 +938,15 @@ async function joinNow() {
       if (en && track) video.play().catch(() => {});
     }
     function setAud(en, track) {
-      audio.srcObject = en && track ? new MediaStream([track]) : null;
-      if (en && track) audio.play().catch(() => {});
+      const stream = en && track ? new MediaStream([track]) : null;
+      audio.srcObject = stream;
+      if (stream) {
+        // Route through AudioContext so Android plays through speaker
+        if (_audioCtx && _audioCtx.state !== 'closed') {
+          try { _audioCtx.createMediaStreamSource(stream).connect(_audioCtx.destination); } catch {}
+        }
+        audio.play().catch(() => {});
+      }
     }
     setVid(p.videoEnabled, p.videoTrack);
     setAud(p.audioEnabled, p.audioTrack);
@@ -952,7 +974,10 @@ async function joinNow() {
     updateGridLayout();
   });
 
-  // ── 3. Join ───────────────────────────────────────────────────────────────
+  // ── 3. Create AudioContext (needed for speaker routing on Android) ──────────
+  try { _audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch {}
+
+  // ── 4. Join ───────────────────────────────────────────────────────────────
   showLoading('Joining…');
   dbg('Calling meeting.join()…');
   try {
@@ -1023,13 +1048,15 @@ function toggleCam() {
   }
 }
 
-// ─── Intercept RTCPeerConnection to capture all incoming video tracks ─────────
+// ─── Intercept RTCPeerConnection — capture incoming video tracks + all PCs ────
 const _remoteVideoTracks = [];
+const _allPCs = [];
 (function() {
   const _Orig = window.RTCPeerConnection;
   if (!_Orig) return;
   function PatchedPC(...args) {
     const pc = new _Orig(...args);
+    _allPCs.push(pc);
     pc.addEventListener('track', (e) => {
       if (e.track.kind === 'video') {
         const stream = e.streams?.[0] ?? new MediaStream([e.track]);
@@ -1041,6 +1068,21 @@ const _remoteVideoTracks = [];
   PatchedPC.prototype = _Orig.prototype;
   Object.setPrototypeOf(PatchedPC, _Orig);
   window.RTCPeerConnection = PatchedPC;
+})();
+
+// ─── Intercept getUserMedia — lets flipCamera() override facingMode ───────────
+let _overrideFacingMode = null;
+(function() {
+  const _orig = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+  navigator.mediaDevices.getUserMedia = async function(constraints) {
+    if (_overrideFacingMode && constraints?.video) {
+      const c = JSON.parse(JSON.stringify(constraints));
+      if (typeof c.video === 'object') c.video.facingMode = _overrideFacingMode;
+      else c.video = { facingMode: _overrideFacingMode };
+      return _orig(c);
+    }
+    return _orig(constraints);
+  };
 })();
 
 // ─── Intercept getDisplayMedia to capture the screen stream the SDK uses ──────
@@ -1064,6 +1106,110 @@ let _capturedScreenStream = null;
     return stream;
   };
 })();
+
+// ─── Flip camera ─────────────────────────────────────────────────────────────
+async function flipCamera() {
+  if (!activeMeeting) return;
+  const next = cameraFacing === 'user' ? 'environment' : 'user';
+  _overrideFacingMode = next;
+  try {
+    await activeMeeting.self.disableVideo();
+    await activeMeeting.self.enableVideo();
+    cameraFacing = next;
+    toast(next === 'environment' ? 'Rear camera' : 'Front camera');
+  } catch (e) {
+    toast('Camera flip failed: ' + (e.message || 'Not supported'));
+  } finally {
+    _overrideFacingMode = null;
+  }
+}
+
+// ─── Speaker / earpiece toggle ────────────────────────────────────────────────
+async function toggleSpeaker() {
+  isSpeaker = !isSpeaker;
+  document.getElementById('speakerBtn').textContent = isSpeaker ? '🔊' : '📞';
+  if (typeof HTMLMediaElement.prototype.setSinkId === 'function') {
+    let sinkId = '';
+    if (!isSpeaker) {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const ear = devices.find(d => d.kind === 'audiooutput' &&
+          /ear|handset|receiver/i.test(d.label));
+        if (ear) sinkId = ear.deviceId;
+      } catch {}
+    }
+    for (const el of _audioEls) {
+      await el.setSinkId(sinkId).catch(() => {});
+    }
+  }
+  // Resume AudioContext if suspended (needed on iOS/Android after user gesture)
+  if (_audioCtx?.state === 'suspended') _audioCtx.resume().catch(() => {});
+  toast(isSpeaker ? 'Speaker' : 'Earpiece');
+}
+
+// ─── Local recording helpers ──────────────────────────────────────────────────
+async function _startLocalRec() {
+  const grid = document.getElementById('videoGrid');
+  const canvas = document.createElement('canvas');
+  canvas.width  = Math.min(grid.offsetWidth  || 1280, 1280);
+  canvas.height = Math.min(grid.offsetHeight || 720,  720);
+  const ctx = canvas.getContext('2d');
+
+  _canvasRecInterval = setInterval(() => {
+    ctx.fillStyle = '#0a0a0f';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const vids = [...grid.querySelectorAll('video')].filter(v => v.srcObject && !v.paused);
+    if (!vids.length) return;
+    const cols = vids.length === 1 ? 1 : vids.length <= 4 ? 2 : 3;
+    const rows = Math.ceil(vids.length / cols);
+    const w = canvas.width / cols;
+    const h = canvas.height / rows;
+    vids.forEach((v, i) => {
+      try { ctx.drawImage(v, (i % cols) * w, Math.floor(i / cols) * h, w, h); } catch {}
+    });
+  }, 100);
+
+  // Mix all participant audio
+  let audioTracks = [];
+  try {
+    const mixCtx = new AudioContext();
+    const dest   = mixCtx.createMediaStreamDestination();
+    for (const el of _audioEls) {
+      if (el.srcObject) mixCtx.createMediaStreamSource(el.srcObject).connect(dest);
+    }
+    audioTracks = dest.stream.getAudioTracks();
+  } catch {}
+
+  const stream = new MediaStream([
+    ...canvas.captureStream(10).getVideoTracks(),
+    ...audioTracks
+  ]);
+  const mime = ['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm','video/mp4']
+    .find(t => { try { return MediaRecorder.isTypeSupported(t); } catch { return false; } }) || '';
+
+  _localRecorder = new MediaRecorder(stream, mime ? { mimeType: mime } : {});
+  _localChunks   = [];
+  _localRecorder.ondataavailable = e => e.data?.size > 0 && _localChunks.push(e.data);
+  _localRecorder.start(1000);
+}
+
+function _stopLocalRec() {
+  if (!_localRecorder) return;
+  _localRecorder.onstop = () => {
+    clearInterval(_canvasRecInterval);
+    _canvasRecInterval = null;
+    const blob = new Blob(_localChunks, { type: _localRecorder.mimeType || 'video/webm' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = 'meeting-' + new Date().toISOString().slice(0,19).replace(/[T:]/g,'-') + '.webm';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 15000);
+    _localRecorder = null; _localChunks = [];
+    toast('Recording saved to your device!');
+  };
+  _localRecorder.stop();
+}
 
 // ─── Screen share tile helper ─────────────────────────────────────────────────
 function updateScreenTile(id, label, enabled, trackOrStream, muted) {
@@ -1119,25 +1265,25 @@ function toggleShare() {
 }
 
 // ─── Recording ───────────────────────────────────────────────────────────────
-function toggleRec() {
+async function toggleRec() {
   if (!activeMeeting) return;
   const btn = document.getElementById('recBtn');
   if (isRecording) {
-    activeMeeting.recording.stop()
-      .then(() => {
-        isRecording = false; recordingDone = true;
-        btn.textContent = '⏺️'; btn.classList.remove('rec-on');
-        toast('Recording stopped — download available after leaving');
-      })
-      .catch(e => {
-        isRecording = false;
-        btn.textContent = '⏺️'; btn.classList.remove('rec-on');
-        toast('Stop recording failed: ' + (e.message || e));
-      });
+    isRecording = false;
+    btn.textContent = '⏺️'; btn.classList.remove('rec-on');
+    _stopLocalRec(); // downloads immediately to device
+    // Also stop server-side recording (best-effort for cloud copy)
+    activeMeeting.recording?.stop?.().then(() => { recordingDone = true; }).catch(() => {});
   } else {
-    activeMeeting.recording.start()
-      .then(() => { isRecording = true; btn.textContent = '⏹️'; btn.classList.add('rec-on'); toast('Recording started'); })
-      .catch(e => toast('Recording: ' + (e.message || e)));
+    try {
+      await _startLocalRec();
+      isRecording = true; recordingInitiatedByMe = true;
+      btn.textContent = '⏹️'; btn.classList.add('rec-on');
+      toast('Recording started');
+      activeMeeting.recording?.start?.().catch(() => {}); // cloud backup, best-effort
+    } catch (e) {
+      toast('Recording failed: ' + (e.message || 'Not supported on this device'));
+    }
   }
 }
 
@@ -1156,6 +1302,12 @@ function shareMeeting() {
 
 // ─── Leave call ───────────────────────────────────────────────────────────────
 function leaveCall() {
+  // Auto-stop recording when the person who started it leaves
+  if (isRecording && recordingInitiatedByMe) {
+    _stopLocalRec();
+    isRecording = false;
+    activeMeeting?.recording?.stop?.().then(() => { recordingDone = true; }).catch(() => {});
+  }
   if (activeMeeting) {
     activeMeeting.leaveRoom?.();
   } else {
