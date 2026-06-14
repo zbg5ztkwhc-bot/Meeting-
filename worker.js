@@ -536,6 +536,29 @@ body {
 .pdf-controls button:active { background:rgba(255,255,255,.35); }
 .pdf-controls span { color:rgba(255,255,255,.85); font-size:11px; }
 .ctrl-btn.pres-on { background:#7c3aed; }
+
+/* Featured layout: shared content fills the grid, cameras go to thumb strip */
+#videoGrid.featured-active {
+  flex-wrap:nowrap !important;
+  flex-direction:column !important;
+}
+.vtile.featured {
+  flex:1 1 0 !important;
+  min-height:0 !important;
+  flex-basis:auto !important;
+  max-width:100% !important;
+  width:100%;
+}
+#thumbStrip {
+  display:flex; gap:3px; padding:3px;
+  height:110px; flex-shrink:0;
+  overflow-x:auto; -webkit-overflow-scrolling:touch;
+  background:#000;
+}
+#thumbStrip .vtile {
+  width:80px; min-width:80px;
+  flex-shrink:0; height:100%; flex-grow:0;
+}
 </style>
 </head>
 <body>
@@ -690,6 +713,8 @@ let _localRecorder         = null;
 let _localChunks           = [];
 let _canvasRecInterval     = null;
 let _audioCtx              = null;
+let _audioCtxGain          = null;
+let _featuredMode          = false;
 const _audioEls            = new Set();
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
@@ -767,7 +792,9 @@ function cleanupAndGoHome() {
   cameraFacing = 'user'; isSpeaker = true;
   recordingInitiatedByMe = false;
   _audioEls.clear();
-  if (_audioCtx) { _audioCtx.close().catch(() => {}); _audioCtx = null; }
+  if (_audioCtx) { _audioCtx.close().catch(() => {}); _audioCtx = null; _audioCtxGain = null; }
+  if (_featuredMode) { document.getElementById('thumbStrip')?.remove(); _featuredMode = false; }
+  document.getElementById('videoGrid').classList.remove('featured-active');
   if (recordingDone) {
     document.getElementById('recDownloadBanner').classList.remove('hidden');
   } else {
@@ -809,6 +836,7 @@ function makeTile(id, name, isSelf) {
 
 // ─── Grid layout ──────────────────────────────────────────────────────────────
 function updateGridLayout() {
+  if (_featuredMode) return;
   const grid  = document.getElementById('videoGrid');
   const tiles = [...grid.querySelectorAll('.vtile')];
   const n     = tiles.length;
@@ -820,6 +848,57 @@ function updateGridLayout() {
     t.style.flexBasis = \`calc(\${pct}% - \${gap}px)\`;
     t.style.maxWidth  = \`calc(\${pct}% - \${gap}px)\`;
   });
+}
+
+// ─── Featured mode: one tile fills grid, others go to scrollable thumb strip ──
+function enterFeaturedMode(featuredTileId) {
+  if (_featuredMode) {
+    // Already in featured mode — make the new tile featured
+    const grid = document.getElementById('videoGrid');
+    grid.querySelectorAll('.vtile.featured').forEach(t => {
+      if (t.id !== 'tile-' + featuredTileId) t.classList.remove('featured');
+    });
+    const ft = document.getElementById('tile-' + featuredTileId);
+    if (ft) ft.classList.add('featured');
+    return;
+  }
+  _featuredMode = true;
+  const grid = document.getElementById('videoGrid');
+  grid.classList.add('featured-active');
+
+  // Create thumb strip and insert it before callControls
+  let strip = document.getElementById('thumbStrip');
+  if (!strip) {
+    strip = document.createElement('div');
+    strip.id = 'thumbStrip';
+    const controls = document.getElementById('callControls');
+    controls.parentNode.insertBefore(strip, controls);
+  }
+
+  // Move non-featured tiles to the strip; mark the featured tile
+  [...grid.querySelectorAll('.vtile')].forEach(tile => {
+    if (tile.id === 'tile-' + featuredTileId) {
+      tile.classList.add('featured');
+      tile.style.flexBasis = '';
+      tile.style.maxWidth  = '';
+    } else {
+      strip.appendChild(tile);
+    }
+  });
+}
+
+function exitFeaturedMode() {
+  if (!_featuredMode) return;
+  _featuredMode = false;
+  const grid  = document.getElementById('videoGrid');
+  const strip = document.getElementById('thumbStrip');
+  grid.classList.remove('featured-active');
+  if (strip) {
+    [...strip.querySelectorAll('.vtile')].forEach(tile => grid.appendChild(tile));
+    strip.remove();
+  }
+  grid.querySelectorAll('.vtile.featured').forEach(t => t.classList.remove('featured'));
+  updateGridLayout();
 }
 
 // ─── Setup screen — camera preview before joining ─────────────────────────────
@@ -947,9 +1026,17 @@ async function joinNow() {
       updateScreenTile(p.id + '-screen', '', false, null, false);
       return;
     }
-    const stream = findUnclaimedVideoStream();
-    dbg('RemSS: ' + p.name + ' unclaimed=' + !!stream + ' total=' + _remoteVideoTracks.length);
-    updateScreenTile(p.id + '-screen', (p.name || 'Guest') + ' · Screen', true, stream, false);
+    const label = (p.name || 'Guest') + ' · Screen';
+    function tryAssignRemoteSS(attempt) {
+      const stream = findUnclaimedVideoStream();
+      dbg('RemSS: ' + p.name + ' unclaimed=' + !!stream + ' total=' + _remoteVideoTracks.length + ' try=' + attempt);
+      if (stream) {
+        updateScreenTile(p.id + '-screen', label, true, stream, false);
+      } else if (attempt < 3) {
+        setTimeout(() => tryAssignRemoteSS(attempt + 1), attempt === 1 ? 600 : 1500);
+      }
+    }
+    tryAssignRemoteSS(1);
   });
 
   function addParticipant(p) {
@@ -961,7 +1048,9 @@ async function joinNow() {
     _audioEls.add(audio);
     tile.insertBefore(video, tile.firstChild);
     tile.appendChild(audio);
-    grid.appendChild(tile);
+    const strip = document.getElementById('thumbStrip');
+    if (_featuredMode && strip) strip.appendChild(tile);
+    else grid.appendChild(tile);
     function setVid(en, track) {
       video.srcObject = en && track ? new MediaStream([track]) : null;
       if (en && track) video.play().catch(() => {});
@@ -970,9 +1059,14 @@ async function joinNow() {
       const stream = en && track ? new MediaStream([track]) : null;
       audio.srcObject = stream;
       if (stream) {
-        // Route through AudioContext so Android plays through speaker
-        if (_audioCtx && _audioCtx.state !== 'closed') {
-          try { _audioCtx.createMediaStreamSource(stream).connect(_audioCtx.destination); } catch {}
+        const ctxOk = _audioCtx && _audioCtx.state !== 'closed' && _audioCtxGain;
+        if (ctxOk) {
+          try { _audioCtx.createMediaStreamSource(stream).connect(_audioCtxGain); } catch {}
+          // Mute element in speaker mode (AudioContext handles output → speaker)
+          // Unmute in earpiece mode (audio element routes to call path → earpiece)
+          audio.muted = isSpeaker;
+        } else {
+          audio.muted = false;
         }
         audio.play().catch(() => {});
       }
@@ -981,18 +1075,22 @@ async function joinNow() {
     setAud(p.audioEnabled, p.audioTrack);
     p.on('videoUpdate', ({ videoEnabled, videoTrack }) => setVid(videoEnabled, videoTrack));
     p.on('audioUpdate', ({ audioEnabled, audioTrack }) => setAud(audioEnabled, audioTrack));
+    function tryAssignSS(attempt) {
+      const stream = findUnclaimedVideoStream();
+      if (stream) {
+        updateScreenTile(p.id + '-screen', (p.name || 'Guest') + ' · Screen', true, stream, false);
+      } else if (attempt < 3) {
+        setTimeout(() => tryAssignSS(attempt + 1), attempt === 1 ? 600 : 1500);
+      }
+    }
     p.on('screenShareUpdate', () => {
       if (!p.screenShareEnabled) {
         updateScreenTile(p.id + '-screen', '', false, null, false);
         return;
       }
-      const stream = findUnclaimedVideoStream();
-      updateScreenTile(p.id + '-screen', (p.name || 'Guest') + ' · Screen', true, stream, false);
+      tryAssignSS(1);
     });
-    if (p.screenShareEnabled) {
-      const stream = findUnclaimedVideoStream();
-      updateScreenTile(p.id + '-screen', (p.name || 'Guest') + ' · Screen', true, stream, false);
-    }
+    if (p.screenShareEnabled) tryAssignSS(1);
     updateGridLayout();
   }
 
@@ -1004,7 +1102,12 @@ async function joinNow() {
   });
 
   // ── 3. Create AudioContext (needed for speaker routing on Android) ──────────
-  try { _audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch {}
+  try {
+    _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    _audioCtxGain = _audioCtx.createGain();
+    _audioCtxGain.gain.value = 1; // speaker mode by default
+    _audioCtxGain.connect(_audioCtx.destination);
+  } catch {}
 
   // ── 4. Join ───────────────────────────────────────────────────────────────
   showLoading('Joining…');
@@ -1048,6 +1151,13 @@ async function joinNow() {
 // ─── Unlock audio on iOS ──────────────────────────────────────────────────────
 function unlockAudio() {
   activeMeeting?.self?.playAudio?.();
+  if (_audioCtx?.state === 'suspended') _audioCtx.resume().catch(() => {});
+  // Re-apply muting based on current speaker mode now that AudioContext may be active
+  const ctxOk = _audioCtx && _audioCtx.state !== 'closed' && _audioCtxGain;
+  for (const el of _audioEls) {
+    el.muted = isSpeaker && ctxOk;
+    el.play().catch(() => {});
+  }
   document.getElementById('audioUnlockBar').classList.add('hidden');
 }
 
@@ -1211,7 +1321,7 @@ async function startPresentation(file) {
       '<button onclick="nextSlide()">&#9654;</button>';
     tile.append(vid, lbl, nav);
     grid.appendChild(tile);
-    updateGridLayout();
+    enterFeaturedMode('presentation');
 
     // Make canvas stream available to screen share (tap 🖥️ to send to others)
     _capturedScreenStream = _pdfStream;
@@ -1248,8 +1358,11 @@ function stopPresentation() {
   _pdfDoc = null; _pdfPage = 1; _pdfCanvas = null; _pdfStream = null;
   wasStream?.getTracks().forEach(t => t.stop());
   document.getElementById('tile-presentation')?.remove();
-  updateGridLayout();
   if (_capturedScreenStream === wasStream) _capturedScreenStream = null;
+  // If no other featured tile remains, exit featured mode; else just update layout
+  const grid = document.getElementById('videoGrid');
+  if (_featuredMode && !grid.querySelector('.vtile.featured')) exitFeaturedMode();
+  else updateGridLayout();
   if (isSharing) {
     activeMeeting?.self?.disableScreenShare().catch(() => {});
     isSharing = false;
@@ -1264,45 +1377,74 @@ function stopPresentation() {
 async function toggleSpeaker() {
   isSpeaker = !isSpeaker;
   document.getElementById('speakerBtn').textContent = isSpeaker ? '🔊' : '📞';
-  if (typeof HTMLMediaElement.prototype.setSinkId === 'function') {
-    let sinkId = '';
-    if (!isSpeaker) {
+
+  // Resume AudioContext on every user gesture (required on iOS/Android)
+  if (_audioCtx?.state === 'suspended') await _audioCtx.resume().catch(() => {});
+
+  const ctxOk = _audioCtx && _audioCtx.state !== 'closed' && _audioCtxGain;
+  if (ctxOk) {
+    // Speaker mode: AudioContext gain=1 → speaker output; mute audio elements
+    // Earpiece mode: AudioContext gain=0 → silent; unmute audio elements → call path (earpiece)
+    _audioCtxGain.gain.value = isSpeaker ? 1 : 0;
+    for (const el of _audioEls) {
+      el.muted = isSpeaker;
+      if (!isSpeaker) el.play().catch(() => {});
+    }
+  } else {
+    // No AudioContext — try setSinkId as best-effort fallback
+    if (typeof HTMLMediaElement.prototype.setSinkId === 'function') {
       try {
         const devices = await navigator.mediaDevices.enumerateDevices();
         const ear = devices.find(d => d.kind === 'audiooutput' &&
-          /ear|handset|receiver/i.test(d.label));
-        if (ear) sinkId = ear.deviceId;
+          /ear|handset|receiver|phone/i.test(d.label));
+        const sinkId = (!isSpeaker && ear) ? ear.deviceId : '';
+        for (const el of _audioEls) await el.setSinkId(sinkId).catch(() => {});
       } catch {}
     }
-    for (const el of _audioEls) {
-      await el.setSinkId(sinkId).catch(() => {});
-    }
   }
-  // Resume AudioContext if suspended (needed on iOS/Android after user gesture)
-  if (_audioCtx?.state === 'suspended') _audioCtx.resume().catch(() => {});
   toast(isSpeaker ? 'Speaker' : 'Earpiece');
 }
 
 // ─── Local recording helpers ──────────────────────────────────────────────────
 async function _startLocalRec() {
-  const grid = document.getElementById('videoGrid');
-  const canvas = document.createElement('canvas');
-  canvas.width  = Math.min(grid.offsetWidth  || 1280, 1280);
-  canvas.height = Math.min(grid.offsetHeight || 720,  720);
+  const callScreen = document.getElementById('callScreen');
+  const grid       = document.getElementById('videoGrid');
+  const canvas     = document.createElement('canvas');
+  canvas.width  = Math.min(callScreen.offsetWidth  || 1280, 1280);
+  canvas.height = Math.min(callScreen.offsetHeight || 720,  720);
   const ctx = canvas.getContext('2d');
 
   _canvasRecInterval = setInterval(() => {
     ctx.fillStyle = '#0a0a0f';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    const vids = [...grid.querySelectorAll('video')].filter(v => v.srcObject && !v.paused);
-    if (!vids.length) return;
-    const cols = vids.length === 1 ? 1 : vids.length <= 4 ? 2 : 3;
-    const rows = Math.ceil(vids.length / cols);
-    const w = canvas.width / cols;
-    const h = canvas.height / rows;
-    vids.forEach((v, i) => {
-      try { ctx.drawImage(v, (i % cols) * w, Math.floor(i / cols) * h, w, h); } catch {}
-    });
+
+    const strip     = document.getElementById('thumbStrip');
+    const gridVids  = [...grid.querySelectorAll('video')].filter(v => v.srcObject && !v.paused);
+    const stripVids = strip ? [...strip.querySelectorAll('video')].filter(v => v.srcObject && !v.paused) : [];
+
+    if (_featuredMode && gridVids.length) {
+      // Featured layout: main tile takes top 80%, thumbnails fill bottom 20%
+      const mainH  = Math.round(canvas.height * 0.8);
+      const thumbH = canvas.height - mainH;
+      try { ctx.drawImage(gridVids[0], 0, 0, canvas.width, mainH); } catch {}
+      if (stripVids.length) {
+        const thumbW = canvas.width / stripVids.length;
+        stripVids.forEach((v, i) => {
+          try { ctx.drawImage(v, i * thumbW, mainH, thumbW, thumbH); } catch {}
+        });
+      }
+    } else {
+      // Regular grid layout — all videos from grid (strip is empty in normal mode)
+      const vids = [...gridVids, ...stripVids];
+      if (!vids.length) return;
+      const cols = vids.length === 1 ? 1 : vids.length <= 4 ? 2 : 3;
+      const rows = Math.ceil(vids.length / cols);
+      const w = canvas.width / cols;
+      const h = canvas.height / rows;
+      vids.forEach((v, i) => {
+        try { ctx.drawImage(v, (i % cols) * w, Math.floor(i / cols) * h, w, h); } catch {}
+      });
+    }
   }, 100);
 
   // Mix all participant audio
@@ -1353,7 +1495,9 @@ function updateScreenTile(id, label, enabled, trackOrStream, muted) {
   let tile = document.getElementById('tile-' + id);
   if (!enabled || !trackOrStream) {
     tile?.remove();
-    updateGridLayout();
+    // If the featured tile was this one, check if any other featured tiles remain
+    if (_featuredMode && !grid.querySelector('.vtile.featured')) exitFeaturedMode();
+    else updateGridLayout();
     return;
   }
   const stream = (trackOrStream instanceof MediaStream)
@@ -1370,10 +1514,10 @@ function updateScreenTile(id, label, enabled, trackOrStream, muted) {
     tile.appendChild(vid);
     tile.appendChild(lbl);
     grid.appendChild(tile);
+    enterFeaturedMode(id);
   }
   const vid = tile.querySelector('video');
   if (vid) { vid.srcObject = stream; vid.play().catch(() => {}); }
-  updateGridLayout();
 }
 
 // ─── Screen share ────────────────────────────────────────────────────────────
