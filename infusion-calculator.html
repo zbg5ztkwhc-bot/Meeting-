@@ -1,0 +1,1727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MHMInfusionDoseCalculator</title>
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #f0f4f8;
+  --surface: #ffffff;
+  --surface2: #f8fafc;
+  --border: #e2e8f0;
+  --primary: #1a56db;
+  --primary-dark: #1e40af;
+  --primary-light: #eff6ff;
+  --secondary: #0891b2;
+  --success: #059669;
+  --success-light: #ecfdf5;
+  --warning: #d97706;
+  --warning-light: #fffbeb;
+  --danger: #dc2626;
+  --danger-light: #fef2f2;
+  --text: #1e293b;
+  --text-secondary: #64748b;
+  --text-muted: #94a3b8;
+  --shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
+  --shadow-md: 0 4px 6px rgba(0,0,0,.07), 0 2px 4px rgba(0,0,0,.06);
+  --radius: 12px;
+  --radius-sm: 8px;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+header {
+  background: linear-gradient(135deg, #1a56db 0%, #0891b2 100%);
+  color: white;
+  padding: 20px 24px;
+  box-shadow: 0 2px 12px rgba(26, 86, 219, 0.3);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header-inner {
+  max-width: 960px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.header-icon {
+  font-size: 32px;
+  line-height: 1;
+}
+
+.header-text h1 { font-size: 1.4rem; font-weight: 700; letter-spacing: -.3px; }
+.header-text p  { font-size: 12px; opacity: .85; margin-top: 1px; }
+
+.disclaimer-banner {
+  background: #fff3cd;
+  border-bottom: 2px solid #ffc107;
+  padding: 8px 24px;
+  font-size: 12px;
+  color: #664d03;
+  text-align: center;
+}
+
+.disclaimer-banner strong { color: #b45309; }
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+/* Tab navigation */
+.tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 6px;
+  box-shadow: var(--shadow);
+  margin-bottom: 24px;
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  scrollbar-width: none;
+}
+
+.tabs::-webkit-scrollbar { display: none; }
+
+.tab-btn {
+  flex: 1;
+  min-width: fit-content;
+  padding: 9px 14px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  transition: all .2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tab-btn:hover { background: var(--bg); color: var(--text); }
+.tab-btn.active { background: var(--primary); color: white; box-shadow: 0 2px 8px rgba(26,86,219,.3); }
+
+/* Cards */
+.card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.card-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface2);
+}
+
+.card-header-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: var(--primary-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.card-header h2 { font-size: 1rem; font-weight: 600; }
+.card-header p  { font-size: 12px; color: var(--text-secondary); margin-top: 1px; }
+
+.card-body { padding: 20px; }
+
+/* Form elements */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.form-group { display: flex; flex-direction: column; gap: 5px; }
+
+label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+
+input[type="number"],
+select {
+  padding: 10px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+  color: var(--text);
+  background: var(--surface);
+  outline: none;
+  transition: border-color .2s, box-shadow .2s;
+  width: 100%;
+}
+
+input[type="number"]:focus,
+select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(26,86,219,.12);
+}
+
+input[type="number"]::placeholder { color: var(--text-muted); }
+
+/* Buttons */
+.btn {
+  padding: 11px 22px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: white;
+  box-shadow: 0 2px 8px rgba(26,86,219,.25);
+}
+
+.btn-primary:hover { background: var(--primary-dark); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(26,86,219,.35); }
+.btn-primary:active { transform: translateY(0); }
+
+.btn-secondary {
+  background: var(--bg);
+  color: var(--text-secondary);
+  border: 1.5px solid var(--border);
+}
+
+.btn-secondary:hover { background: var(--border); color: var(--text); }
+
+.btn-group { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+
+/* Results */
+.result-box {
+  border-radius: var(--radius-sm);
+  padding: 16px 18px;
+  margin-top: 16px;
+  display: none;
+}
+
+.result-box.show { display: block; }
+
+.result-box.success {
+  background: var(--success-light);
+  border: 1.5px solid #a7f3d0;
+}
+
+.result-box.warning {
+  background: var(--warning-light);
+  border: 1.5px solid #fde68a;
+}
+
+.result-box.danger {
+  background: var(--danger-light);
+  border: 1.5px solid #fca5a5;
+}
+
+.result-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.result-main {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.2;
+}
+
+.result-unit {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+  margin-left: 4px;
+}
+
+.result-breakdown {
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.result-breakdown strong { color: var(--text); }
+
+.result-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 0;
+  border-bottom: 1px solid rgba(0,0,0,.05);
+}
+
+.result-row:last-child { border-bottom: none; }
+
+.result-label { font-size: 13px; color: var(--text-secondary); }
+.result-value { font-size: 14px; font-weight: 600; color: var(--text); }
+
+/* Section hidden/shown */
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* Drug reference table */
+.drug-table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+thead th {
+  background: var(--primary-light);
+  color: var(--primary-dark);
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  padding: 10px 12px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+tbody tr:nth-child(even) { background: var(--surface2); }
+tbody tr:hover { background: var(--primary-light); }
+
+tbody td {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.badge-blue    { background: #dbeafe; color: #1e40af; }
+.badge-green   { background: #d1fae5; color: #065f46; }
+.badge-orange  { background: #fed7aa; color: #9a3412; }
+.badge-purple  { background: #ede9fe; color: #5b21b6; }
+.badge-red     { background: #fee2e2; color: #991b1b; }
+
+/* Formula display */
+.formula-box {
+  background: var(--surface2);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  color: var(--primary-dark);
+  margin-top: 12px;
+  margin-bottom: 4px;
+}
+
+/* Info boxes */
+.info-box {
+  background: var(--primary-light);
+  border: 1.5px solid #bfdbfe;
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  font-size: 13px;
+  color: #1e40af;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.info-box-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+
+/* Divider */
+.divider {
+  height: 1px;
+  background: var(--border);
+  margin: 18px 0;
+}
+
+/* Quick-fill buttons */
+.quick-fill {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+.qbtn {
+  padding: 4px 10px;
+  border: 1.5px solid var(--border);
+  border-radius: 20px;
+  font-size: 11px;
+  cursor: pointer;
+  background: white;
+  color: var(--text-secondary);
+  transition: all .15s;
+}
+
+.qbtn:hover { background: var(--primary); color: white; border-color: var(--primary); }
+
+/* Dose range indicator */
+.range-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 13px;
+}
+
+.range-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.range-dot.safe    { background: var(--success); }
+.range-dot.caution { background: var(--warning); }
+.range-dot.danger  { background: var(--danger); }
+
+/* Responsive */
+@media (max-width: 600px) {
+  .tabs { gap: 2px; }
+  .tab-btn { padding: 8px 10px; font-size: 12px; }
+  .result-main { font-size: 1.6rem; }
+  .form-grid { grid-template-columns: 1fr; }
+  table { font-size: 12px; }
+  tbody td, thead th { padding: 8px 8px; }
+}
+
+/* Infusion type selector */
+.type-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.type-card {
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  cursor: pointer;
+  text-align: center;
+  transition: all .15s;
+  background: var(--surface);
+}
+
+.type-card:hover { border-color: var(--primary); background: var(--primary-light); }
+.type-card.selected { border-color: var(--primary); background: var(--primary-light); }
+.type-card .type-icon { font-size: 22px; }
+.type-card .type-name { font-size: 12px; font-weight: 600; margin-top: 4px; color: var(--text); }
+.type-card .type-unit { font-size: 10px; color: var(--text-muted); margin-top: 1px; }
+
+/* Multi-result grid */
+.multi-result {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.mini-result {
+  background: var(--surface2);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  text-align: center;
+}
+
+.mini-result .mini-label { font-size: 11px; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; letter-spacing: .4px; }
+.mini-result .mini-value { font-size: 1.4rem; font-weight: 700; color: var(--primary); margin-top: 4px; }
+.mini-result .mini-unit  { font-size: 12px; color: var(--text-secondary); }
+
+/* Print */
+@media print {
+  header, .tabs, .btn-group, .disclaimer-banner { display: none; }
+  .tab-panel { display: block !important; }
+  .result-box { display: block !important; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="header-icon">💉</div>
+    <div class="header-text">
+      <h1>MHMInfusionDoseCalculator</h1>
+      <p>IV rate · Weight-based dosing · Drip rate · Dilution · Drug reference</p>
+    </div>
+  </div>
+</header>
+
+<div class="disclaimer-banner">
+  <strong>⚠ Clinical Disclaimer:</strong> For educational and reference purposes only. Always verify calculations independently and consult institutional protocols before administering medications.
+</div>
+
+<div class="container">
+
+  <!-- Tabs -->
+  <div class="tabs" role="tablist">
+    <button class="tab-btn active" onclick="showTab('iv-rate')" id="tab-iv-rate">
+      <span>💧</span> IV Rate
+    </button>
+    <button class="tab-btn" onclick="showTab('weight-dose')" id="tab-weight-dose">
+      <span>⚖️</span> Weight-Based
+    </button>
+    <button class="tab-btn" onclick="showTab('drip-rate')" id="tab-drip-rate">
+      <span>🩸</span> Drip Rate
+    </button>
+    <button class="tab-btn" onclick="showTab('dilution')" id="tab-dilution">
+      <span>🧪</span> Dilution
+    </button>
+    <button class="tab-btn" onclick="showTab('dose-check')" id="tab-dose-check">
+      <span>🔬</span> Dose Verify
+    </button>
+    <button class="tab-btn" onclick="showTab('drug-ref')" id="tab-drug-ref">
+      <span>📋</span> Drug Reference
+    </button>
+  </div>
+
+  <!-- ═══════════════════ TAB 1: IV RATE ═══════════════════ -->
+  <div class="tab-panel active" id="panel-iv-rate">
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-icon">💧</div>
+        <div>
+          <h2>IV Infusion Rate Calculator</h2>
+          <p>Calculate mL/hr from volume and time — or solve for any variable</p>
+        </div>
+      </div>
+      <div class="card-body">
+
+        <div class="info-box" style="margin-bottom:16px">
+          <div class="info-box-icon">ℹ️</div>
+          <div>Enter any two values to calculate the third. Leave the field you want to solve blank (or zero).</div>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Volume (mL)</label>
+            <input type="number" id="ivr-volume" placeholder="e.g. 1000" min="0" step="any" oninput="calcIVRate()" />
+            <div class="quick-fill">
+              <span class="qbtn" onclick="setVal('ivr-volume',100)">100</span>
+              <span class="qbtn" onclick="setVal('ivr-volume',250)">250</span>
+              <span class="qbtn" onclick="setVal('ivr-volume',500)">500</span>
+              <span class="qbtn" onclick="setVal('ivr-volume',1000)">1000</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Time</label>
+            <input type="number" id="ivr-time" placeholder="e.g. 8" min="0" step="any" oninput="calcIVRate()" />
+          </div>
+          <div class="form-group">
+            <label>Time Unit</label>
+            <select id="ivr-time-unit" onchange="calcIVRate()">
+              <option value="hr">Hours</option>
+              <option value="min">Minutes</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Rate (mL/hr)</label>
+            <input type="number" id="ivr-rate" placeholder="e.g. 125" min="0" step="any" oninput="calcIVRate()" />
+          </div>
+        </div>
+
+        <div class="formula-box">Rate (mL/hr) = Volume (mL) ÷ Time (hr)</div>
+
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="calcIVRate()">🧮 Calculate</button>
+          <button class="btn btn-secondary" onclick="clearForm('ivr-volume','ivr-time','ivr-rate')">↺ Clear</button>
+        </div>
+
+        <div class="result-box" id="ivr-result">
+          <div class="result-title">Result</div>
+          <div id="ivr-result-content"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Time to infuse -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-icon">⏱️</div>
+        <div>
+          <h2>Infusion Duration</h2>
+          <p>How long will a bag last at a given rate?</p>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Volume (mL)</label>
+            <input type="number" id="dur-volume" placeholder="e.g. 500" min="0" step="any" />
+          </div>
+          <div class="form-group">
+            <label>Rate (mL/hr)</label>
+            <input type="number" id="dur-rate" placeholder="e.g. 83" min="0" step="any" />
+          </div>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="calcDuration()">🧮 Calculate Duration</button>
+          <button class="btn btn-secondary" onclick="clearForm('dur-volume','dur-rate')">↺ Clear</button>
+        </div>
+        <div class="result-box" id="dur-result">
+          <div class="result-title">Duration</div>
+          <div id="dur-result-content"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════════ TAB 2: WEIGHT-BASED ═══════════════════ -->
+  <div class="tab-panel" id="panel-weight-dose">
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-icon">⚖️</div>
+        <div>
+          <h2>Weight-Based Infusion Calculator</h2>
+          <p>Convert a desired dose per kg to mL/hr infusion rate</p>
+        </div>
+      </div>
+      <div class="card-body">
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Patient Weight (kg)</label>
+            <input type="number" id="wb-weight" placeholder="e.g. 70" min="0" step="any" oninput="calcWeightBased()" />
+            <div class="quick-fill">
+              <span class="qbtn" onclick="setVal('wb-weight',50)">50 kg</span>
+              <span class="qbtn" onclick="setVal('wb-weight',70)">70 kg</span>
+              <span class="qbtn" onclick="setVal('wb-weight',80)">80 kg</span>
+              <span class="qbtn" onclick="setVal('wb-weight',100)">100 kg</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Desired Dose</label>
+            <input type="number" id="wb-dose" placeholder="e.g. 5" min="0" step="any" oninput="calcWeightBased()" />
+          </div>
+          <div class="form-group">
+            <label>Dose Unit</label>
+            <select id="wb-dose-unit" onchange="calcWeightBased()">
+              <option value="mcg_kg_min">mcg/kg/min</option>
+              <option value="mcg_kg_hr">mcg/kg/hr</option>
+              <option value="mg_kg_hr">mg/kg/hr</option>
+              <option value="mg_kg_day">mg/kg/day</option>
+              <option value="units_kg_hr">units/kg/hr</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Drug Concentration</label>
+            <input type="number" id="wb-conc" placeholder="e.g. 1600" min="0" step="any" oninput="calcWeightBased()" />
+          </div>
+          <div class="form-group">
+            <label>Concentration Unit</label>
+            <select id="wb-conc-unit" onchange="calcWeightBased()">
+              <option value="mcg_ml">mcg/mL</option>
+              <option value="mg_ml">mg/mL</option>
+              <option value="units_ml">units/mL</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="formula-box" id="wb-formula">
+          Rate (mL/hr) = [Dose (mcg/kg/min) × Weight (kg) × 60] ÷ Concentration (mcg/mL)
+        </div>
+
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="calcWeightBased()">🧮 Calculate Rate</button>
+          <button class="btn btn-secondary" onclick="clearWeightBased()">↺ Clear</button>
+        </div>
+
+        <div class="result-box" id="wb-result">
+          <div class="result-title">Infusion Rate</div>
+          <div id="wb-result-content"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Reverse: from mL/hr to dose -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-icon">🔄</div>
+        <div>
+          <h2>Reverse: mL/hr → Dose</h2>
+          <p>What dose is the patient actually receiving?</p>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Rate (mL/hr)</label>
+            <input type="number" id="rev-rate" placeholder="e.g. 13" min="0" step="any" oninput="calcReverse()" />
+          </div>
+          <div class="form-group">
+            <label>Patient Weight (kg)</label>
+            <input type="number" id="rev-weight" placeholder="e.g. 70" min="0" step="any" oninput="calcReverse()" />
+          </div>
+          <div class="form-group">
+            <label>Concentration (mcg/mL)</label>
+            <input type="number" id="rev-conc" placeholder="e.g. 1600" min="0" step="any" oninput="calcReverse()" />
+          </div>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="calcReverse()">🧮 Calculate Dose</button>
+          <button class="btn btn-secondary" onclick="clearForm('rev-rate','rev-weight','rev-conc')">↺ Clear</button>
+        </div>
+        <div class="result-box" id="rev-result">
+          <div class="result-title">Current Dose</div>
+          <div id="rev-result-content"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════════ TAB 3: DRIP RATE ═══════════════════ -->
+  <div class="tab-panel" id="panel-drip-rate">
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-icon">🩸</div>
+        <div>
+          <h2>IV Drip Rate Calculator</h2>
+          <p>Calculate drops per minute for gravity infusions</p>
+        </div>
+      </div>
+      <div class="card-body">
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Volume (mL)</label>
+            <input type="number" id="dr-volume" placeholder="e.g. 1000" min="0" step="any" oninput="calcDrip()" />
+          </div>
+          <div class="form-group">
+            <label>Time (hours)</label>
+            <input type="number" id="dr-time" placeholder="e.g. 8" min="0" step="any" oninput="calcDrip()" />
+          </div>
+          <div class="form-group">
+            <label>Drop Factor (drops/mL)</label>
+            <select id="dr-factor" onchange="calcDrip()">
+              <option value="10">10 gtt/mL — Macro (Blood / large bore)</option>
+              <option value="15">15 gtt/mL — Macro standard</option>
+              <option value="20">20 gtt/mL — Macro (common)</option>
+              <option value="60" selected>60 gtt/mL — Micro / Pediatric</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="formula-box">
+          Drops/min = (Volume (mL) × Drop Factor) ÷ (Time (hr) × 60)
+        </div>
+
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="calcDrip()">🧮 Calculate</button>
+          <button class="btn btn-secondary" onclick="clearForm('dr-volume','dr-time')">↺ Clear</button>
+        </div>
+
+        <div class="result-box" id="dr-result">
+          <div class="result-title">Drip Rate</div>
+          <div id="dr-result-content"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- mL/hr to drops/min -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-icon">💦</div>
+        <div>
+          <h2>mL/hr → Drops/min</h2>
+          <p>Quick conversion from pump rate to manual drip</p>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>IV Rate (mL/hr)</label>
+            <input type="number" id="conv-rate" placeholder="e.g. 125" min="0" step="any" oninput="calcConv()" />
+          </div>
+          <div class="form-group">
+            <label>Drop Factor (drops/mL)</label>
+            <select id="conv-factor" onchange="calcConv()">
+              <option value="10">10 gtt/mL</option>
+              <option value="15">15 gtt/mL</option>
+              <option value="20" selected>20 gtt/mL</option>
+              <option value="60">60 gtt/mL</option>
+            </select>
+          </div>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="calcConv()">🧮 Convert</button>
+          <button class="btn btn-secondary" onclick="clearForm('conv-rate')">↺ Clear</button>
+        </div>
+        <div class="result-box" id="conv-result">
+          <div class="result-title">Drops per Minute</div>
+          <div id="conv-result-content"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════════ TAB 4: DILUTION ═══════════════════ -->
+  <div class="tab-panel" id="panel-dilution">
+
+    <!-- Concentration from dilution -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-icon">🧪</div>
+        <div>
+          <h2>Drug Concentration Calculator</h2>
+          <p>Calculate final concentration when preparing an infusion bag</p>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Drug Amount</label>
+            <input type="number" id="dil-amount" placeholder="e.g. 400" min="0" step="any" oninput="calcDilution()" />
+          </div>
+          <div class="form-group">
+            <label>Drug Unit</label>
+            <select id="dil-unit" onchange="calcDilution()">
+              <option value="mg">mg</option>
+              <option value="mcg">mcg</option>
+              <option value="g">g</option>
+              <option value="units">units</option>
+              <option value="mEq">mEq</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Total Volume (mL)</label>
+            <input type="number" id="dil-volume" placeholder="e.g. 250" min="0" step="any" oninput="calcDilution()" />
+            <div class="quick-fill">
+              <span class="qbtn" onclick="setVal('dil-volume',50)">50</span>
+              <span class="qbtn" onclick="setVal('dil-volume',100)">100</span>
+              <span class="qbtn" onclick="setVal('dil-volume',250)">250</span>
+              <span class="qbtn" onclick="setVal('dil-volume',500)">500</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="formula-box">
+          Concentration = Drug Amount ÷ Total Volume
+        </div>
+
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="calcDilution()">🧮 Calculate</button>
+          <button class="btn btn-secondary" onclick="clearForm('dil-amount','dil-volume')">↺ Clear</button>
+        </div>
+
+        <div class="result-box" id="dil-result">
+          <div class="result-title">Concentration</div>
+          <div id="dil-result-content"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- C1V1 = C2V2 -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-icon">⚗️</div>
+        <div>
+          <h2>C₁V₁ = C₂V₂ Dilution</h2>
+          <p>How much stock solution to draw up — solve for any variable</p>
+        </div>
+      </div>
+      <div class="card-body">
+
+        <div class="info-box" style="margin-bottom:16px">
+          <div class="info-box-icon">ℹ️</div>
+          <div>Leave ONE field blank (or zero). The calculator solves for the missing value.</div>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label>C₁ — Stock Concentration (mg/mL)</label>
+            <input type="number" id="c1" placeholder="e.g. 10" min="0" step="any" oninput="calcC1V1()" />
+          </div>
+          <div class="form-group">
+            <label>V₁ — Volume to Draw (mL)</label>
+            <input type="number" id="v1" placeholder="? (solve)" min="0" step="any" oninput="calcC1V1()" />
+          </div>
+          <div class="form-group">
+            <label>C₂ — Desired Concentration (mg/mL)</label>
+            <input type="number" id="c2" placeholder="e.g. 1" min="0" step="any" oninput="calcC1V1()" />
+          </div>
+          <div class="form-group">
+            <label>V₂ — Final Volume (mL)</label>
+            <input type="number" id="v2" placeholder="e.g. 100" min="0" step="any" oninput="calcC1V1()" />
+          </div>
+        </div>
+
+        <div class="formula-box">C₁ × V₁ = C₂ × V₂</div>
+
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="calcC1V1()">🧮 Solve</button>
+          <button class="btn btn-secondary" onclick="clearForm('c1','v1','c2','v2')">↺ Clear</button>
+        </div>
+
+        <div class="result-box" id="c1v1-result">
+          <div class="result-title">Solution</div>
+          <div id="c1v1-result-content"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════════ TAB 5: DOSE VERIFICATION ═══════════════════ -->
+  <div class="tab-panel" id="panel-dose-check">
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-icon">🔬</div>
+        <div>
+          <h2>Complete Infusion Setup Verifier</h2>
+          <p>Enter all parameters to verify the prescribed order is safe and consistent</p>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Drug Name</label>
+            <select id="dv-drug" onchange="prefillDrugLimits()">
+              <option value="custom">Custom / Other</option>
+              <option value="dopamine">Dopamine</option>
+              <option value="dobutamine">Dobutamine</option>
+              <option value="norepinephrine">Norepinephrine</option>
+              <option value="epinephrine">Epinephrine</option>
+              <option value="vasopressin">Vasopressin</option>
+              <option value="heparin">Heparin (infusion)</option>
+              <option value="insulin">Insulin (regular)</option>
+              <option value="morphine">Morphine</option>
+              <option value="fentanyl">Fentanyl</option>
+              <option value="midazolam">Midazolam</option>
+              <option value="propofol">Propofol</option>
+              <option value="nitroglycerin">Nitroglycerin</option>
+              <option value="lidocaine">Lidocaine</option>
+              <option value="amiodarone">Amiodarone</option>
+              <option value="labetalol">Labetalol</option>
+              <option value="nicardipine">Nicardipine</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Patient Weight (kg)</label>
+            <input type="number" id="dv-weight" placeholder="e.g. 70" min="0" step="any" />
+          </div>
+          <div class="form-group">
+            <label>Prescribed Rate (mL/hr)</label>
+            <input type="number" id="dv-rate" placeholder="e.g. 13" min="0" step="any" />
+          </div>
+          <div class="form-group">
+            <label>Drug in Bag</label>
+            <input type="number" id="dv-drug-amount" placeholder="e.g. 400" min="0" step="any" />
+          </div>
+          <div class="form-group">
+            <label>Drug Amount Unit</label>
+            <select id="dv-drug-unit">
+              <option value="mg">mg</option>
+              <option value="mcg">mcg</option>
+              <option value="units">units</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Bag Volume (mL)</label>
+            <input type="number" id="dv-bag-vol" placeholder="e.g. 250" min="0" step="any" />
+          </div>
+          <div class="form-group">
+            <label>Expected Dose Unit</label>
+            <select id="dv-dose-unit">
+              <option value="mcg_kg_min">mcg/kg/min</option>
+              <option value="mcg_kg_hr">mcg/kg/hr</option>
+              <option value="mg_kg_hr">mg/kg/hr</option>
+              <option value="units_hr">units/hr</option>
+              <option value="mcg_min">mcg/min</option>
+              <option value="mg_hr">mg/hr</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Min Safe Dose</label>
+            <input type="number" id="dv-min-dose" placeholder="e.g. 2" min="0" step="any" />
+          </div>
+          <div class="form-group">
+            <label>Max Safe Dose</label>
+            <input type="number" id="dv-max-dose" placeholder="e.g. 20" min="0" step="any" />
+          </div>
+        </div>
+
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="calcDoseVerify()">🔍 Verify Order</button>
+          <button class="btn btn-secondary" onclick="clearDoseVerify()">↺ Clear</button>
+        </div>
+
+        <div class="result-box" id="dv-result">
+          <div class="result-title">Verification Report</div>
+          <div id="dv-result-content"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════════ TAB 6: DRUG REFERENCE ═══════════════════ -->
+  <div class="tab-panel" id="panel-drug-ref">
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-header-icon">📋</div>
+        <div>
+          <h2>Common IV Drug Infusion Reference</h2>
+          <p>Typical adult dose ranges and preparation guidelines — verify against current formulary</p>
+        </div>
+      </div>
+      <div class="card-body" style="padding:0">
+        <div class="drug-table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Drug</th>
+                <th>Category</th>
+                <th>Typical Dose</th>
+                <th>Unit</th>
+                <th>Usual Dilution</th>
+                <th>Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Vasopressors -->
+              <tr>
+                <td><strong>Dopamine</strong></td>
+                <td><span class="badge badge-red">Vasopressor</span></td>
+                <td>2 – 20</td>
+                <td>mcg/kg/min</td>
+                <td>400 mg in 250 mL = 1600 mcg/mL</td>
+                <td>Low dose: renal; Mid: cardiac; High: vaso</td>
+              </tr>
+              <tr>
+                <td><strong>Dobutamine</strong></td>
+                <td><span class="badge badge-red">Inotrope</span></td>
+                <td>2 – 20</td>
+                <td>mcg/kg/min</td>
+                <td>250 mg in 250 mL = 1000 mcg/mL</td>
+                <td>Positive inotrope; watch tachycardia</td>
+              </tr>
+              <tr>
+                <td><strong>Norepinephrine</strong></td>
+                <td><span class="badge badge-red">Vasopressor</span></td>
+                <td>0.01 – 3</td>
+                <td>mcg/kg/min</td>
+                <td>8 mg in 250 mL = 32 mcg/mL</td>
+                <td>First-line septic shock; central line preferred</td>
+              </tr>
+              <tr>
+                <td><strong>Epinephrine</strong></td>
+                <td><span class="badge badge-red">Vasopressor</span></td>
+                <td>0.01 – 1</td>
+                <td>mcg/kg/min</td>
+                <td>4 mg in 250 mL = 16 mcg/mL</td>
+                <td>Anaphylaxis, cardiac arrest backup</td>
+              </tr>
+              <tr>
+                <td><strong>Phenylephrine</strong></td>
+                <td><span class="badge badge-red">Vasopressor</span></td>
+                <td>0.5 – 9</td>
+                <td>mcg/kg/min</td>
+                <td>100 mg in 250 mL = 400 mcg/mL</td>
+                <td>Pure alpha agonist; causes reflex bradycardia</td>
+              </tr>
+              <tr>
+                <td><strong>Vasopressin</strong></td>
+                <td><span class="badge badge-red">Vasopressor</span></td>
+                <td>0.01 – 0.04</td>
+                <td>units/min</td>
+                <td>20 units in 100 mL = 0.2 units/mL</td>
+                <td>Fixed dose; adjunct to NE in septic shock</td>
+              </tr>
+              <!-- Anticoagulants -->
+              <tr>
+                <td><strong>Heparin</strong></td>
+                <td><span class="badge badge-orange">Anticoagulant</span></td>
+                <td>12 – 18</td>
+                <td>units/kg/hr</td>
+                <td>25,000 units in 250 mL = 100 units/mL</td>
+                <td>Check PTT q6h; adjust per protocol</td>
+              </tr>
+              <tr>
+                <td><strong>Argatroban</strong></td>
+                <td><span class="badge badge-orange">Anticoagulant</span></td>
+                <td>0.5 – 2</td>
+                <td>mcg/kg/min</td>
+                <td>250 mg in 250 mL = 1 mg/mL</td>
+                <td>HIT alternative; monitor aPTT</td>
+              </tr>
+              <!-- Antiarrhythmics -->
+              <tr>
+                <td><strong>Amiodarone</strong></td>
+                <td><span class="badge badge-purple">Antiarrhythmic</span></td>
+                <td>0.5 – 1</td>
+                <td>mg/min</td>
+                <td>1800 mg in 500 mL = 3.6 mg/mL</td>
+                <td>Loading: 150 mg over 10 min; maint: 1 mg/min × 6h</td>
+              </tr>
+              <tr>
+                <td><strong>Lidocaine</strong></td>
+                <td><span class="badge badge-purple">Antiarrhythmic</span></td>
+                <td>1 – 4</td>
+                <td>mg/min</td>
+                <td>2 g in 500 mL = 4 mg/mL</td>
+                <td>Bolus 1–1.5 mg/kg; then infusion</td>
+              </tr>
+              <tr>
+                <td><strong>Procainamide</strong></td>
+                <td><span class="badge badge-purple">Antiarrhythmic</span></td>
+                <td>1 – 6</td>
+                <td>mg/min (load)</td>
+                <td>1 g in 500 mL = 2 mg/mL</td>
+                <td>Load max 17 mg/kg; maint 1–4 mg/min</td>
+              </tr>
+              <!-- Analgesics/Sedation -->
+              <tr>
+                <td><strong>Morphine</strong></td>
+                <td><span class="badge badge-green">Analgesic</span></td>
+                <td>1 – 10</td>
+                <td>mg/hr</td>
+                <td>50 mg in 50 mL = 1 mg/mL</td>
+                <td>Titrate to pain; watch respiratory depression</td>
+              </tr>
+              <tr>
+                <td><strong>Fentanyl</strong></td>
+                <td><span class="badge badge-green">Analgesic</span></td>
+                <td>25 – 200</td>
+                <td>mcg/hr</td>
+                <td>2500 mcg in 50 mL = 50 mcg/mL</td>
+                <td>Preferred in renal failure; less histamine</td>
+              </tr>
+              <tr>
+                <td><strong>Hydromorphone</strong></td>
+                <td><span class="badge badge-green">Analgesic</span></td>
+                <td>0.5 – 5</td>
+                <td>mg/hr</td>
+                <td>10 mg in 100 mL = 0.1 mg/mL</td>
+                <td>5–10× more potent than morphine</td>
+              </tr>
+              <tr>
+                <td><strong>Midazolam</strong></td>
+                <td><span class="badge badge-blue">Sedative</span></td>
+                <td>0.02 – 0.1</td>
+                <td>mg/kg/hr</td>
+                <td>50 mg in 50 mL = 1 mg/mL</td>
+                <td>Titrate to RASS; accumulates in renal failure</td>
+              </tr>
+              <tr>
+                <td><strong>Propofol</strong></td>
+                <td><span class="badge badge-blue">Sedative</span></td>
+                <td>5 – 50</td>
+                <td>mcg/kg/min</td>
+                <td>Ready-to-use: 10 mg/mL</td>
+                <td>Watch propofol infusion syndrome; lipid calories</td>
+              </tr>
+              <tr>
+                <td><strong>Dexmedetomidine</strong></td>
+                <td><span class="badge badge-blue">Sedative</span></td>
+                <td>0.2 – 1.5</td>
+                <td>mcg/kg/hr</td>
+                <td>400 mcg in 100 mL = 4 mcg/mL</td>
+                <td>Alpha-2 agonist; no respiratory depression</td>
+              </tr>
+              <tr>
+                <td><strong>Ketamine</strong></td>
+                <td><span class="badge badge-blue">Sedative</span></td>
+                <td>0.1 – 0.5</td>
+                <td>mg/kg/hr</td>
+                <td>500 mg in 500 mL = 1 mg/mL</td>
+                <td>Dissociative; consider benzos for emergence</td>
+              </tr>
+              <!-- Antihypertensives -->
+              <tr>
+                <td><strong>Nitroglycerin</strong></td>
+                <td><span class="badge badge-orange">Antihypertensive</span></td>
+                <td>5 – 200</td>
+                <td>mcg/min</td>
+                <td>50 mg in 250 mL = 200 mcg/mL</td>
+                <td>Non-PVC tubing required; titrate BP</td>
+              </tr>
+              <tr>
+                <td><strong>Nitroprusside</strong></td>
+                <td><span class="badge badge-orange">Antihypertensive</span></td>
+                <td>0.3 – 10</td>
+                <td>mcg/kg/min</td>
+                <td>50 mg in 250 mL = 200 mcg/mL</td>
+                <td>Protect from light; watch cyanide toxicity</td>
+              </tr>
+              <tr>
+                <td><strong>Nicardipine</strong></td>
+                <td><span class="badge badge-orange">Antihypertensive</span></td>
+                <td>5 – 15</td>
+                <td>mg/hr</td>
+                <td>25 mg in 250 mL = 0.1 mg/mL</td>
+                <td>Ca-channel blocker; good for hypertensive crisis</td>
+              </tr>
+              <tr>
+                <td><strong>Labetalol</strong></td>
+                <td><span class="badge badge-orange">Antihypertensive</span></td>
+                <td>2 – 8</td>
+                <td>mg/min (load)</td>
+                <td>200 mg in 200 mL = 1 mg/mL</td>
+                <td>Alpha+beta blocker; titrate infusion 0.5–2 mg/min</td>
+              </tr>
+              <tr>
+                <td><strong>Esmolol</strong></td>
+                <td><span class="badge badge-orange">Antihypertensive</span></td>
+                <td>50 – 300</td>
+                <td>mcg/kg/min</td>
+                <td>10 mg/mL ready-to-use</td>
+                <td>Ultra-short beta-1 blocker; t½ ~9 min</td>
+              </tr>
+              <!-- Insulin -->
+              <tr>
+                <td><strong>Insulin (Regular)</strong></td>
+                <td><span class="badge badge-green">Endocrine</span></td>
+                <td>0.05 – 0.1</td>
+                <td>units/kg/hr</td>
+                <td>100 units in 100 mL = 1 unit/mL</td>
+                <td>Follow glucose protocol; flush line first</td>
+              </tr>
+              <!-- Antibiotics -->
+              <tr>
+                <td><strong>Vancomycin</strong></td>
+                <td><span class="badge badge-purple">Antibiotic</span></td>
+                <td>15 – 20</td>
+                <td>mg/kg q8–24h</td>
+                <td>≤5 mg/mL; infuse over ≥60 min</td>
+                <td>Monitor trough / AUC/MIC; renal dose adjust</td>
+              </tr>
+              <tr>
+                <td><strong>Meropenem</strong></td>
+                <td><span class="badge badge-purple">Antibiotic</span></td>
+                <td>1 – 2 g</td>
+                <td>q8h (extended infusion)</td>
+                <td>In 100–250 mL NS or D5W</td>
+                <td>Extended infusion over 3–4 h for PK/PD optimization</td>
+              </tr>
+              <!-- Electrolytes -->
+              <tr>
+                <td><strong>Potassium Chloride</strong></td>
+                <td><span class="badge badge-blue">Electrolyte</span></td>
+                <td>10 – 20</td>
+                <td>mEq/hr</td>
+                <td>≤40 mEq/100 mL peripheral</td>
+                <td>Max peripheral 10 mEq/hr; central up to 20 mEq/hr</td>
+              </tr>
+              <tr>
+                <td><strong>Magnesium Sulfate</strong></td>
+                <td><span class="badge badge-blue">Electrolyte</span></td>
+                <td>1 – 2 g/hr</td>
+                <td>g/hr</td>
+                <td>10 g in 100 mL = 100 mg/mL</td>
+                <td>Watch deep tendon reflexes; have Ca gluconate ready</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-box">
+      <div class="info-box-icon">⚠️</div>
+      <div>Dose ranges represent common adult starting points. Actual doses depend on indication, patient-specific factors, and institutional protocols. Always consult current clinical guidelines and pharmacy.</div>
+    </div>
+
+  </div>
+
+</div><!-- /container -->
+
+<script>
+'use strict';
+
+// ── Utilities ──────────────────────────────────────────────────────────────────
+function showTab(id) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-' + id).classList.add('active');
+  document.getElementById('tab-' + id).classList.add('active');
+}
+
+function setVal(id, val) {
+  document.getElementById(id).value = val;
+  const ev = new Event('input', { bubbles: true });
+  document.getElementById(id).dispatchEvent(ev);
+}
+
+function clearForm(...ids) {
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+}
+
+function showResult(boxId, html, type = 'success') {
+  const box = document.getElementById(boxId);
+  box.className = 'result-box show ' + type;
+  box.querySelector('[id$="-content"]').innerHTML = html;
+}
+
+function hideResult(boxId) {
+  document.getElementById(boxId).className = 'result-box';
+}
+
+function fmt(n, decimals = 2) {
+  if (!isFinite(n)) return '—';
+  const f = parseFloat(n.toFixed(decimals));
+  return f.toLocaleString('en-US', { maximumFractionDigits: decimals });
+}
+
+function getVal(id) {
+  const v = parseFloat(document.getElementById(id).value);
+  return isNaN(v) || v < 0 ? null : v;
+}
+
+function resultHtml(mainVal, mainUnit, rows = [], extraHtml = '') {
+  let s = `<div class="result-main">${mainVal}<span class="result-unit">${mainUnit}</span></div>`;
+  if (rows.length) {
+    s += '<div class="result-breakdown">';
+    rows.forEach(([label, value]) => {
+      s += `<div class="result-row"><span class="result-label">${label}</span><span class="result-value">${value}</span></div>`;
+    });
+    s += '</div>';
+  }
+  s += extraHtml;
+  return s;
+}
+
+// ── Tab 1: IV Rate ─────────────────────────────────────────────────────────────
+function calcIVRate() {
+  let vol    = getVal('ivr-volume');
+  let time   = getVal('ivr-time');
+  let rate   = getVal('ivr-rate');
+  const unit = document.getElementById('ivr-time-unit').value;
+
+  if (vol === null && time === null && rate === null) return;
+
+  const timeHr = (unit === 'min' && time !== null) ? time / 60 : time;
+
+  let result, solvedFor;
+  if (rate === null && vol !== null && time !== null && timeHr > 0) {
+    result = vol / timeHr;
+    solvedFor = 'rate';
+    document.getElementById('ivr-rate').value = fmt(result);
+  } else if (vol === null && rate !== null && time !== null && timeHr > 0) {
+    result = rate * timeHr;
+    solvedFor = 'volume';
+    document.getElementById('ivr-volume').value = fmt(result);
+  } else if (time === null && vol !== null && rate !== null && rate > 0) {
+    result = unit === 'min' ? (vol / rate) * 60 : vol / rate;
+    solvedFor = 'time';
+    document.getElementById('ivr-time').value = fmt(result);
+  } else {
+    return;
+  }
+
+  const labels = { rate: 'Rate', volume: 'Volume', time: 'Time' };
+  const units  = { rate: 'mL/hr', volume: 'mL', time: unit === 'min' ? 'minutes' : 'hours' };
+
+  showResult('ivr-result', resultHtml(
+    fmt(result, 2),
+    units[solvedFor],
+    [
+      ['Formula', `${solvedFor === 'rate' ? 'Volume ÷ Time' : solvedFor === 'volume' ? 'Rate × Time' : 'Volume ÷ Rate'}`],
+      ['Solved for', labels[solvedFor]]
+    ]
+  ), 'success');
+}
+
+function calcDuration() {
+  const vol  = getVal('dur-volume');
+  const rate = getVal('dur-rate');
+  if (!vol || !rate || rate === 0) { hideResult('dur-result'); return; }
+
+  const hrs     = vol / rate;
+  const h       = Math.floor(hrs);
+  const m       = Math.round((hrs - h) * 60);
+  const timeStr = h > 0 ? `${h}h ${m}min` : `${m}min`;
+
+  showResult('dur-result', resultHtml(
+    timeStr, '',
+    [
+      ['Total hours', fmt(hrs, 2) + ' hr'],
+      ['Volume',      fmt(vol) + ' mL'],
+      ['Rate',        fmt(rate) + ' mL/hr']
+    ]
+  ), 'success');
+}
+
+// ── Tab 2: Weight-Based ────────────────────────────────────────────────────────
+function calcWeightBased() {
+  const weight   = getVal('wb-weight');
+  const dose     = getVal('wb-dose');
+  const conc     = getVal('wb-conc');
+  const doseUnit = document.getElementById('wb-dose-unit').value;
+  const concUnit = document.getElementById('wb-conc-unit').value;
+
+  if (!weight || !dose || !conc) { hideResult('wb-result'); return; }
+
+  // Normalise everything to mg/mL and mg/kg/hr first
+  let doseMgKgHr, concMgMl;
+
+  // Dose normalisation → mg/kg/hr
+  if (doseUnit === 'mcg_kg_min') doseMgKgHr = dose * 60 / 1000;
+  else if (doseUnit === 'mcg_kg_hr') doseMgKgHr = dose / 1000;
+  else if (doseUnit === 'mg_kg_hr') doseMgKgHr = dose;
+  else if (doseUnit === 'mg_kg_day') doseMgKgHr = dose / 24;
+  else if (doseUnit === 'units_kg_hr') doseMgKgHr = dose; // treat units as mg-equivalent
+
+  // Concentration normalisation → mg/mL (or units/mL)
+  if (concUnit === 'mcg_ml') concMgMl = conc / 1000;
+  else if (concUnit === 'mg_ml') concMgMl = conc;
+  else if (concUnit === 'units_ml') concMgMl = conc;
+
+  const rateMLhr = (doseMgKgHr * weight) / concMgMl;
+
+  // Update formula display
+  const formulas = {
+    mcg_kg_min: 'Rate (mL/hr) = [Dose (mcg/kg/min) × Weight (kg) × 60] ÷ [Conc (mcg/mL)]',
+    mcg_kg_hr:  'Rate (mL/hr) = [Dose (mcg/kg/hr) × Weight (kg)] ÷ [Conc (mcg/mL)]',
+    mg_kg_hr:   'Rate (mL/hr) = [Dose (mg/kg/hr) × Weight (kg)] ÷ [Conc (mg/mL)]',
+    mg_kg_day:  'Rate (mL/hr) = [Dose (mg/kg/day) × Weight (kg)] ÷ [Conc (mg/mL) × 24]',
+    units_kg_hr:'Rate (mL/hr) = [Dose (units/kg/hr) × Weight (kg)] ÷ [Conc (units/mL)]',
+  };
+  document.getElementById('wb-formula').textContent = formulas[doseUnit];
+
+  const totalDoseMgHr = doseMgKgHr * weight;
+
+  showResult('wb-result', resultHtml(
+    fmt(rateMLhr, 2), 'mL/hr',
+    [
+      ['Patient weight',  fmt(weight) + ' kg'],
+      ['Desired dose',    fmt(dose) + ' ' + doseUnit.replace(/_/g,'/')],
+      ['Concentration',   fmt(conc) + ' ' + concUnit.replace(/_/g,'/')],
+      ['Total dose/hr',   fmt(totalDoseMgHr, 3) + (concUnit === 'units_ml' ? ' units/hr' : ' mg/hr')]
+    ]
+  ), 'success');
+}
+
+function clearWeightBased() {
+  clearForm('wb-weight','wb-dose','wb-conc');
+  hideResult('wb-result');
+}
+
+function calcReverse() {
+  const rate   = getVal('rev-rate');
+  const weight = getVal('rev-weight');
+  const conc   = getVal('rev-conc');
+  if (!rate || !weight || !conc) { hideResult('rev-result'); return; }
+
+  const mcgKgMin = (rate * conc) / (weight * 60);
+  const mcgKgHr  = mcgKgMin * 60;
+  const mgKgHr   = mcgKgHr / 1000;
+  const mcgMin   = rate * conc / 60;
+
+  showResult('rev-result', resultHtml(
+    fmt(mcgKgMin, 3), 'mcg/kg/min',
+    [
+      ['mcg/kg/hr',   fmt(mcgKgHr, 2)],
+      ['mg/kg/hr',    fmt(mgKgHr, 4)],
+      ['mcg/min',     fmt(mcgMin, 2)],
+      ['Total mcg/hr',fmt(mcgMin * 60, 1)]
+    ]
+  ), 'success');
+}
+
+// ── Tab 3: Drip Rate ───────────────────────────────────────────────────────────
+function calcDrip() {
+  const vol    = getVal('dr-volume');
+  const time   = getVal('dr-time');
+  const factor = parseInt(document.getElementById('dr-factor').value);
+  if (!vol || !time || time === 0) { hideResult('dr-result'); return; }
+
+  const rateMLhr   = vol / time;
+  const dropsMin   = (vol * factor) / (time * 60);
+  const dropsMinR  = Math.round(dropsMin);
+
+  showResult('dr-result', resultHtml(
+    dropsMinR, 'drops/min',
+    [
+      ['Exact value',   fmt(dropsMin, 2) + ' gtt/min'],
+      ['IV rate',       fmt(rateMLhr, 1) + ' mL/hr'],
+      ['Drop factor',   factor + ' gtt/mL'],
+      ['1 drop every',  fmt(60 / dropsMin, 1) + ' seconds']
+    ]
+  ), 'success');
+}
+
+function calcConv() {
+  const rate   = getVal('conv-rate');
+  const factor = parseInt(document.getElementById('conv-factor').value);
+  if (!rate) { hideResult('conv-result'); return; }
+
+  const dropsMin  = (rate * factor) / 60;
+  const dropsMinR = Math.round(dropsMin);
+
+  showResult('conv-result', resultHtml(
+    dropsMinR, 'drops/min',
+    [
+      ['Exact value',   fmt(dropsMin, 2) + ' gtt/min'],
+      ['Drop factor',   factor + ' gtt/mL'],
+      ['1 drop every',  fmt(60 / dropsMin, 1) + ' seconds']
+    ]
+  ), 'success');
+}
+
+// ── Tab 4: Dilution ────────────────────────────────────────────────────────────
+function calcDilution() {
+  const amount = getVal('dil-amount');
+  const volume = getVal('dil-volume');
+  const unit   = document.getElementById('dil-unit').value;
+  if (!amount || !volume || volume === 0) { hideResult('dil-result'); return; }
+
+  const concPerMl = amount / volume;
+
+  showResult('dil-result', resultHtml(
+    fmt(concPerMl, 4), unit + '/mL',
+    [
+      ['Drug in bag',    fmt(amount) + ' ' + unit],
+      ['Total volume',   fmt(volume) + ' mL'],
+      ['Concentration',  fmt(concPerMl * 1000, 2) + (unit === 'mg' ? ' mcg/mL' : ' m' + unit + '/mL')],
+    ]
+  ), 'success');
+}
+
+function calcC1V1() {
+  const c1 = getVal('c1');
+  const v1 = getVal('v1');
+  const c2 = getVal('c2');
+  const v2 = getVal('v2');
+
+  const known = [c1, v1, c2, v2];
+  const nullCount = known.filter(x => x === null || x === 0).length;
+
+  if (nullCount !== 1) {
+    if (nullCount > 1) hideResult('c1v1-result');
+    return;
+  }
+
+  let result, label, rows;
+
+  if (v1 === null || v1 === 0) {
+    if (!c1 || !c2 || !v2) return;
+    result = (c2 * v2) / c1;
+    label  = 'V₁ (volume to draw)';
+    rows   = [
+      ['Draw', fmt(result, 2) + ' mL from stock'],
+      ['Then add diluent to reach', fmt(v2) + ' mL'],
+      ['Diluent needed', fmt(v2 - result, 2) + ' mL']
+    ];
+  } else if (c1 === null || c1 === 0) {
+    if (!v1 || !c2 || !v2) return;
+    result = (c2 * v2) / v1;
+    label  = 'C₁ (stock concentration)';
+    rows   = [['Result', fmt(result, 4) + ' mg/mL']];
+  } else if (c2 === null || c2 === 0) {
+    if (!c1 || !v1 || !v2) return;
+    result = (c1 * v1) / v2;
+    label  = 'C₂ (final concentration)';
+    rows   = [['Result', fmt(result, 4) + ' mg/mL']];
+  } else if (v2 === null || v2 === 0) {
+    if (!c1 || !v1 || !c2) return;
+    result = (c1 * v1) / c2;
+    label  = 'V₂ (final volume)';
+    rows   = [['Result', fmt(result, 2) + ' mL']];
+  }
+
+  showResult('c1v1-result', resultHtml(fmt(result, 3), '', rows), 'success');
+}
+
+// ── Tab 5: Dose Verification ───────────────────────────────────────────────────
+const DRUG_PRESETS = {
+  dopamine:       { min: 2,    max: 20,   unit: 'mcg_kg_min', drugUnit: 'mg',    bagAmount: 400, bagVol: 250 },
+  dobutamine:     { min: 2,    max: 20,   unit: 'mcg_kg_min', drugUnit: 'mg',    bagAmount: 250, bagVol: 250 },
+  norepinephrine: { min: 0.01, max: 3,    unit: 'mcg_kg_min', drugUnit: 'mg',    bagAmount: 8,   bagVol: 250 },
+  epinephrine:    { min: 0.01, max: 1,    unit: 'mcg_kg_min', drugUnit: 'mg',    bagAmount: 4,   bagVol: 250 },
+  vasopressin:    { min: 0.01, max: 0.04, unit: 'units_hr',   drugUnit: 'units', bagAmount: 20,  bagVol: 100 },
+  heparin:        { min: 12,   max: 18,   unit: 'units_kg_hr',drugUnit: 'units', bagAmount: 25000, bagVol: 250 },
+  insulin:        { min: 0.05, max: 0.1,  unit: 'units_kg_hr',drugUnit: 'units', bagAmount: 100, bagVol: 100 },
+  morphine:       { min: 1,    max: 10,   unit: 'mg_hr',      drugUnit: 'mg',    bagAmount: 50,  bagVol: 50  },
+  fentanyl:       { min: 25,   max: 200,  unit: 'mcg_hr',     drugUnit: 'mcg',   bagAmount: 2500,bagVol: 50  },
+  midazolam:      { min: 0.02, max: 0.1,  unit: 'mg_kg_hr',   drugUnit: 'mg',    bagAmount: 50,  bagVol: 50  },
+  propofol:       { min: 5,    max: 50,   unit: 'mcg_kg_min', drugUnit: 'mg',    bagAmount: 500, bagVol: 50  },
+  nitroglycerin:  { min: 5,    max: 200,  unit: 'mcg_min',    drugUnit: 'mg',    bagAmount: 50,  bagVol: 250 },
+  lidocaine:      { min: 1,    max: 4,    unit: 'mg_min',     drugUnit: 'mg',    bagAmount: 2000,bagVol: 500 },
+  amiodarone:     { min: 0.5,  max: 1,    unit: 'mg_min',     drugUnit: 'mg',    bagAmount: 1800,bagVol: 500 },
+  labetalol:      { min: 0.5,  max: 2,    unit: 'mg_min',     drugUnit: 'mg',    bagAmount: 200, bagVol: 200 },
+  nicardipine:    { min: 5,    max: 15,   unit: 'mg_hr',      drugUnit: 'mg',    bagAmount: 25,  bagVol: 250 },
+};
+
+function prefillDrugLimits() {
+  const drug = document.getElementById('dv-drug').value;
+  if (drug === 'custom' || !DRUG_PRESETS[drug]) return;
+  const p = DRUG_PRESETS[drug];
+  document.getElementById('dv-min-dose').value  = p.min;
+  document.getElementById('dv-max-dose').value  = p.max;
+  document.getElementById('dv-dose-unit').value = p.unit;
+  document.getElementById('dv-drug-unit').value = p.drugUnit;
+  document.getElementById('dv-drug-amount').value = p.bagAmount;
+  document.getElementById('dv-bag-vol').value   = p.bagVol;
+}
+
+function calcDoseVerify() {
+  const rate       = getVal('dv-rate');
+  const weight     = getVal('dv-weight');
+  const drugAmount = getVal('dv-drug-amount');
+  const bagVol     = getVal('dv-bag-vol');
+  const minDose    = getVal('dv-min-dose');
+  const maxDose    = getVal('dv-max-dose');
+  const doseUnit   = document.getElementById('dv-dose-unit').value;
+  const drugUnitEl = document.getElementById('dv-drug-unit').value;
+
+  if (!rate || !weight || !drugAmount || !bagVol) {
+    showResult('dv-result', '<p style="color:var(--warning)">Please fill in rate, weight, drug amount, and bag volume.</p>', 'warning');
+    return;
+  }
+
+  // Calculate concentration
+  let concMcgMl, concDisplayUnit;
+  if (drugUnitEl === 'mcg') {
+    concMcgMl = drugAmount / bagVol;
+    concDisplayUnit = 'mcg/mL';
+  } else if (drugUnitEl === 'mg') {
+    concMcgMl = (drugAmount * 1000) / bagVol;
+    concDisplayUnit = 'mcg/mL';
+  } else {
+    concMcgMl = drugAmount / bagVol;
+    concDisplayUnit = 'units/mL';
+  }
+
+  // Calculate actual delivered dose in mcg/kg/min
+  const actualMcgKgMin = (rate * concMcgMl) / (weight * 60);
+  const actualMcgKgHr  = actualMcgKgMin * 60;
+  const actualMgKgHr   = actualMcgKgHr / 1000;
+  const actualMcgMin   = rate * concMcgMl / 60;
+  const actualMgMin    = actualMcgMin / 1000;
+  const actualMgHr     = actualMcgMin * 60 / 1000;
+  const actualMcgHr    = actualMcgMin * 60;
+  const actualUnitsHr  = rate * (drugAmount / bagVol);
+
+  // Map doseUnit to actual value
+  const actualMap = {
+    mcg_kg_min: actualMcgKgMin,
+    mcg_kg_hr:  actualMcgKgHr,
+    mg_kg_hr:   actualMgKgHr,
+    units_hr:   actualUnitsHr,
+    mcg_min:    actualMcgMin,
+    mg_hr:      actualMgHr,
+    mg_min:     actualMgMin,
+    mcg_hr:     actualMcgHr,
+  };
+
+  const actualDose = actualMap[doseUnit] ?? actualMcgKgMin;
+  const unitLabel  = doseUnit.replace(/_/g, '/');
+
+  let safetyStatus = 'success';
+  let safetyMsg    = '';
+  let safetyDot    = 'safe';
+
+  if (minDose !== null && maxDose !== null) {
+    if (actualDose < minDose) {
+      safetyStatus = 'warning';
+      safetyMsg    = `⚠️ Dose is BELOW the minimum safe range (${fmt(minDose)} ${unitLabel})`;
+      safetyDot    = 'caution';
+    } else if (actualDose > maxDose) {
+      safetyStatus = 'danger';
+      safetyMsg    = `🚨 Dose EXCEEDS the maximum safe range (${fmt(maxDose)} ${unitLabel})`;
+      safetyDot    = 'danger';
+    } else {
+      safetyMsg = `✅ Dose is WITHIN the safe range (${fmt(minDose)} – ${fmt(maxDose)} ${unitLabel})`;
+    }
+  }
+
+  const html = `
+    <div class="result-main">${fmt(actualDose, 4)} <span class="result-unit">${unitLabel}</span></div>
+    ${safetyMsg ? `<div class="range-indicator" style="margin-top:10px">
+      <div class="range-dot ${safetyDot}"></div>
+      <strong>${safetyMsg}</strong>
+    </div>` : ''}
+    <div class="result-breakdown">
+      <div class="result-row"><span class="result-label">Concentration in bag</span><span class="result-value">${fmt(concMcgMl, 2)} ${concDisplayUnit}</span></div>
+      <div class="result-row"><span class="result-label">mcg/kg/min</span><span class="result-value">${fmt(actualMcgKgMin, 4)}</span></div>
+      <div class="result-row"><span class="result-label">mcg/kg/hr</span><span class="result-value">${fmt(actualMcgKgHr, 3)}</span></div>
+      <div class="result-row"><span class="result-label">mg/kg/hr</span><span class="result-value">${fmt(actualMgKgHr, 5)}</span></div>
+      <div class="result-row"><span class="result-label">mcg/min</span><span class="result-value">${fmt(actualMcgMin, 2)}</span></div>
+      <div class="result-row"><span class="result-label">mg/hr</span><span class="result-value">${fmt(actualMgHr, 3)}</span></div>
+    </div>
+  `;
+
+  showResult('dv-result', html, safetyStatus);
+}
+
+function clearDoseVerify() {
+  clearForm('dv-rate','dv-weight','dv-drug-amount','dv-bag-vol','dv-min-dose','dv-max-dose');
+  document.getElementById('dv-drug').value = 'custom';
+  hideResult('dv-result');
+}
+
+// Keyboard: Enter triggers nearest calculate
+document.querySelectorAll('input[type="number"]').forEach(el => {
+  el.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      const btn = el.closest('.card-body').querySelector('.btn-primary');
+      if (btn) btn.click();
+    }
+  });
+});
+</script>
+
+</body>
+</html>
